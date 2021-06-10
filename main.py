@@ -7,8 +7,9 @@ from dbController import MysqlDB
 from functions import multi_status_bar
 from ui.main_window import Ui_MainWindow
 from show_functions import *
-# from dialogs import _Main
+from dialogs import _Main
 from controller_areas import AreaController
+from message_system import MessageSystem
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -27,14 +28,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             msg.exec_()
             # app.quit()
         multi_status_bar(self)
-        # w = _Main(self)
-        # sub = self.mdiArea.addSubWindow(w)
-        # w.show()
+        self.win = _Main(self)
+        sub = self.mdiArea.addSubWindow(self.win)
+        self.win.show()
         self.ControlBox = False
         self.TopLevel = False
 
         show_main(self)
 
+        self.msg_sys = MessageSystem(self, self.win.listWidget)
         self.area_controller = AreaController(self)
 
     def update_stage_buttons(self, area):

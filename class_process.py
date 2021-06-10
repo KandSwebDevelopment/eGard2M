@@ -31,7 +31,7 @@ class ProcessClass(QObject):
         self.change_due = False  # Set true when stage is due to be advanced
         self.running_days = 0  # Total Number of day process has been running
         self.current_lighting = 0  # The current stage lighting schedule
-        self.current_feed_schedule_id = 0  # The current stage feeding schedule
+        # self.current_feed_schedule_id = 0  # The current stage feeding schedule
         self.process_offset_total = 0  # The total number of days the process stages are adjusted to current stage
         self.days_total = 0  # Total days in this process
         self.due_date = None  # Date due to finish with no adjustments
@@ -71,7 +71,6 @@ class ProcessClass(QObject):
         self.temperature_ranges_active_org = collections.defaultdict()  # The original temp range currently active
         self.temperature_ranges_inactive = collections.defaultdict()  # The final in use with any adjustments applied
         self.temperature_ranges_inactive_org = collections.defaultdict()  # The original temp range currently active
-        # self.current_temperatures_night = collections.defaultdict(float)  #
         self.temperature_name = ""
 
         self.strains = collections.defaultdict()    # id, shortest, longest, name, plant number -> id: min: max: name
@@ -82,7 +81,6 @@ class ProcessClass(QObject):
 
         self.water_on = None  # The water heater on time
         self.water_hrs = 0  # Hours water heater is on for
-        # self.recipe_item = collections.defaultdict(int)   # Holds each feed mix item for for current stage
         self.recipe_id = 0              # Current recipe id
         self.recipe_original = []       # Array of recipe_item's which makes the complete feed    0=nid, 1=ml, 2=L, 3=rid, 4=freq, 5=adj ml, 6=adj remaining
         self.recipe_final = []          # Array with changed feed, a manual change to a feed
@@ -290,7 +288,7 @@ class ProcessClass(QObject):
         self.stage_name = self.db.execute_single("SELECT name FROM " + DB_STAGE_NAMES + " WHERE id = " + str(stage))
         self.current_lighting = self.stages[stage - 1][2]
         self.current_temperature_id = self.stages[stage - 1][3]
-        self.current_feed_schedule_id = self.stages[stage - 1][4]
+        # self.current_feed_schedule_id = self.stages[stage - 1][4]
         self.stage_location = self.stages[stage - 1][5]
         self.stage_start = self.stages_start[stage - 1]
         self.stage_end = self.stage_start + timedelta(days=self.stage_total_duration)
