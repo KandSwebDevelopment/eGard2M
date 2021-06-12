@@ -1,9 +1,32 @@
 import collections
+import copy
+from datetime import timedelta, datetime
 
 from PyQt5.QtCore import QObject
 
 # from class_process import ProcessClass as pClass
 from defines import *
+
+
+def str2dict(items_str):
+    d = collections.defaultdict()
+    if items_str == "":
+        return d
+    i = items_str.split(",")
+    for v in i:
+        d[int(v)] = 1
+    return d
+
+
+def list_to_str(items) -> str:
+    i = ""
+    for p in range(1, len(items) + 1):
+        i += str(p) + ","
+    return i[:len(i) - 1]      # Remove last comma
+
+
+def str_to_list(items) -> list:
+    return [int(n) for n in items.split(",")]
 
 
 class FeedClass(QObject):
@@ -15,18 +38,72 @@ class FeedClass(QObject):
         super(FeedClass, self).__init__()
         self.my_parent = parent
         self.db = parent.db
-        self.process_id = parent.id
-        self.pattern_id = parent.pattern_id
-        self.pattern_name = parent.pattern_name
-        self.stage = parent.current_stage
-        self.stage_day = parent.stage_days_elapsed
-        self.qty_total = parent.quantity_org
-        self.qty_current = parent.quantity
+        self.process_id = 0
+        self.pattern_id = 0
+        self.pattern_name = ""
+        self._area = 0
+        self.stage = 0
+        self.stages_max = 0
+        self.qty_total = 0
+        self.qty_current = 0
+        self.stage_days_elapsed = 0                # Process stage days elapsed
+        self.feed_schedule = None            # Active schedule
+        self.feed_schedules_current = None   # Feed schedules for current stage
+        self.feed_schedules_all = None      # Feed schedules for all stages
+        self.feed_schedules_previous = None  # Feed schedules for previous stage
+        self.feed_schedule_item_num = 0         # The idx of the current schedule in feed_schedules_current
+        self.feed_time = self.db.get_config(CFT_FEEDER, "feed time", "21:00")
+        self.recipe = []
+        self.recipe_score = 0
+        self.recipe_name = ""
+        self.new_recipe_due = 0
+        self.recipe_id = 0
+        self.feed_litres = 0                    # Litres per plant
+        self.nfd = None                         # next feed date
+        self.lfd = None                         # last feed date
+        self.recipe_expires_day = 0
+        self.recipe_starts_day = 0
+        self.next_recipe_id = 0
+        self.next_feed_litres = 0
+        self.feed_litres_next = 0
+        self.frequency = 0
+        self.next_recipe_name = ""
+        self.recipe_next = []
+        self.items = []
+        self.water_total = 0            # Total water required for all mixes
+        self.area_data = {"mixes": {1: {"items": [],  # Plant numbers
+                                        "recipe": {},    # Dict of ingredients {nid, ml}
+                                        "base id": 0,    # Recipe ID this is based off
+                                        "lpp": 0,  # Liters per plant
+                                        "water total": 0,  # nid changed from org, ml change
+                                        "cycles": 0},  # How many feeds this is used for
+                                    },
+                          }
 
-        self.plants = collections.defaultdict()
-        for i in range(1, self.qty_current + 1):
-            self.plants[i] = {'recipe': 0}
-
+    def load(self, area, pattern_id, stage, current_day, max_stages, items):
+        """
+        This load all the feed data for a process in area
+        :param items: A list of the items actually in the area
+        :type items: list
+        :param area:
+        :type area: int
+        :param pattern_id:
+        :type pattern_id: int
+        :param stage:
+        :type stage: int
+        :param current_day:
+        :type current_day: int
+        :param max_stages:
+        :type max_stages: int
+        :return:
+        :rtype: None
+        """
+        self.area = area
+        self.pattern_id = pattern_id
+        self.stage = stage
+        self.stages_max = max_stages
+        self.stage_days_elapsed = current_day
+        self.items = items
         sql = "SELECT s.stage, f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = s.feeding " \
               "AND s.pid = {} ORDER BY s.stage, f.start".\
             format(DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id)
@@ -36,11 +113,222 @@ class FeedClass(QObject):
               "AND s.pid = {} and s.stage ={} ORDER BY f.start".\
             format(DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id, self.stage)
         rows_s = self.db.execute(sql)
-        self.feed_schedule_current = rows_s.copy()
+        self.feed_schedules_current = rows_s.copy()
         if self.stage > 1:
             sql = "SELECT f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = s.feeding " \
                   "AND s.pid = {} and s.stage ={} ORDER BY f.start". \
                 format(DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id, self.stage - 1)
             rows_s = self.db.execute(sql)
-            self.feed_schedule_previous = rows_s.copy()
-        print(rows_s)
+            self.feed_schedules_previous = rows_s.copy()
+        self.recipe_current_from_feed_schedule()
+        self.get_next_feed_recipe()
+        print(self.recipe)
+        print(self.recipe_next)
+
+    def recipe_current_from_feed_schedule(self):
+        """
+        This loads the default recipe using the feed schedule for current day of current stage
+        :return: None
+        :rtype: None
+        """
+        self.recipe_score = 0
+        self.feed_schedule = None
+        stage_days_elapsed = 1 if self.stage_days_elapsed == 0 else self.stage_days_elapsed
+        x = 0
+        for schedule in self.feed_schedules_current:
+            if schedule[1] >= self.stage_days_elapsed >= schedule[0]:
+                self.feed_schedule = schedule
+                self.feed_schedule_item_num = x
+                break
+            x += 1
+        if self.feed_schedule is None:
+            pass
+            # @Todo Add call to msg system - feed schedule missing
+
+        # if self.feed_schedule[0] <= stage_days_elapsed <= self.feed_schedule[1]:
+        self.new_recipe_due = self.feed_schedule[1] - stage_days_elapsed
+        self.recipe_id = self.feed_schedule[3]
+        self.feed_litres = self.feed_schedule[2]
+        self.recipe_expires_day = self.feed_schedule[1]
+        self.recipe_starts_day = self.feed_schedule[0]
+        self.frequency = self.feed_schedule[4]
+        if self.recipe_id == WATER_ONLY_IDX:
+            self.recipe_name = WATER_ONLY
+        else:
+            self.recipe_name = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, self.recipe_id))
+        if self.feed_schedule[3] is WATER_ONLY_IDX:
+            # Water only
+            self.recipe_score = 0
+            self.recipe.append([WATER_ONLY_IDX, 0, self.feed_schedule[2], WATER_ONLY_IDX, 1])
+            return
+        sql = "SELECT * FROM {} WHERE rid = {}".format(DB_RECIPES, self.feed_schedule[3])
+        r_rows = self.db.execute(sql)
+        if r_rows is None:  # Missing
+            pass
+            # @Todo Add call to msg system - recipe missing
+        else:
+            for r_row in r_rows:  # current feed
+                #                nid    ml              L                               rid                     freq   adj_ml  remain
+                self.recipe.append([r_row[2], r_row[3], self.feed_schedule[2], self.feed_schedule[3], r_row[4]])
+                # self.recipe_score += r_row[3] * self.feed_schedule[2] * self.quantity
+                # print("recipe score ", self.recipe_score)
+        return
+
+    def recipe_next_from_feed_schedule(self, schedule):
+        """
+        This loads the a recipe for the next feed schedule
+        :return: None
+        :rtype: None
+        """
+
+        self.next_recipe_id = schedule[3]
+        self.next_feed_litres = schedule[2]
+        if self.recipe_id == WATER_ONLY_IDX:
+            self.next_recipe_name = WATER_ONLY
+        else:
+            self.next_recipe_name = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, self.next_recipe_id))
+        if schedule[3] is WATER_ONLY_IDX:
+            # Water only
+            self.recipe_next.append([WATER_ONLY_IDX, 0, schedule[2], WATER_ONLY_IDX, 1])
+            return
+        sql = "SELECT * FROM {} WHERE rid = {}".format(DB_RECIPES, schedule[3])
+        r_rows = self.db.execute(sql)
+        if r_rows is None:  # Missing
+            pass
+            # @Todo Add call to msg system - recipe missing
+        else:
+            for r_row in r_rows:  # current feed
+                #                           nid         ml       L       rid             freq   adj_ml  remain
+                self.recipe_next.append([r_row[2], r_row[3], schedule[2], schedule[3], r_row[4]])
+        return
+
+    def get_next_feed_recipe(self):
+        sql = "SELECT f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = s.feeding AND" \
+              " s.pid = {} and s.stage ={}".format(
+               DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id, self.stage)
+        rows = self.db.execute(sql)
+        if self.feed_schedule_item_num < len(rows) - 1:
+            self.recipe_next_from_feed_schedule(rows[self.feed_schedule_item_num + 1])
+            self.next_recipe_id = rows[self.feed_schedule_item_num + 1][3]
+            self.feed_litres_next = rows[self.feed_schedule_item_num + 1][2]
+        else:  # No more feeds in this stage so look to next stage
+            if self.stage < self.stages_max:
+                sql = "SELECT f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = s.feeding AND s.pid = {} and s.stage ={} ORDER BY f.start".format(
+                    DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id, self.stage + 1)
+                rows = self.db.execute(sql)
+                if len(rows) != 0:
+                    # There is a next stage
+                    self.recipe_next_from_feed_schedule(rows[0])
+                    # self.next_recipe_id = rows[0][3]
+                    # self.feed_litres_next = rows[0][2]
+                    return
+                else:  # No more stages so continue with use current as next
+                    self.recipe_next = self.recipe.copy()
+                    self.next_recipe_id = self.recipe_id
+                    self.feed_litres_next = self.feed_litres
+
+    def load_mixes(self):
+        """
+        This loads all mixes (different feeds) active
+        :return: None
+        :rtype: None
+        """
+        count = self.db.execute_single('SELECT COUNT(mix_num) as count FROM {} WHERE `area` = {}'.
+                                       format(DB_PROCESS_FEED_ADJUSTMENTS, self.area))
+        if count == 0:
+            self.load_org_recipe(1)
+        else:
+            self._load_mixes(self.area)
+        self.load_feed_date()
+
+    def load_org_recipe(self, mix_num):
+        """Load original recipe/mix into mix number"""
+        self.area_data["mixes"][mix_num]['items'] = self.items
+        self.area_data["mixes"][mix_num]["recipe"] = copy.deepcopy(self.recipe)
+        self.area_data["mixes"][mix_num]["lpp"] = self.feed_litres
+        self.area_data["mixes"][mix_num]["base id"] = self.recipe_id
+        self.area_data["mixes"][mix_num]["cycles"] = self.max_feeds_till_change(self.area)
+        self.area_data["mixes"][mix_num]["water total"] = \
+            self.feed_litres * \
+            len(self.area_data["mixes"][mix_num]['items'])
+
+    def _load_mixes(self, area):  # ..    0       1    2      3        4        5
+        rows = self.db.execute(
+            'SELECT mix_num, freq, lpp, `items`, cycles, base_id FROM {} WHERE `area` = {} ORDER BY mix_num'.
+            format(DB_PROCESS_FEED_ADJUSTMENTS, area))
+        for row in rows:
+            mix_num = row[0]
+            if mix_num > 1:
+                self.area_data["mixes"][mix_num] = {}
+            self.area_data["mixes"][mix_num]["items"] = str_to_list(row[3])
+            self.area_data["mixes"][mix_num]["lpp"] = row[2]
+            self.area_data["mixes"][mix_num]["base id"] = row[5]
+            self.area_data["mixes"][mix_num]["cycles"] = row[4]
+            self.area_data["mixes"][mix_num]["recipe"] = {}
+            self.area_data["mixes"][mix_num]["water total"] = row[2] * len(
+                self.area_data["mixes"][mix_num]['items'])
+            if row[5] != self.recipe_id:
+                # A new recipe has started, so the loaded mix needs replaced with new one
+                self.db.execute_write('DELETE FROM {} WHERE area = {} AND mix_num = {}'.
+                                      format(DB_PROCESS_MIXES, self.area, mix_num))
+            self.area_data["mixes"][mix_num]["recipe"] = self.load_mix_recipe(mix_num)
+        self._refresh_water_total()
+
+    def load_mix_recipe(self, mix_num) -> list:
+        """Load the recipe for the mix number
+           If none is found it returns the original"""
+        ingredients = self.db.execute('SELECT nid, ml FROM {} WHERE `area` = {} AND mix_num = {}'.
+                                      format(DB_PROCESS_MIXES, self.area, mix_num))
+        if len(ingredients) == 0:
+            # self.area_data[area]["mixes"][mix_num] = {}
+            self.area_data["mixes"][mix_num]["recipe"].clear()
+            self.area_data["mixes"][mix_num]["base id"] = self.recipe_id
+            return copy.deepcopy(self.recipe)
+        i = []
+        for ingredient in ingredients:
+            i.append([ingredient[0], ingredient[1]])
+        return i
+
+    def _refresh_water_total(self):
+        """ Calculates the total amount of water required for the area for all mixes for said area """
+        t = 0.0
+        mixes = self.area_data['mixes']
+        for m in mixes:
+            t += mixes[m]['water total']
+        self.water_total = t
+
+    def max_feeds_till_change(self, area) -> int:
+        """
+        Calculates the max number of feeds are left using this recipe
+        :param area:
+        :type area: int
+        :return:
+        :rtype: int
+        """
+        return int((self.recipe_expires_day - self.stage_days_elapsed) /
+                   self.frequency)
+
+    def load_feed_date(self):
+        sql = "SELECT dt FROM {} WHERE item = 'feed date' and id = {}".format(DB_PROCESS_ADJUSTMENTS, self.area)
+        f_date = self.db.execute_single(sql)
+        self.lfd = f_date
+        self.nfd = f_date + timedelta(days=self.frequency)
+
+    def set_last_feed_date(self, area, f_date):
+        """ Sets the last feed date for the given area in the data structure and the also updates the db"""
+        t = self.feed_time.split(":")
+        f_date = datetime(f_date.year, f_date.month, f_date.day, int(t[0]), int(t[1]))
+        self.lfd = f_date
+        self.nfd = f_date + timedelta(days=self.frequency)
+        sql = "UPDATE {} SET dt = '{}' WHERE item = '{}' and id = {} LIMIT 1".\
+            format(DB_PROCESS_ADJUSTMENTS, f_date, PA_FEED_DATE, area)
+        self.db.execute_write(sql)
+        self._check_feed_due_today()
+
+    @property
+    def area(self):
+        return self._area
+
+    @area.setter
+    def area(self, a):
+        self._area = a

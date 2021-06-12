@@ -42,7 +42,13 @@ class AreaController(QObject):
         return self.areas_pid[area]
 
     def get_area_items(self, area):
-        """ Returns a list of the items in the area"""
+        """
+         Returns a list of the items in the area
+        :param area:
+        :type area: int
+        :return:
+        :rtype: list
+        """
         return self.areas_items[area]
 
     def get_area_process(self, area):

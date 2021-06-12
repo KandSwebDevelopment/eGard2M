@@ -3,6 +3,7 @@ import sys
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMdiArea, QMdiSubWindow, QDialog, QTextEdit, QAction, QWidget, \
     QMessageBox
 
+from controller_feeding import FeedControl
 from dbController import MysqlDB
 from functions import multi_status_bar
 from ui.main_window import Ui_MainWindow
@@ -38,6 +39,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.msg_sys = MessageSystem(self, self.win.listWidget)
         self.area_controller = AreaController(self)
+
+        self.feed_controller = FeedControl(self)
 
     def update_stage_buttons(self, area):
         items = self.area_controller.get_area_items(area)

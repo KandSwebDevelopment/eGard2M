@@ -190,7 +190,7 @@ class ProcessClass(QObject):
         self.load_lighting_schedule()
         self.get_light_status()
         self.load_temperature_schedule()
-        self.load_feed_schedule()
+        # self.load_feed_schedule()
         self.load_active_temperature_ranges()
         self.load_feed_date()
 
@@ -335,123 +335,123 @@ class ProcessClass(QObject):
             # self.my_parent.notifier.add(CRITICAL, "No light schedule could be found", FC_P_LIGHT_SCHEDULE_MISSING,
             #                             add_info)
 
-    def load_feed_schedule(self):
-        if not self.running:
-            return
-        # look for change in feed litres
-        self.feed_litres_adj = 0
-        self.feed_litres_adj_remaining = 0
-        self.recipe_original.clear()
-        self.recipe_final.clear()
-        self.recipe_changes.clear()
-        self.recipe_is_change = False
-        if self.location == 3:
-            return
-        sql = 'SELECT * FROM {} WHERE pid = {}'.format(DB_RECIPE_CHANGES, self.id)
-        rows = self.db.execute(sql)
-        if len(rows) > 0:
-            self.recipe_is_change = True
-            for row in rows:
-                self.recipe_changes.append([row[1], row[2], row[3]])
-        sql = "SELECT f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = s.feeding " \
-              "AND s.pid = {} and s.stage ={}".\
-            format(DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id, self.current_stage)
-        rows_s = self.db.execute(sql)
-        if len(rows_s) < 1:
-            # self.my_parent.notifier.add(ERROR, "No recipe found for area " + str(self.id), FC_P_NO_RECIPE_FOUND,
-            #                             "No recipe for<br>Pattern \"" + self.pattern_name + "\"<br>Stage \"" + self.stage_name + "\"")
-            return
-        # Convert the db result from tuple to list so it is changeable below
-        rows = []
-        for row in rows_s:
-            rows.append(list(row))
-        # adjust recipe  end day according to any adjustments in the stage lengths
-        if self.stages_len_adjustment[self.current_stage - 1] > 0:
-            rows[len(rows) - 1][1] += self.stages_len_adjustment[self.current_stage - 1]
-            self.recipe_extended = self.stages_len_adjustment[self.current_stage - 1]
+    # def load_feed_schedule(self):
+    #     if not self.running:
+    #         return
+    #     # look for change in feed litres
+    #     self.feed_litres_adj = 0
+    #     self.feed_litres_adj_remaining = 0
+    #     self.recipe_original.clear()
+    #     self.recipe_final.clear()
+    #     self.recipe_changes.clear()
+    #     self.recipe_is_change = False
+    #     if self.location == 3:
+    #         return
+    #     sql = 'SELECT * FROM {} WHERE pid = {}'.format(DB_RECIPE_CHANGES, self.id)
+    #     rows = self.db.execute(sql)
+    #     if len(rows) > 0:
+    #         self.recipe_is_change = True
+    #         for row in rows:
+    #             self.recipe_changes.append([row[1], row[2], row[3]])
+    #     sql = "SELECT f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = s.feeding " \
+    #           "AND s.pid = {} and s.stage ={}".\
+    #         format(DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id, self.current_stage)
+    #     rows_s = self.db.execute(sql)
+    #     if len(rows_s) < 1:
+    #         # self.my_parent.notifier.add(ERROR, "No recipe found for area " + str(self.id), FC_P_NO_RECIPE_FOUND,
+    #         #                             "No recipe for<br>Pattern \"" + self.pattern_name + "\"<br>Stage \"" + self.stage_name + "\"")
+    #         return
+    #     # Convert the db result from tuple to list so it is changeable below
+    #     rows = []
+    #     for row in rows_s:
+    #         rows.append(list(row))
+    #     # adjust recipe  end day according to any adjustments in the stage lengths
+    #     if self.stages_len_adjustment[self.current_stage - 1] > 0:
+    #         rows[len(rows) - 1][1] += self.stages_len_adjustment[self.current_stage - 1]
+    #         self.recipe_extended = self.stages_len_adjustment[self.current_stage - 1]
+    #
+    #     # pprint(rows)
+    #     err_flag = False
+    #     self.feed_frequency = 0
+    #     if len(rows) > 0:
+    #         x = 0
+    #         for row in rows:
+    #             if row[0] <= self.stage_days_elapsed <= row[1] or (x == 0 and self.stage_days_elapsed == 0):
+    #                 # Will only be here once for the current feed
+    #                 self.feed_frequency = row[4]
+    #                 self.recipe_original = self.recipe_from_feed_schedule(row)
+    #                 self.feed_schedule_item_num = x
+    #             x += 1  # This is needed do not remove
+    #         if len(self.recipe_original) < 1:
+    #             # No recipe found Caused by stage over running so select the last recipe
+    #             # self.my_parent.notifier.add(WARNING, "Area " + str(
+    #             #     self.location) + "  The stage has over run and there is no recipe.", FC_P_NO_RECIPE_STAGE_OVERRUN,
+    #             #                             "The previous recipe for area " + str(self.location) + " will be used")
+    #             x -= 1
+    #             self.recipe_extended = self.stage_days_elapsed - rows[len(rows) - 1][1]
+    #             rows[len(rows) - 1][1] = self.stage_days_elapsed
+    #             self.feed_frequency = rows[x][4]
+    #             self.recipe_original = self.recipe_from_feed_schedule(rows[x])
+    #             self.feed_schedule_item_num = x
+    #         self.recipe_append_changes()
+    #         self.get_next_feed_recipe()
+    #     else:
+    #         err_flag = True
+    #
+    #     if err_flag:
+    #         # No recipe has been found to cover current day
+    #         # @ ToDo Add an ALA missing recipe
+    #         pass
 
-        # pprint(rows)
-        err_flag = False
-        self.feed_frequency = 0
-        if len(rows) > 0:
-            x = 0
-            for row in rows:
-                if row[0] <= self.stage_days_elapsed <= row[1] or (x == 0 and self.stage_days_elapsed == 0):
-                    # Will only be here once for the current feed
-                    self.feed_frequency = row[4]
-                    self.recipe_original = self.recipe_from_feed_schedule(row)
-                    self.feed_schedule_item_num = x
-                x += 1  # This is needed do not remove
-            if len(self.recipe_original) < 1:
-                # No recipe found Caused by stage over running so select the last recipe
-                # self.my_parent.notifier.add(WARNING, "Area " + str(
-                #     self.location) + "  The stage has over run and there is no recipe.", FC_P_NO_RECIPE_STAGE_OVERRUN,
-                #                             "The previous recipe for area " + str(self.location) + " will be used")
-                x -= 1
-                self.recipe_extended = self.stage_days_elapsed - rows[len(rows) - 1][1]
-                rows[len(rows) - 1][1] = self.stage_days_elapsed
-                self.feed_frequency = rows[x][4]
-                self.recipe_original = self.recipe_from_feed_schedule(rows[x])
-                self.feed_schedule_item_num = x
-            self.recipe_append_changes()
-            self.get_next_feed_recipe()
-        else:
-            err_flag = True
-
-        if err_flag:
-            # No recipe has been found to cover current day
-            # @ ToDo Add an ALA missing recipe
-            pass
-
-    def recipe_from_feed_schedule(self, feed_schedule, current=True):
-        if not self.running:
-            return
-        recipe = []
-        self.recipe_score = 0
-        stage_days_elapsed = 1 if self.stage_days_elapsed == 0 else self.stage_days_elapsed
-        if feed_schedule[0] <= stage_days_elapsed <= feed_schedule[1] and current:
-            # Only do these if feed schedule passed it for current time
-            self.new_recipe_due = feed_schedule[1] - stage_days_elapsed
-            self.recipe_id = feed_schedule[3]
-            self.feed_litres = feed_schedule[2]
-            self.recipe_expires_day = feed_schedule[1]
-            self.recipe_starts_day = feed_schedule[0]
-            # if self.recipe_expires_day - self.stage_days_elapsed < self.feed_frequency:
-            #     self.recipe_status = -1
-            # elif self.stage_days_elapsed - self.recipe_starts_day < self.feed_frequency:
-            #     self.recipe_status = 1
-            # else:
-            #     self.recipe_status = 0
-            if self.recipe_id == WATER_ONLY_IDX:
-                self.recipe_name = WATER_ONLY
-            else:
-                self.recipe_name = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, self.recipe_id))
-        if feed_schedule[3] is WATER_ONLY_IDX:
-            # Water only
-            self.recipe_score = 0
-            recipe.append([WATER_ONLY_IDX, 0, feed_schedule[2], WATER_ONLY_IDX, 1, 0, 0])
-            return recipe
-        sql = "SELECT * FROM {} WHERE rid = {}".format(DB_RECIPES, feed_schedule[3])
-        r_rows = self.db.execute(sql)
-        if r_rows is None:  # Missing
-            if current:
-                # no current recipe
-                pass
-            else:
-                # no next recipe
-                recipe = self.recipe_final.copy()
-                self.recipe_next_replaced = True
-            # @Todo Add call to msg system - recipe missing
-            # self.my_parent.after_load.append(self.location + 4)
-        else:
-            self.recipe_score = 0
-            for r_row in r_rows:  # current feed
-                #                nid    ml              L                rid            freq   adj_ml  remain
-                recipe.append([r_row[2], r_row[3], feed_schedule[2], feed_schedule[3], r_row[4], 0, 0])
-                if current:
-                    self.recipe_score += r_row[3] * feed_schedule[2] * self.quantity
-                    print("recipe score ", self.recipe_score)
-        return recipe
+    # def recipe_from_feed_schedule(self, feed_schedule, current=True):
+    #     if not self.running:
+    #         return
+    #     recipe = []
+    #     self.recipe_score = 0
+    #     stage_days_elapsed = 1 if self.stage_days_elapsed == 0 else self.stage_days_elapsed
+    #     if feed_schedule[0] <= stage_days_elapsed <= feed_schedule[1] and current:
+    #         # Only do these if feed schedule passed it for current time
+    #         self.new_recipe_due = feed_schedule[1] - stage_days_elapsed
+    #         self.recipe_id = feed_schedule[3]
+    #         self.feed_litres = feed_schedule[2]
+    #         self.recipe_expires_day = feed_schedule[1]
+    #         self.recipe_starts_day = feed_schedule[0]
+    #         # if self.recipe_expires_day - self.stage_days_elapsed < self.feed_frequency:
+    #         #     self.recipe_status = -1
+    #         # elif self.stage_days_elapsed - self.recipe_starts_day < self.feed_frequency:
+    #         #     self.recipe_status = 1
+    #         # else:
+    #         #     self.recipe_status = 0
+    #         if self.recipe_id == WATER_ONLY_IDX:
+    #             self.recipe_name = WATER_ONLY
+    #         else:
+    #             self.recipe_name = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, self.recipe_id))
+    #     if feed_schedule[3] is WATER_ONLY_IDX:
+    #         # Water only
+    #         self.recipe_score = 0
+    #         recipe.append([WATER_ONLY_IDX, 0, feed_schedule[2], WATER_ONLY_IDX, 1, 0, 0])
+    #         return recipe
+    #     sql = "SELECT * FROM {} WHERE rid = {}".format(DB_RECIPES, feed_schedule[3])
+    #     r_rows = self.db.execute(sql)
+    #     if r_rows is None:  # Missing
+    #         if current:
+    #             # no current recipe
+    #             pass
+    #         else:
+    #             # no next recipe
+    #             recipe = self.recipe_final.copy()
+    #             self.recipe_next_replaced = True
+    #         # @Todo Add call to msg system - recipe missing
+    #         # self.my_parent.after_load.append(self.location + 4)
+    #     else:
+    #         self.recipe_score = 0
+    #         for r_row in r_rows:  # current feed
+    #             #                nid    ml              L                rid            freq   adj_ml  remain
+    #             recipe.append([r_row[2], r_row[3], feed_schedule[2], feed_schedule[3], r_row[4], 0, 0])
+    #             if current:
+    #                 self.recipe_score += r_row[3] * feed_schedule[2] * self.quantity
+    #                 print("recipe score ", self.recipe_score)
+    #     return recipe
 
     def reset_feed_array(self):
         for x in range(0, self.quantity):
