@@ -13,7 +13,7 @@ from functions import find_it
 class ProcessClass(QObject):
     alert = pyqtSignal(int, int)
 
-    def __init__(self, pid, parent=None):
+    def __init__(self, pid, parent):
         # QObject.__init__(self)
         super(ProcessClass, self).__init__()
         self.my_parent = parent

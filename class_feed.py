@@ -22,7 +22,7 @@ def list_to_str(items) -> str:
     i = ""
     for p in range(1, len(items) + 1):
         i += str(p) + ","
-    return i[:len(i) - 1]      # Remove last comma
+    return i[:len(i) - 1]  # Remove last comma
 
 
 def str_to_list(items) -> list:
@@ -46,23 +46,24 @@ class FeedClass(QObject):
         self.stages_max = 0
         self.qty_total = 0
         self.qty_current = 0
-        self.stage_days_elapsed = 0                # Process stage days elapsed
-        self.feed_schedule = None            # Active schedule
-        self.feed_schedules_current = None   # Feed schedules for current stage
-        self.feed_schedules_all = None      # Feed schedules for all stages
+        self.stage_days_elapsed = 0  # Process stage days elapsed
+        self.feed_schedule = None  # Active schedule
+        self.feed_schedules_current = None  # Feed schedules for current stage
+        self.feed_schedules_all = None  # Feed schedules for all stages
         self.feed_schedules_previous = None  # Feed schedules for previous stage
-        self.feed_schedule_item_num = 0         # The idx of the current schedule in feed_schedules_current
+        self.feed_schedule_item_num = 0  # The idx of the current schedule in feed_schedules_current
         self.feed_time = self.db.get_config(CFT_FEEDER, "feed time", "21:00")
         self.recipe = []
         self.recipe_score = 0
         self.recipe_name = ""
         self.new_recipe_due = 0
         self.recipe_id = 0
-        self.feed_litres = 0                    # Litres per plant
-        self.nfd = None                         # next feed date
-        self.lfd = None                         # last feed date
+        self.feed_litres = 0  # Litres per plant
+        self.nfd = None  # next feed date
+        self.lfd = None  # last feed date
         self.recipe_expires_day = 0
         self.recipe_starts_day = 0
+        self.r_status = 0               # -1 = last use, 1= Next will be new recipe, 2 = New recipe today 0 = no change
         self.next_recipe_id = 0
         self.next_feed_litres = 0
         self.feed_litres_next = 0
@@ -105,12 +106,12 @@ class FeedClass(QObject):
         self.stage_days_elapsed = current_day
         self.items = items
         sql = "SELECT s.stage, f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = s.feeding " \
-              "AND s.pid = {} ORDER BY s.stage, f.start".\
+              "AND s.pid = {} ORDER BY s.stage, f.start". \
             format(DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id)
         rows_s = self.db.execute(sql)
         self.feed_schedules_all = rows_s.copy()
         sql = "SELECT f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = s.feeding " \
-              "AND s.pid = {} and s.stage ={} ORDER BY f.start".\
+              "AND s.pid = {} and s.stage ={} ORDER BY f.start". \
             format(DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id, self.stage)
         rows_s = self.db.execute(sql)
         self.feed_schedules_current = rows_s.copy()
@@ -155,7 +156,8 @@ class FeedClass(QObject):
         if self.recipe_id == WATER_ONLY_IDX:
             self.recipe_name = WATER_ONLY
         else:
-            self.recipe_name = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, self.recipe_id))
+            self.recipe_name = self.db.execute_single(
+                "SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, self.recipe_id))
         if self.feed_schedule[3] is WATER_ONLY_IDX:
             # Water only
             self.recipe_score = 0
@@ -186,7 +188,8 @@ class FeedClass(QObject):
         if self.recipe_id == WATER_ONLY_IDX:
             self.next_recipe_name = WATER_ONLY
         else:
-            self.next_recipe_name = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, self.next_recipe_id))
+            self.next_recipe_name = self.db.execute_single(
+                "SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, self.next_recipe_id))
         if schedule[3] is WATER_ONLY_IDX:
             # Water only
             self.recipe_next.append([WATER_ONLY_IDX, 0, schedule[2], WATER_ONLY_IDX, 1])
@@ -205,7 +208,7 @@ class FeedClass(QObject):
     def get_next_feed_recipe(self):
         sql = "SELECT f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = s.feeding AND" \
               " s.pid = {} and s.stage ={}".format(
-               DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id, self.stage)
+            DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id, self.stage)
         rows = self.db.execute(sql)
         if self.feed_schedule_item_num < len(rows) - 1:
             self.recipe_next_from_feed_schedule(rows[self.feed_schedule_item_num + 1])
@@ -219,8 +222,6 @@ class FeedClass(QObject):
                 if len(rows) != 0:
                     # There is a next stage
                     self.recipe_next_from_feed_schedule(rows[0])
-                    # self.next_recipe_id = rows[0][3]
-                    # self.feed_litres_next = rows[0][2]
                     return
                 else:  # No more stages so continue with use current as next
                     self.recipe_next = self.recipe.copy()
@@ -239,6 +240,7 @@ class FeedClass(QObject):
             self.load_org_recipe(1)
         else:
             self._load_mixes(self.area)
+        self._refresh_water_total()
         self.load_feed_date()
 
     def load_org_recipe(self, mix_num):
@@ -247,7 +249,7 @@ class FeedClass(QObject):
         self.area_data["mixes"][mix_num]["recipe"] = copy.deepcopy(self.recipe)
         self.area_data["mixes"][mix_num]["lpp"] = self.feed_litres
         self.area_data["mixes"][mix_num]["base id"] = self.recipe_id
-        self.area_data["mixes"][mix_num]["cycles"] = self.max_feeds_till_change(self.area)
+        self.area_data["mixes"][mix_num]["cycles"] = self.max_feeds_till_change()
         self.area_data["mixes"][mix_num]["water total"] = \
             self.feed_litres * \
             len(self.area_data["mixes"][mix_num]['items'])
@@ -255,7 +257,7 @@ class FeedClass(QObject):
     def _load_mixes(self, area):  # ..    0       1    2      3        4        5
         rows = self.db.execute(
             'SELECT mix_num, freq, lpp, `items`, cycles, base_id FROM {} WHERE `area` = {} ORDER BY mix_num'.
-            format(DB_PROCESS_FEED_ADJUSTMENTS, area))
+                format(DB_PROCESS_FEED_ADJUSTMENTS, area))
         for row in rows:
             mix_num = row[0]
             if mix_num > 1:
@@ -272,7 +274,6 @@ class FeedClass(QObject):
                 self.db.execute_write('DELETE FROM {} WHERE area = {} AND mix_num = {}'.
                                       format(DB_PROCESS_MIXES, self.area, mix_num))
             self.area_data["mixes"][mix_num]["recipe"] = self.load_mix_recipe(mix_num)
-        self._refresh_water_total()
 
     def load_mix_recipe(self, mix_num) -> list:
         """Load the recipe for the mix number
@@ -297,11 +298,9 @@ class FeedClass(QObject):
             t += mixes[m]['water total']
         self.water_total = t
 
-    def max_feeds_till_change(self, area) -> int:
+    def max_feeds_till_change(self) -> int:
         """
         Calculates the max number of feeds are left using this recipe
-        :param area:
-        :type area: int
         :return:
         :rtype: int
         """
@@ -311,8 +310,18 @@ class FeedClass(QObject):
     def load_feed_date(self):
         sql = "SELECT dt FROM {} WHERE item = 'feed date' and id = {}".format(DB_PROCESS_ADJUSTMENTS, self.area)
         f_date = self.db.execute_single(sql)
+        if f_date is None:
+            self.nfd = datetime.now().date()
+            self.lfd = self.nfd - timedelta(days=self.frequency)
+            # @Todo add to msg sys  no feed date
+            return
         self.lfd = f_date
         self.nfd = f_date + timedelta(days=self.frequency)
+
+    def get_days_till_feed(self):
+        if self.nfd is None:
+            return 0
+        return (self.nfd.date() - datetime.now().date()).days
 
     def set_last_feed_date(self, area, f_date):
         """ Sets the last feed date for the given area in the data structure and the also updates the db"""
@@ -320,10 +329,69 @@ class FeedClass(QObject):
         f_date = datetime(f_date.year, f_date.month, f_date.day, int(t[0]), int(t[1]))
         self.lfd = f_date
         self.nfd = f_date + timedelta(days=self.frequency)
-        sql = "UPDATE {} SET dt = '{}' WHERE item = '{}' and id = {} LIMIT 1".\
+        sql = "UPDATE {} SET dt = '{}' WHERE item = '{}' and id = {} LIMIT 1". \
             format(DB_PROCESS_ADJUSTMENTS, f_date, PA_FEED_DATE, area)
         self.db.execute_write(sql)
         self._check_feed_due_today()
+
+    def get_mix_count(self):
+        """ Return the number of mixes for the area"""
+        return len(self.area_data['mixes'])
+
+    def _get_recipe_status(self):
+        """ This checks both areas and sets 'status' in the data structure """
+        # -1 = last use, 1= Next will be new recipe, 2 = New recipe today 0 = no change
+        if self.lfd is None:
+            return 0
+        r_change_days = self.recipe_expires_day - self.stage_days_elapsed
+        r_start_date = datetime.now().date() - timedelta(days=self.stage_days_elapsed - (self.recipe_starts_day - 1))
+        lfd_days = (datetime.now().date() - self.lfd.date()).days
+
+        if r_change_days == 0:
+            if lfd_days == 0:
+                self.r_status = 2
+            else:
+                self.r_status = 1
+            return
+
+        if self.stage_days_elapsed - self.recipe_starts_day - 1 <= self.frequency:
+            # After change
+            if self.lfd.date() >= r_start_date:
+                self.r_status = 0
+                return
+            else:
+                self.r_status = 2
+                return
+        if r_change_days + 1 <= self.frequency - 1:
+            if lfd_days == 0:
+                #  fed today
+                self.r_status = 1
+                return
+            else:
+                # Not Fed
+                self.r_status = -1
+                return
+        if r_change_days <= (self.frequency * 2) - 1:
+            if lfd_days == 0:
+                # Not fed today
+                pass
+            else:
+                # Fed
+                self.r_status = -1
+                return
+        self.r_status = 0
+
+    def get_recipe_days_remaining(self):
+        return self.recipe_expires_day - self.stage_days_elapsed
+
+    def get_feeds_remaining(self,):
+        """ Returns the number of feeds remaining using current recipe """
+        return int((self.recipe_expires_day - self.stage_days_elapsed)
+                   / self.frequency)
+
+    def new_day(self):
+        self._get_recipe_status()
+        self._refresh_water_total()
 
     @property
     def area(self):

@@ -41,6 +41,11 @@ class AreaController(QObject):
         """ Returns the PID in the area"""
         return self.areas_pid[area]
 
+    def area_has_process(self, area):
+        if self.areas_pid[area] == 0:
+            return False
+        return True
+
     def get_area_items(self, area):
         """
          Returns a list of the items in the area
@@ -57,4 +62,7 @@ class AreaController(QObject):
         :type area: int
         :rtype : ProcessClass
         """
-        return self.areas_processes[area]
+        try:
+            return self.areas_processes[area]
+        except Exception as e:
+            return 0

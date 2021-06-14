@@ -18,7 +18,7 @@ class MysqlDB:
         super(MysqlDB, self).__init__()
         self.my_parent = parent
         self.settings = QSettings(FN_SETTINGS, QSettings.IniFormat)
-        # self.mode = int(self.settings.value("mode"))  # 1=Master, arduino and server  2=Slave, client only
+        self.mode = int(self.settings.value("mode"))  # 1=Master  2=Slave
         self.is_master = True
         self.config_col = "value_m"
         self.host = self.settings.value("Database/host")

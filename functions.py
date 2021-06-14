@@ -10,6 +10,22 @@ def find_it(key, my_list):
     return None
 
 
+def string_to_float(s) -> float:
+    """
+    Converts a string to a float. The string can be a float or an int
+    If an invalid string it will return 0.00
+    :param s: String to convert
+    :type s: str
+    :return: Float value of string or 0.00 if not valid
+    :rtype: float
+    """
+    try:
+        float(s)
+        return float(s)
+    except ValueError:
+        return 0.00
+
+
 def multi_status_bar(self):
     # Do multipart status bar
     self.panel_1 = QLabel("1", self)
