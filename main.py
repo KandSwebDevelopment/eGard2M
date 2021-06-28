@@ -1,20 +1,23 @@
 import sys
+from datetime import timedelta
 from time import strftime
 
-from PyQt5.QtCore import QSettings, QTimer, pyqtSignal
+from PyQt5.QtCore import QSettings, QTimer
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox
 
+from class_logger import Logger
 from class_sensor import SensorClass
 from communication_interface import CommunicationInterface
 from controller_feeding import FeedControl
+from controller_windows import WindowsController
 from dbController import MysqlDB
-from defines import *
-from functions import multi_status_bar
+from functions import multi_status_bar, get_last_friday
+from functions_colors import get_css_colours
 from status_codes import *
 from ui.main_window import Ui_MainWindow
 from controller_areas import AreaController
 from message_system import MessageSystem
-from main_window import _Main
+from main_panel import MainPanel
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -22,7 +25,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super(MainWindow, self).__init__()
 
         self.setupUi(Application)
-
+        self.resize(2200, 1600)
         self.db = MysqlDB()
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Warning)
@@ -34,81 +37,32 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             # app.quit()
         multi_status_bar(self)
 
+        self.wc = WindowsController(self)
         self.settings = QSettings(FN_SETTINGS, QSettings.IniFormat)
         self.mode = int(self.settings.value("mode"))  # 1=Master, arduino and server  2=Slave, client only
 
-        self.main_window = _Main(self)
+        self.main_panel = MainPanel(self)
 
-        self.msg_sys = MessageSystem(self, self.main_window.listWidget)
+        if self.mode == MASTER:
+            self.update_status_bar(SBP_MODE, "Master", OK)
+        else:
+            self.update_status_bar(SBP_MODE, "Slave", OK)
+
+        self.msg_sys = MessageSystem(self, self.main_panel.listWidget)
+        self.logger = Logger(self)
+        self.coms_interface = CommunicationInterface(self)
         self.area_controller = AreaController(self)
         self.feed_controller = FeedControl(self)
-        self.coms_interface = CommunicationInterface(self)
-        self.sensors = collections.defaultdict(SensorClass)  # Holds the sensor classes
 
-        self.main_window.connect_to_main()
-        self.main_window.update_next_feeds()
+        self.main_panel.connect_to_main()
+        self.main_panel.update_next_feeds()
 
-        self.timer_counter = 0
-        self.timer = QTimer()
-        self.timer.setInterval(2000)
-        self.timer.timeout.connect(self.recurring_timer)
-        self.loop_15_flag = True  # To give every other loop 15
+        self.main_panel.check_stage(1)
+        self.main_panel.check_stage(2)
+        self.main_panel.check_stage(3)
 
-        self.load_sensors(1)
-        self.load_sensors(2)
-        self.load_sensors(3)
-        self.load_sensors(4)
-        self.load_sensors(5)
-
-        self.main_window.check_stage(1)
-        self.main_window.check_stage(2)
-        self.main_window.check_stage(3)
-
-        self.timer.start()
-
-    def recurring_timer(self):
-        self.loop_1()
-        self.timer_counter += 1
-        if self.timer_counter > 360:
-            self.timer_counter = 1
-
-        # Only do following every 2nd time
-        if self.timer_counter % 2 == 0:
-            self.loop_2()
-            return
-
-    def loop_1(self):  # 1 sec
-        # print("Current data", self.current_data)
-        self.main_window.le_Clock.setText(strftime("%H" + ":" + "%M" + ":" + "%S"))
-        self.main_window.le_date.setText(strftime("%a" + " " + "%d" + " " + "%b"))
-
-    def loop_2(self):  # 2 sec
-        if self.mode == MASTER:
-            self.coms_interface.send_command(NWC_SENSOR_READ)
-        # self.check_light()
-        # if self.mode == MASTER:
-        #     if self.process_is_at_location(1):
-        #         if not self.fans[1].isRunning():
-        #             self.lefanspeed_1.setStyleSheet("background-color: red; color: yellow")
-        #     if self.process_is_at_location(2):
-        #         if not self.fans[2].isRunning():
-        #             self.lefanspeed_2.setStyleSheet("background-color: red; color: yellow")
-        # if self.mode == SLAVE:
-        #     self.slave_counter += 1
-        #     if self.slave_counter > 3:
-        #         self.msg_sys.add("Master/Slave Data link lost", MSG_DATA_LINK, CRITICAL, persistent=1)
-
-    # def update_stage_buttons(self, area):
-    #     items = self.area_controller.get_area_items(area)
-    #     if len(items) != 0:
-    #         for i in items:
-    #             getattr(self, "pb_pm_%i" % i).setText(str(i))
-    #             getattr(self, "pb_pm_%i" % i).setToolTip("")
-    #     else:  # No process in area 2
-    #         for i in range(1, 9):
-    #             if i not in items:
-    #                 getattr(self, "pb_pm_%i" % i).setText("")
-    #                 getattr(self, "pb_pm_%i" % i).setToolTip("")
+        self.update_stock()
+        self.main_panel.check_light()
 
     def load_sensors(self, area):
         sql = 'SELECT * FROM {} WHERE area = {}'.format(DB_SENSORS_CONFIG, area)
@@ -121,13 +75,54 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             else:
                 self.sensors[sid].load_profile()
             if self.sensors[sid].area < 3:  # Only load process temperature ranges for areas 1 & 2
-                r = p.temperature_ranges_active
-                if r is not None:
-                    r = r[self.sensors[sid].area_range]
-                    self.sensors[sid].set_range(r)
-                    if area == 1 or area == 2:
-                        ro = p.temperature_ranges_active_org[self.sensors[sid].area_range]
-                        self.sensors[sid].set_range_org(ro)
+                if p != 0:
+                    r = p.temperature_ranges_active
+                    if r is not None:
+                        r = r[self.sensors[sid].area_range]
+                        self.sensors[sid].set_range(r)
+                        if area == 1 or area == 2:
+                            ro = p.temperature_ranges_active_org[self.sensors[sid].area_range]
+                            self.sensors[sid].set_range_org(ro)
+
+    def update_stock(self):
+        tot = round(self.db.execute_single('SELECT SUM(weight - nett - hum_pac) FROM {}'.format(DB_JARS)), 1)
+        w_tot = int(self.db.execute_single(
+            'SELECT SUM(amount) FROM {} WHERE frequency = 1 ORDER BY sort_order'.format(DB_CLIENTS)))
+        a_tot = self.calculate_weekly_average()
+        # if a_tot > w_tot:
+        #     w_tot = a_tot
+        remain = int(tot / a_tot)
+        if remain > 6:
+            colour = OK
+        elif remain > 4:
+            colour = WARNING
+        else:
+            colour = CRITICAL
+        self.update_status_bar(SBP_STOCK, "{} ({}@{}({})".
+                                          format(tot, remain, a_tot, round(a_tot - w_tot, 1)), colour)
+
+    def calculate_weekly_average(self):
+        lf = get_last_friday()
+        ed = lf - timedelta(days=1)
+        sd = lf - timedelta(days=28)
+        sql = "select ROUND(SUM(d.grams), 2) AS total " \
+              'FROM dispatch d WHERE d.date >= "{}" ' \
+              'AND d.date <= "{}"'.format(sd, ed)
+        rows = self.db.execute(sql)
+        tot = 0
+        for row in rows:
+            tot += row[0]
+        return round(tot / 4, 1)
+
+    def update_status_bar(self, panel, text, level=None):
+        css = ""
+        if level is not None:
+            css = get_css_colours(level)
+        ctrl = getattr(self, "panel_" + str(panel))
+
+        ctrl.setText(text)
+        ctrl.setStyleSheet(css)
+        ctrl.setToolTip("Hello")
 
 
 if __name__ == '__main__':

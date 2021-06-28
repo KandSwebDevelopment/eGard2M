@@ -1,3 +1,5 @@
+from datetime import *
+
 from PyQt5 import QtCore
 # from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QRunnable
 from PyQt5.QtWidgets import *
@@ -8,6 +10,21 @@ def find_it(key, my_list):
         if sublist[0] == key:
             return index
     return None
+
+
+def get_last_friday(current_time=None):
+    """
+    Return the date of the friday before the date passed in. If no date is passed in it will use the current date
+    :param current_time:
+    :type current_time: datetime
+    :return:
+    :rtype: datetime
+    """
+    if current_time is None:
+        current_time = datetime.now()
+    return (current_time.date()
+            - timedelta(days=current_time.weekday())
+            + timedelta(days=4, weeks=-1))
 
 
 def string_to_float(s) -> float:
@@ -73,6 +90,16 @@ def multi_status_bar(self):
     self.panel_8.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
     self.panel_8.setFrameStyle(QFrame.Panel | QFrame.Sunken)
     self.statusbar.addPermanentWidget(self.panel_8, 0)
+    self.panel_9 = QLabel("SS Unit", self)
+    self.panel_9.setFixedWidth(90)
+    self.panel_9.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+    self.panel_9.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+    self.statusbar.addPermanentWidget(self.panel_9, 0)
+    self.panel_10 = QLabel("", self)
+    self.panel_10.setFixedWidth(130)
+    self.panel_10.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)
+    self.panel_10.setFrameStyle(QFrame.Panel | QFrame.Sunken)
+    self.statusbar.addPermanentWidget(self.panel_10, 0)
 
     self.panel_14 = QLabel("", self)
     self.panel_14.setAlignment(QtCore.Qt.AlignCenter | QtCore.Qt.AlignVCenter)

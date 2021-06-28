@@ -228,12 +228,12 @@ class CommunicationInterface(QObject):
             module = 50
         self.process_command(command, data_list, relay_command, module)
 
-        if CMD_SWITCH in self.last_communication and self.last_communication != "":
-            # received = received.replace('\r\n', ', ')
-            # received = received.replace('goodbye', '>')
-            # if self.last_communication != received:
-            if len(data_list) < 2 or self.last_communication != "<{}, {}, {}>".format(command, data_list[0], data_list[1]):
-                print("SWITCH FAIL sent ", self.last_communication, "  Got ", received)
+        # if CMD_SWITCH in self.last_communication and self.last_communication != "":
+        #     # received = received.replace('\r\n', ', ')
+        #     # received = received.replace('goodbye', '>')
+        #     # if self.last_communication != received:
+        #     if len(data_list) < 2 or self.last_communication != "<{}, {}, {}>".format(command, data_list[0], data_list[1]):
+        #         print("SWITCH FAIL sent ", self.last_communication, "  Got ", received)
 
     def process_command(self, command, prams, relay_command, module):
         """

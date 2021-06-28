@@ -73,9 +73,9 @@ class SensorClass(object):
         if did is None or did > 12:
             return
         self.display_id = did
-        self.display_ctrl = getattr(self.my_parent.main_window, "lereading_%i" % self.display_id)
-        self.status_ctrl = getattr(self.my_parent.main_window, "tesstatus_%i" % self.display_id)
-        self.trend_ctrl = getattr(self.my_parent.main_window, "lbltrend_%i" % self.display_id)
+        self.display_ctrl = getattr(self.my_parent.main_panel, "lereading_%i" % self.display_id)
+        self.status_ctrl = getattr(self.my_parent.main_panel, "tesstatus_%i" % self.display_id)
+        self.trend_ctrl = getattr(self.my_parent.main_panel, "lbltrend_%i" % self.display_id)
 
     def set_display_ctrl_name(self, name):
         self.var_name = name
@@ -158,6 +158,9 @@ class SensorClass(object):
         t += "</table>"
         # print(t)
         self.status_ctrl.setText(t)
+
+    def off(self):
+        self.status_ctrl.clear()
 
     def load_calibration(self):
         self._calibration = self.db.execute_single(

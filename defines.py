@@ -200,6 +200,7 @@ DB_STRAINS = "strains"
 DB_SENSORS_CONFIG = "sensor_config"
 DB_TANK_CONVERSION = "tank_reading_to_litres"
 DB_TEMPERATURES = "temperature_ranges"
+DB_TEMPERATURES_DEFAULT = "temperature_defaults"
 DB_TEMPERATURE_NAMES = "temperature_range_names"
 
 # Detection types - type of sensor change to trigger output

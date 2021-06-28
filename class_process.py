@@ -8,6 +8,7 @@ from PyQt5.QtCore import QObject, pyqtSignal
 import collections
 # from status_codes import *
 from functions import find_it
+from status_codes import FC_P_JOURNAL_MISSING
 
 
 class ProcessClass(QObject):
@@ -117,13 +118,13 @@ class ProcessClass(QObject):
         self.startup()
 
         # Start journal
-        # self.logging_available = self.my_parent.logger.available
-        # self.new_line = '\n'
-        # if self.logging_available:
-        #     self.journal_filename = self.my_parent.logger.journal_file_template.format(self.id)
-        #     # The following will create the file if it does not exist
-        #     f = open(self.journal_filename, "a")
-        #     f.close()
+        self.logging_available = True   # self.my_parent.logger.available
+        self.new_line = '\n'
+        if self.logging_available:
+            self.journal_filename = self.my_parent.logger.journal_file_template.format(self.id)
+            # The following will create the file if it does not exist
+            f = open(self.journal_filename, "a")
+            f.close()
 
     def startup(self):
         # Load the process
@@ -192,25 +193,25 @@ class ProcessClass(QObject):
         self.load_temperature_schedule()
         # self.load_feed_schedule()
         self.load_active_temperature_ranges()
-        self.load_feed_date()
+        # self.load_feed_date()
 
-    def load_feed_date(self):
-        if self.location > 2:
-            return
-        # Feed date does no apply to area 3
-        sql = "SELECT dt FROM {} WHERE item = 'feed date' and id = {}".format(DB_PROCESS_ADJUSTMENTS, self.location)
-        self.last_feed_date = self.db.execute_single(sql)
-        # if value is not None:
-        if self.last_feed_date is not None:
-            if self.last_feed_date < datetime.now() + timedelta(days=-self.feed_frequency - 2):
-                self.my_parent.msg_sys.add("Check feed date for area " + str(self.location), MSG_FEED_DATE +
-                                           self.location, WARNING)
-        else:
-            self.my_parent.msg_sys.add("Check feed date for area " + str(self.location), MSG_FEED_DATE + self.location,
-                                       WARNING)
-        # print("New Process Class id = " + str(self.id))
-        if self.last_feed_date is not None:
-            self.get_future_feeds()
+    # def load_feed_date(self):
+    #     if self.location > 2:
+    #         return
+    #     # Feed date does no apply to area 3
+    #     sql = "SELECT dt FROM {} WHERE item = 'feed date' and id = {}".format(DB_PROCESS_ADJUSTMENTS, self.location)
+    #     self.last_feed_date = self.db.execute_single(sql)
+    #     # if value is not None:
+    #     if self.last_feed_date is not None:
+    #         if self.last_feed_date < datetime.now() + timedelta(days=-self.feed_frequency - 2):
+    #             self.my_parent.msg_sys.add("Check feed date for area " + str(self.location), MSG_FEED_DATE +
+    #                                        self.location, WARNING)
+    #     else:
+    #         self.my_parent.msg_sys.add("Check feed date for area " + str(self.location), MSG_FEED_DATE + self.location,
+    #                                    WARNING)
+    #     # print("New Process Class id = " + str(self.id))
+    #     if self.last_feed_date is not None:
+    #         self.get_future_feeds()
 
     def process_load_stage_info(self):
         # load the the stages for the process
@@ -331,7 +332,7 @@ class ProcessClass(QObject):
             self.light_off = datetime(ct.year, ct.month, ct.day, 6, 0)
             self.light_repeat = 0
             # @ToDo raise error, no light schedule
-            add_info = "For process in area {}<br>Schedule missing is {}".format(self.location, self.light_name)
+            # add_info = "For process in area {}<br>Schedule missing is {}".format(self.location, self.light_name)
             # self.my_parent.notifier.add(CRITICAL, "No light schedule could be found", FC_P_LIGHT_SCHEDULE_MISSING,
             #                             add_info)
 
@@ -453,11 +454,11 @@ class ProcessClass(QObject):
     #                 print("recipe score ", self.recipe_score)
     #     return recipe
 
-    def reset_feed_array(self):
-        for x in range(0, self.quantity):
-            self.feed_quantity_array[x] = 1
-        self.feed_quantity = self.quantity
-
+    # def reset_feed_array(self):
+    #     for x in range(0, self.quantity):
+    #         self.feed_quantity_array[x] = 1
+    #     self.feed_quantity = self.quantity
+    #
     # def get_recipe_status(self):
     #     # -1 = last use, 1= Next will be new recipe, 2 = New recipe today 0 = no change
     #     if self.get_next_feed_date() is None:
@@ -485,110 +486,110 @@ class ProcessClass(QObject):
     #
     #     return self.recipe_status
 
-    def get_recipe_score(self):
-        self.recipe_score = 0
-        for item in self.recipe_final:
-            self.recipe_score += item[1] + item[5]
-
-    def recipe_append_changes(self):
-        # Adds the changes into the recipe_changed list
-        if not self.running:
-            return
-        self.recipe_final = self.recipe_original.copy()
-        if len(self.recipe_changes) > 0:
-            for changes in self.recipe_changes:
-                # loop through the recipe changes
-                idx = find_it(changes[0], self.recipe_final)
-                # if the nid match add it with changes otherwise add as normal
-                if idx is not None:
-                    #                               nid                                 ml                             L                             rid                         freq                 adj ml       remain
-                    self.recipe_final[idx] = [self.recipe_original[idx][0], self.recipe_original[idx][1],
-                                              self.recipe_original[idx][2], self.recipe_original[idx][3],
-                                              self.recipe_original[idx][4], changes[1], changes[2]]
-                else:
-                    #         nid      ml          L                 rid         freq                  adj ml       remain
-                    self.recipe_final.append(
-                        [changes[0], 0, self.recipe_original[0][2], 0, self.recipe_original[0][4], changes[1],
-                         changes[2]])
-                self.recipe_score += changes[1]
-        # print("recipe score ", self.recipe_score)
-
-    def recipe_change(self, nid, ml, remain):
-        # Call to store a change to the recipe
-        if not self.running:
-            return
-        idx = find_it(nid, self.recipe_final)
-        idx_org = find_it(nid, self.recipe_original)
-        if idx_org is not None:
-            ml_dif = ml - self.recipe_original[idx_org][1]
-            if idx is not None:
-                if ml_dif == 0:
-                    sql = "DELETE FROM {} WHERE pid = {} AND nid = {}".format(DB_RECIPE_CHANGES, self.id, nid)
-                    self.db.execute_write(sql)
-                else:
-                    self.recipe_amend_item(nid, ml_dif, remain)
-            else:
-                self.recipe_amend_item(nid, ml_dif, remain)
-        else:
-            self.recipe_amend_item(nid, ml, remain)
-
-        self.load_feed_schedule()
-
-    def recipe_amend_item(self, nid, ml, remain):
-        # Called by recipe_change to store the data in db
-        if not self.running:
-            return
-        sql = 'SELECT * FROM {} WHERE pid = {} AND nid = {}'.format(DB_RECIPE_CHANGES, self.id, nid)
-        if self.db.execute_record_exists(sql):
-            if ml == 0:
-                sql = "DELETE FROM {} WHERE pid = {} AND nid = {}".format(DB_RECIPE_CHANGES, self.id, nid)
-            else:
-                sql = 'UPDATE {} SET ml = "{}", remaining = "{}" WHERE pid = {} AND nid = {}'.format(DB_RECIPE_CHANGES,
-                                                                                                     ml, remain,
-                                                                                                     self.id, nid)
-        else:
-            sql = 'INSERT INTO {} (pid, nid, ml, remaining) VALUES ("{}", "{}", "{}", "{}")'.format(DB_RECIPE_CHANGES,
-                                                                                                    self.id, nid, ml,
-                                                                                                    remain)
-        self.db.execute_write(sql)
-
-    def get_water_total(self):
-        if not self.running:
-            return 0
-        return (self.feed_litres * self.feed_quantity) + self.feed_litres_adj
-
-    # def get_next_feed_date(self) -> datetime or None:
-    #     if not self.running or self.location == 3 or self.last_feed_date is None:
-    #         return None
-    #     return self.last_feed_date + timedelta(days=self.feed_frequency)
+    # def get_recipe_score(self):
+    #     self.recipe_score = 0
+    #     for item in self.recipe_final:
+    #         self.recipe_score += item[1] + item[5]
     #
-    def get_next_feed_recipe(self):
-        if not self.running:
-            return
-        sql = "SELECT f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = s.feeding AND s.pid = {} and s.stage ={}".format(
-            DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id, self.current_stage)
-        rows = self.db.execute(sql)
-        if self.feed_schedule_item_num < len(rows) - 1:
-            self.recipe_next = self.recipe_from_feed_schedule(rows[self.feed_schedule_item_num + 1])
-            self.recipe_next_id = rows[self.feed_schedule_item_num + 1][3]
-            self.feed_litres_next = rows[self.feed_schedule_item_num + 1][2]
-        else:  # No more feeds in this stage so look to next stage
-            if self.current_stage < self.stages_max:
-                sql = "SELECT f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = s.feeding AND s.pid = {} and s.stage ={} ORDER BY f.start".format(
-                    DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id, self.current_stage + 1)
-                rows = self.db.execute(sql)
-                if len(rows) != 0:
-                    # There is a next stage
-                    self.recipe_next = self.recipe_from_feed_schedule(rows[0], False)
-                    self.recipe_next_id = rows[0][3]
-                    self.feed_litres_next = rows[0][2]
-                    return
-                else:  # No more stages so continue with use current as next
-                    self.recipe_next = self.recipe_original.copy()
-                    self.recipe_next_id = self.recipe_id
-                    self.feed_litres_next = self.feed_litres
-                    self.recipe_next_replaced = True
+    # def recipe_append_changes(self):
+    #     # Adds the changes into the recipe_changed list
+    #     if not self.running:
+    #         return
+    #     self.recipe_final = self.recipe_original.copy()
+    #     if len(self.recipe_changes) > 0:
+    #         for changes in self.recipe_changes:
+    #             # loop through the recipe changes
+    #             idx = find_it(changes[0], self.recipe_final)
+    #             # if the nid match add it with changes otherwise add as normal
+    #             if idx is not None:
+    #                 #                               nid                                 ml                             L                             rid                         freq                 adj ml       remain
+    #                 self.recipe_final[idx] = [self.recipe_original[idx][0], self.recipe_original[idx][1],
+    #                                           self.recipe_original[idx][2], self.recipe_original[idx][3],
+    #                                           self.recipe_original[idx][4], changes[1], changes[2]]
+    #             else:
+    #                 #         nid      ml          L                 rid         freq                  adj ml       remain
+    #                 self.recipe_final.append(
+    #                     [changes[0], 0, self.recipe_original[0][2], 0, self.recipe_original[0][4], changes[1],
+    #                      changes[2]])
+    #             self.recipe_score += changes[1]
+    #     # print("recipe score ", self.recipe_score)
 
+    # def recipe_change(self, nid, ml, remain):
+    #     # Call to store a change to the recipe
+    #     if not self.running:
+    #         return
+    #     idx = find_it(nid, self.recipe_final)
+    #     idx_org = find_it(nid, self.recipe_original)
+    #     if idx_org is not None:
+    #         ml_dif = ml - self.recipe_original[idx_org][1]
+    #         if idx is not None:
+    #             if ml_dif == 0:
+    #                 sql = "DELETE FROM {} WHERE pid = {} AND nid = {}".format(DB_RECIPE_CHANGES, self.id, nid)
+    #                 self.db.execute_write(sql)
+    #             else:
+    #                 self.recipe_amend_item(nid, ml_dif, remain)
+    #         else:
+    #             self.recipe_amend_item(nid, ml_dif, remain)
+    #     else:
+    #         self.recipe_amend_item(nid, ml, remain)
+    #
+    #     self.load_feed_schedule()
+    #
+    # def recipe_amend_item(self, nid, ml, remain):
+    #     # Called by recipe_change to store the data in db
+    #     if not self.running:
+    #         return
+    #     sql = 'SELECT * FROM {} WHERE pid = {} AND nid = {}'.format(DB_RECIPE_CHANGES, self.id, nid)
+    #     if self.db.execute_record_exists(sql):
+    #         if ml == 0:
+    #             sql = "DELETE FROM {} WHERE pid = {} AND nid = {}".format(DB_RECIPE_CHANGES, self.id, nid)
+    #         else:
+    #             sql = 'UPDATE {} SET ml = "{}", remaining = "{}" WHERE pid = {} AND nid = {}'.format(DB_RECIPE_CHANGES,
+    #                                                                                                  ml, remain,
+    #                                                                                                  self.id, nid)
+    #     else:
+    #         sql = 'INSERT INTO {} (pid, nid, ml, remaining) VALUES ("{}", "{}", "{}", "{}")'.format(DB_RECIPE_CHANGES,
+    #                                                                                                 self.id, nid, ml,
+    #                                                                                                 remain)
+    #     self.db.execute_write(sql)
+    #
+    # def get_water_total(self):
+    #     if not self.running:
+    #         return 0
+    #     return (self.feed_litres * self.feed_quantity) + self.feed_litres_adj
+    #
+    # # def get_next_feed_date(self) -> datetime or None:
+    # #     if not self.running or self.location == 3 or self.last_feed_date is None:
+    # #         return None
+    # #     return self.last_feed_date + timedelta(days=self.feed_frequency)
+    # #
+    # def get_next_feed_recipe(self):
+    #     if not self.running:
+    #         return
+    #     sql = "SELECT f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = s.feeding AND s.pid = {} and s.stage ={}".format(
+    #         DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id, self.current_stage)
+    #     rows = self.db.execute(sql)
+    #     if self.feed_schedule_item_num < len(rows) - 1:
+    #         self.recipe_next = self.recipe_from_feed_schedule(rows[self.feed_schedule_item_num + 1])
+    #         self.recipe_next_id = rows[self.feed_schedule_item_num + 1][3]
+    #         self.feed_litres_next = rows[self.feed_schedule_item_num + 1][2]
+    #     else:  # No more feeds in this stage so look to next stage
+    #         if self.current_stage < self.stages_max:
+    #             sql = "SELECT f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = s.feeding AND s.pid = {} and s.stage ={} ORDER BY f.start".format(
+    #                 DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id, self.current_stage + 1)
+    #             rows = self.db.execute(sql)
+    #             if len(rows) != 0:
+    #                 # There is a next stage
+    #                 self.recipe_next = self.recipe_from_feed_schedule(rows[0], False)
+    #                 self.recipe_next_id = rows[0][3]
+    #                 self.feed_litres_next = rows[0][2]
+    #                 return
+    #             else:  # No more stages so continue with use current as next
+    #                 self.recipe_next = self.recipe_original.copy()
+    #                 self.recipe_next_id = self.recipe_id
+    #                 self.feed_litres_next = self.feed_litres
+    #                 self.recipe_next_replaced = True
+    #
     def get_required_stage(self):
         if not self.running:
             return
@@ -787,8 +788,8 @@ class ProcessClass(QObject):
             text = f.read()
             f.close()
         except FileNotFoundError:
-            self.my_parent.notifier.add(WARNING, "The journal for this process can not be opened", FC_P_JOURNAL_MISSING,
-                                        "May be missing")
+            # self.my_parent.notifier.add(WARNING, "The journal for this process can not be opened", FC_P_JOURNAL_MISSING,
+            #                             "May be missing")
             return "File Missing " + self.journal_filename
         if text == "":
             return "There as no entries in this journal"

@@ -45,12 +45,12 @@ class UdpClient(QObject):
                 # lock.acquire()
                 # Send the command
                 try:
-                    print("Sending {} to IP {} Port {}".format(cmd, to[0], to[1]))
+                    # print("Sending {} to IP {} Port {}".format(cmd, to[0], to[1]))
                     # self.lock.acquire()
                     if to[1] != 5499:
                         self.mySocket.sendto(cmd, to)
                         data, ip = self.mySocket.recvfrom(1024)
-                        print("UDP Client received ", data, " from ", ip)
+                        # print("UDP Client received ", data, " from ", ip)
                         data = data.decode()
                         self.my_parent.process_incoming(data, cmd, ip)
                     self.update_status.emit(None, FC_UDP_RUNNING, ip[1])
