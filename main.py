@@ -2,15 +2,17 @@ import sys
 from datetime import timedelta
 from time import strftime
 
-from PyQt5.QtCore import QSettings, QTimer
+from PyQt5.QtCore import QSettings, QTimer, pyqtSlot
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox
 
+from class_access import Access
 from class_logger import Logger
 from class_sensor import SensorClass
 from communication_interface import CommunicationInterface
 from controller_feeding import FeedControl
 from controller_windows import WindowsController
 from dbController import MysqlDB
+from dialogs import DialogEngineerCommandSender, DialogEngineerIo
 from functions import multi_status_bar, get_last_friday
 from functions_colors import get_css_colours
 from status_codes import *
@@ -48,13 +50,17 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             self.update_status_bar(SBP_MODE, "Slave", OK)
 
-        self.msg_sys = MessageSystem(self, self.main_panel.listWidget)
         self.logger = Logger(self)
+
+        self.msg_sys = MessageSystem(self, self.main_panel.listWidget)
         self.coms_interface = CommunicationInterface(self)
+
+        self.access = Access(self)
+
         self.area_controller = AreaController(self)
         self.feed_controller = FeedControl(self)
 
-        self.main_panel.connect_to_main()
+        self.main_panel.connect_to_main_window()
         self.main_panel.update_next_feeds()
 
         self.main_panel.check_stage(1)
@@ -63,6 +69,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.update_stock()
         self.main_panel.check_light()
+
+        self.connect_signals()
+
+    def connect_signals(self):
+        self.actionI_O_Data.triggered.connect(lambda: self.wc.show(DialogEngineerIo(self)))
+        self.actionSend_Command.triggered.connect(lambda: self.wc.show(DialogEngineerCommandSender(self)))
 
     def load_sensors(self, area):
         sql = 'SELECT * FROM {} WHERE area = {}'.format(DB_SENSORS_CONFIG, area)

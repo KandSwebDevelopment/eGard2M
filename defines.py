@@ -70,6 +70,12 @@ INFO_FG_QT = QColor(INFO_FG)
 INFO_BG_QT = QColor(INFO_BG)
 
 # Access Control
+# Mode
+ACM_SLEEP = 1024
+ACM_OPENING = 2048
+ACM_CLOSING = 4096
+ACM_AUTO_SET = 8192
+# Status
 ACS_DOOR_LOCKED = 1
 ACS_COVER_LOCKED = 2
 ACS_OPENING = 4
@@ -77,6 +83,9 @@ ACS_CLOSING = 8
 ACS_STOPPED = 16
 ACS_AUTO_SET = 32
 ACS_AUTO_ARMED = 64
+ACS_DOOR_CLOSED = 128
+ACS_COVER_CLOSED = 256
+ACS_COVER_OPEN = 512
 
 # After load actions - thing user has to answer
 ALA_SET_LAST_FEED_DATE_1 = 1
@@ -120,18 +129,17 @@ COM_SOIL_READ = "soil_reading"
 COM_US_READ = "us reading"
 COM_OTHER_READINGS = "other_reading"
 COM_OW_COUNT = "ow_sensor_refresh"
-# COM_HELLO_DE = "hello_de"
-COM_MIX_OVER_STATUS = "mix overflow"
+COM_MIX_OVER_STATUS = "mix overflow status"
 COM_FANS = "fans"
 COM_FLOAT_SWITCHES = "float"
 CMD_SWITCH = "switch"
+COM_SWITCH_POS = "switch_pos"
 CMD_SWITCH_TIMED = "switch_timed"
 CMD_VALVE = "valve"                 # Operate servo valve
 CMD_FEEDER_OPERATE = "feeder operate"
-COM_IO_REBOOT = "reboot io"            # IO Unit has rebooted
+COM_IO_REBOOT = "reboot"            # IO Unit has rebooted
 CMD_IO_RESTART = "restart"          # Reboot IO
 CMD_VALVE_CLUSTER = "valve cluster"
-# CMD_SET_IP = "set ip1"              # Set modules send to ip
 CMD_SET_FAN_SENSOR = "sensor fan"       # Set sensor number for fan, send fan num, sensor num
 
 # Feeder Mix tank
@@ -142,6 +150,7 @@ COM_MIX_CAL_1 = "cal_1a"
 COM_MIX_CAL_2 = "cal_1b"
 COM_MIX_SET_CAL = "set_cal_weight_1"
 COM_SCALES_POWER = "scales_power"
+COM_GET_CAL = "get_cal_weight_1"
 
 # DE Module
 COM_WATTS = "watts"
@@ -155,7 +164,7 @@ COM_READ_KWH = "read kwh"           # Get a kWh reading
 COM_KWH_DIF = "kw dif"              # the kWh difference between each store. If this value is to large data may be lost during low power consumption
 CMD_KWH_DIF = "set kw dif"          # sets above
 COM_SEND_FREQ = "send freq"         # how often the watts reading is sent
-CMD_SEND_FREQ = "set sf"            # sets above
+CMD_SEND_FREQ = "set send freq"     # sets above
 COM_PULSES = "get pulses"
 CMD_SET_PULSES = "set pulses"
 CMD_REBOOT = "reboot"               # Reboots the unit

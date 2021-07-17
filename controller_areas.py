@@ -157,8 +157,7 @@ class AreaController(QObject):
         return self.areas_items[area]
 
     def get_area_process(self, area):
-        """
-        Returns the process in the area
+        """ Returns the process in the area
         :type area: int
         :rtype : ProcessClass
         """

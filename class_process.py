@@ -8,7 +8,7 @@ from PyQt5.QtCore import QObject, pyqtSignal
 import collections
 # from status_codes import *
 from functions import find_it
-from status_codes import FC_P_JOURNAL_MISSING
+from status_codes import FC_P_JOURNAL_MISSING, FC_P_TEMPERATURE_SCHEDULE_MISSING
 
 
 class ProcessClass(QObject):
@@ -131,7 +131,7 @@ class ProcessClass(QObject):
         sql = "SELECT * FROM " + DB_PROCESS + " WHERE id = {}".format(self.id)
         row = self.db.execute_one_row(sql)
         self.running = row[1]  # Is process running
-        # self.location = row[2]  # Which area process is in
+        self.location = row[2]  # Which area process is in
         self.start = datetime.strptime(row[3].strftime('%Y%m%d'),
                                        '%Y%m%d')  # Date process was started
         self.end = datetime.strptime(row[4].strftime('%Y%m%d'),
@@ -221,6 +221,7 @@ class ProcessClass(QObject):
         self.is_running()
         self.get_required_stage()
         self.load_stage(self.current_stage)  # Loads the current stage
+        self.load_temperature_schedule()
 
     def load_process_adjustments(self):
         if not self.running:
@@ -877,8 +878,8 @@ class ProcessClass(QObject):
                 self.current_temperature_id))
         if len(rows) == 0:
             add_info = "For process in area {}<br>Schedule missing is {}".format(self.location, self.temperature_name)
-            self.my_parent.notifier.add(ERROR, "No temperature schedule could be found",
-                                        FC_P_TEMPERATURE_SCHEDULE_MISSING, add_info)
+            # self.my_parent.notifier.add(ERROR, "No temperature schedule could be found",
+            #                             FC_P_TEMPERATURE_SCHEDULE_MISSING, add_info)
 
         for row in rows:
             if row[0] not in self.temperature_ranges.keys():
@@ -899,7 +900,7 @@ class ProcessClass(QObject):
         rows = self.db.execute(sql)
         for row in rows:
             if row[0] > 0:
-                if row[1] in self.temperature_ranges_active:
+                if row[1] in self.temperature_ranges_inactive:
                     self.temperature_ranges_inactive[row[1]][row[2]] = row[0]
 
     def load_active_temperature_ranges(self):
@@ -963,8 +964,8 @@ class ProcessClass(QObject):
         msg.setWindowTitle("Confirm Stage Advance")
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
         msg.setDefaultButton(QMessageBox.Cancel)
-        retval = msg.exec_()
-        if retval == QMessageBox.Yes:
+        ret_val = msg.exec_()
+        if ret_val == QMessageBox.Yes:
             next_stage_name = self.db.execute_single("SELECT name FROM {} WHERE id = {}".
                                                      format(DB_STAGE_NAMES, self.current_stage))
             if self.stage_location is not self.stage_next_location:
@@ -976,11 +977,11 @@ class ProcessClass(QObject):
                                        "Click No if it has not been move but you still want to advance the stage")
                 msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No | QMessageBox.Cancel)
                 msg.setDefaultButton(QMessageBox.Cancel)
-                retval = msg.exec_()
-                if retval == QMessageBox.Cancel:
+                ret_val = msg.exec_()
+                if ret_val == QMessageBox.Cancel:
                     return
                 self.current_stage += 1
-                if retval == QMessageBox.Yes:  # ############### Advance and move #################
+                if ret_val == QMessageBox.Yes:  # ############### Advance and move #################
                     # Add journal entry
                     self.journal_write("<b>Stage Change</b> to {} after {} days {}. Moved from area {} to {}"
                                        .format(next_stage_name, self.stage_days_elapsed, self.stage_name,

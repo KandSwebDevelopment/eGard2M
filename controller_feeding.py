@@ -27,10 +27,16 @@ class FeedControl(QThread):
         self.my_parent = parent
         self.db = self.my_parent.db
         self.feeds = collections.defaultdict(FeedClass)
+        self.nutrients = collections.defaultdict()
         self.feed_mode = int(self.db.get_config(CFT_FEEDER, "mode", 1))  # 1=Manual, 2=Semi auto, 3=Full auto
         self.feed_time = self.db.get_config(CFT_FEEDER, "feed time", "21:00")
         self.feed_time_tolerance = int(self.db.get_config(CFT_PROCESS, "feed time tolerance", 4))
         self.log_txt = ""
+
+        rows = self.db.execute("SELECT id, name FROM " + DB_NUTRIENTS_NAMES)
+        for row in rows:
+            self.nutrients[row[0]] = row[1]
+
         self.start_up()
 
     def start_up(self):
@@ -52,6 +58,18 @@ class FeedControl(QThread):
                 return True
         return False
 
+    def check_item_included(self, area, item) -> int:
+        """ Check to ensure the item is included in some feed and only once in all the feeds
+        @return: 0 = Not included anywhere, 1 included once, > 1 the number of times included
+        @rtype: int
+        """
+        mixes = self.feeds[area].get_mixes()
+        flag = 0
+        for m in mixes:
+            if item in mixes[m]['items']:
+                flag += 1
+        return flag
+
     def get_recipe_status(self, area):
         return self.feeds[area].r_status
 
@@ -67,11 +85,68 @@ class FeedControl(QThread):
     def get_feed_frequency(self, area):
         return self.feeds[area].get_feed_frequency()
 
+    def get_items(self, area, mix_num=1):
+        return self.feeds[area].get_items(mix_num)
+
+    def get_all_items(self, area):
+        return self.feeds[area].items
+
     def get_next_feed_date(self, area):
         return self.feeds[area].nfd
 
+    def get_next_recipe(self, area):
+        return self.feeds[area].get_next_feed_recipe()
+
+    def get_next_lpp(self, area):
+        return self.feeds[area].feed_litres_next
+
     def get_mix_count(self, area):
         return self.feeds[area].get_mix_count()
+
+    def get_recipe(self, area, mix_num=1):
+        return self.feeds[area].area_data['mixes'][mix_num]['recipe']
+
+    def get_water_total(self, area, mix_num=1):
+        return self.feeds[area].area_data['mixes'][mix_num]['water total']
+
+    def get_lpp(self, area, mix_num=1):
+        return self.feeds[area].area_data['mixes'][mix_num]['lpp']
+
+    def get_lpp_org(self, area):
+        return self.feeds[area].feed_litres
+
+    def get_area_water_total(self, area):
+        """ Calculates the total amount of water required for the area for all mixes for said area """
+        t = 0.0
+        mixes = self.feeds[area].area_data['mixes']
+        for m in mixes:
+            t += mixes[m]['water total']
+        self.area_data[area]['water total'] = t
+
+    def recipe_item_status(self, area, mix_num, item):
+        """ Checks the item (nid, mls) against the original recipe
+        @return: 0 = Unchanged, 1 = Existing item changed, 2 = New item
+                 The mls differance. Note only 1 will return a value for this, 0 & 2 this will be 0
+        @rtype: int, float
+        @type mix_num: int
+        @type area: int
+        @param item: The recipe item to look for (nid, mls)
+        @type item: tuple
+        """
+        r_org = self.feeds[area].recipe
+        for nid in r_org:
+            if item[0] == nid[0]:
+                # nid found
+                if item[1] == nid[1]:
+                    return 0, 0.0   # Unchanged
+                return 1, float(item[1] - nid[1])   # changed)
+        return 2, 0.0                # New
+
+    def change_items(self, area, mix_num, items):
+        self.feeds[area].area_data['mixes'][mix_num]['items'] = items
+        self.feeds[area].area_data['mixes'][mix_num]['water total'] = \
+            len(items) * self.feeds[area].area_data['mixes'][mix_num]["lpp"]
+        # self.save_all(area, mix_num)
 
     def new_day(self):
         for a in range(1, 3):

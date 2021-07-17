@@ -1,7 +1,7 @@
 from PyQt5.QtCore import QObject, Qt
 from PyQt5.QtWidgets import QAction
 
-from dialogs import DialogJournal
+from dialogs import DialogJournal, DialogProcessInfo
 
 
 class WindowsController(QObject):
@@ -23,6 +23,10 @@ class WindowsController(QObject):
     def show_journal(self, area):
         if self.my_parent.area_controller.area_has_process(area):
             self.show(DialogJournal(self.my_parent.area_controller.get_area_process(area), self))
+
+    def show_process_info(self, area):
+        if self.my_parent.area_controller.area_has_process(area):
+            self.show(DialogProcessInfo(self.my_parent, self.my_parent.area_controller.get_area_process(area)))
 
     def __window_list_menu_about_to_show(self):
         self.__window_list_menu.clear()

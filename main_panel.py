@@ -1,5 +1,6 @@
 from datetime import *
 from time import strftime
+import time as _time
 
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import pyqtSlot, QObject, Qt, QTimer
@@ -8,7 +9,7 @@ from PyQt5.QtWidgets import QWidget, QMdiSubWindow
 
 from controller_windows import WindowsController
 from defines import *
-from dialogs import DialogFeedMix, DialogAreaManual
+from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule
 from functions import get_last_friday
 from functions_colors import get_css_colours
 from ui.main import Ui_Form
@@ -37,29 +38,45 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.setGeometry(0, 0, self.width(), 900)
         self.my_parent.resize(self.width(), 900)
         self.show()
-        # sub.show()
+
         self.le_stage_1.installEventFilter(self)
+        self.le_stage_2.installEventFilter(self)
+        self.le_stage_3.installEventFilter(self)
+        self.lbl_access_2.installEventFilter(self)
+
+        self.today = datetime.now().day  # Holds today's date. Used to detect when day changes
+
         self.area_controller = None
         self.feed_controller = None
         self.coms_interface = None
+        self.access = None
         self.logger = None
         self.ck_auto_boost.setChecked(int(self.db.get_config(CFT_ACCESS, "auto boost", 1)))
         self.stage_change_warning_days = int(self.db.get_config(CFT_PROCESS, "stage change days", 7))
+        self.unit_price = float(self.db.get_config(CFT_ACCESS, "unit price")) / 100
 
+        self.access_open_time = 0  # Timestamp when cover was opened
         self.timer_counter = 0
         self.timer = QTimer()
-        self.timer.setInterval(2000)
+        self.timer.setInterval(1000)
         self.timer.timeout.connect(self.recurring_timer)
         self.loop_15_flag = True  # To give every other loop 15
+
+        self.ck_auto_boost.setChecked(int(self.db.get_config(CFT_ACCESS, "auto boost", 1)))
 
         # self.timer.start()
 
     def eventFilter(self, source, event):
+        # Remember to install event filter for control first
         if event.type() == QtCore.QEvent.MouseButtonPress:
             if source is self.le_stage_1:
                 self.wc.show(DialogAreaManual(self, 1))
             if source is self.le_stage_2:
                 self.wc.show(DialogAreaManual(self, 2))
+            if source is self.le_stage_3:
+                self.wc.show(DialogAreaManual(self, 3))
+            if source is self.lbl_access_2:
+                self.wc.show(DialogAccessModule(self))
         return QWidget.eventFilter(self, source, event)
 
     def recurring_timer(self):
@@ -67,6 +84,15 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.timer_counter += 1
         if self.timer_counter > 360:
             self.timer_counter = 1
+
+        # Every 60
+        if self.timer_counter % 60 == 0:
+            self.loop_5()
+
+        # Every 10
+        if self.timer_counter % 10 == 0:
+            self.loop_3()
+            return
 
         # Only do following every 2nd time
         if self.timer_counter % 2 == 0:
@@ -81,7 +107,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
     def loop_2(self):  # 2 sec
         if self.mode == MASTER:
             self.coms_interface.send_command(NWC_SENSOR_READ)
-        # self.check_light()
+        self.check_light()
         # if self.mode == MASTER:
         #     if self.process_is_at_location(1):
         #         if not self.fans[1].isRunning():
@@ -94,11 +120,30 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         #     if self.slave_counter > 3:
         #         self.msg_sys.add("Master/Slave Data link lost", MSG_DATA_LINK, CRITICAL, persistent=1)
 
-    def connect_to_main(self):
+    def loop_3(self):  # 10 sec
+        if self.mode == MASTER:
+            # self.coms_interface.send_command(NWC_SOIL_READ)
+            # self.coms_interface.send_command(COM_OTHER_READINGS)
+            self.coms_interface.send_data(COM_WATTS, False, MODULE_DE)
+            self.coms_interface.send_data(COM_READ_KWH, False, MODULE_DE)
+
+    def loop_5(self):  # 60 secs
+        # if NWC_SOIL_READ in self.current_data:
+        #     self.logger.save_log(NWC_SOIL_READ + " " + self.current_data[NWC_SOIL_READ])
+        # if NWC_US_READ in self.current_data:
+        #     self.logger.save_log(NWC_US_READ + self.current_data[NWC_US_READ])
+        self.update_next_feeds()
+        # Check for new day
+        if datetime.now().day != self.today:
+            self.new_day()
+        self.db.execute("select name from " + DB_NUTRIENTS_NAMES)  # This is only to keep the database connection alive
+
+    def connect_to_main_window(self):
         self.area_controller = self.my_parent.area_controller
         self.feed_controller = self.my_parent.feed_controller
         self.coms_interface = self.my_parent.coms_interface
         self.logger = self.my_parent.logger
+        self.access = self.my_parent.access
         self.connect_signals()
 
     def connect_signals(self):
@@ -109,10 +154,18 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.pb_man_feed_2.clicked.connect(lambda: self.feed_manual(2))
         self.pb_feed_mix_1.clicked.connect(lambda: self.wc.show(DialogFeedMix(self, 1)))
         self.pb_feed_mix_2.clicked.connect(lambda: self.wc.show(DialogFeedMix(self, 2)))
+        self.pb_cover.clicked.connect(lambda: self.access.open())
+        self.pb_cover_close.clicked.connect(lambda: self.access.close_cover())
         self.b1.clicked.connect(self.test)
+        self.pbinfo_1.clicked.connect(lambda : self.wc.show_process_info(1))
+        self.pbinfo_2.clicked.connect(lambda : self.wc.show_process_info(2))
+        self.pbinfo_3.clicked.connect(lambda : self.wc.show_process_info(3))
 
         self.coms_interface.update_sensors.connect(self.update_sensors)
         self.coms_interface.update_switch.connect(self.update_switch)
+        self.access.update_access.connect(self.update_access)
+        self.access.update_duration.connect(self.update_cover_duration)
+        self.coms_interface.update_power.connect(self.update_power)
 
     def test(self):
         print(self.my_parent.mdiArea.subWindowList())
@@ -321,6 +374,133 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                     self.coms_interface.send_switch(SW_LIGHT_2, status)
             self.area_controller.load_sensors(2)
 
+    @pyqtSlot(int)
+    def update_access(self, status_code):
+        print("Access = ", status_code)
+        if self.access.has_status(ACS_DOOR_CLOSED):
+            self.le_door_pos.setStyleSheet("background-color: Green; color: White")
+        else:
+            self.le_door_pos.setStyleSheet("background-color: Red; color: White")
+
+        if self.access.has_status(ACS_COVER_OPEN):  # Open limit sw
+            self.le_access_status_1.setText("Open")
+            self.le_cover_pos_2.setStyleSheet("background-color: red; color: White")
+            self.le_access_status_1.setStyleSheet("background-color: red; color: White")
+            self.pb_cover.setEnabled(False)
+            self.pb_cover_close.setEnabled(True)
+
+        if self.access.has_status(ACS_COVER_CLOSED):    # Closed limit sw
+            self.le_cover_pos_2.setStyleSheet("background-color: green; color: White")
+            self.le_access_status_1.setStyleSheet("background-color: Green; color: White")
+            self.le_access_status_1.setText("Closed")
+            self.pb_cover_close.setEnabled(False)
+            self.pb_cover.setEnabled(True)
+        else:  # In open position or somewhere between
+            if self.access.has_status(ACS_CLOSING):
+                self.le_cover_pos_2.setStyleSheet("background-color: blue; color: White")
+                self.le_access_status_1.setText("Closing")
+            self.pb_cover.setEnabled(False)
+            self.pb_cover_close.setEnabled(True)
+
+        if status_code & ACS_DOOR_LOCKED == ACS_DOOR_LOCKED:
+            self.le_access_status_3.setText("Locked")
+            self.le_access_status_3.setStyleSheet("background-color: Green; color: White")
+        else:
+            self.le_access_status_3.setText("Open")
+            self.le_access_status_3.setStyleSheet("background-color: Red; color: White")
+
+        if status_code & ACS_COVER_LOCKED == ACS_COVER_LOCKED:
+            self.le_access_status_2.setText("Locked")
+            self.le_access_status_2.setStyleSheet("background-color: Green; color: White")
+        else:
+            self.le_access_status_2.setText("Open")
+            self.le_access_status_2.setStyleSheet("background-color: Red; color: White")
+
+        if status_code & ACS_AUTO_SET == ACS_AUTO_SET:
+            self.le_access_status_1.setText("Auto")
+            self.le_access_status_1.setStyleSheet("background-color: Pink; color: Red")
+        elif status_code & ACS_AUTO_ARMED == ACS_AUTO_ARMED:
+            self.le_access_status_1.setText("ARMED")
+            self.le_access_status_1.setStyleSheet("background-color: Orange; color: Red")
+
+        if status_code & ACS_OPENING == ACS_OPENING and not status_code & ACS_STOPPED == ACS_STOPPED:
+            self.le_access_status_1.setText("Opening")
+            self.le_cover_duration.show()
+            self.access_open_time = _time.time()
+            # self.pb_cover_rev.hide()
+            self.le_access_status_1.setStyleSheet("background-color: Yellow; color: Black")
+        if status_code & ACS_CLOSING == ACS_CLOSING and \
+                not status_code & ACS_STOPPED == ACS_STOPPED:
+            self.le_access_status_1.setText("Closing")
+            self.le_cover_duration.show()
+            # self.pb_cover_rev.hide()
+            self.le_access_status_1.setStyleSheet("background-color: Yellow; color: Black")
+        # elif status_code & ACS_COVER_LOCKED == ACS_COVER_LOCKED:
+        #     self.le_access_status_1.setText("Closed")
+        #     self.access_open_time = 0
+        #     self.pb_cover.setText("Open")
+        #     self.le_cover_duration.hide()
+        #     self.le_access_status_1.setStyleSheet("background-color: Green; color: White")
+        # elif status_code & ACS_STOPPED == ACS_STOPPED:
+        #     if status_code & ACS_OPENING == ACS_OPENING:
+        #         self.le_access_status_1.setText("Stopped O")
+        #         self.pb_cover.setText("Open")
+        #         self.pb_cover_rev.setText("Close")
+        #     else:
+        #         self.le_access_status_1.setText("Stopped C")
+        #         self.pb_cover.setText("Close")
+        #         self.pb_cover_rev.setText("Open")
+        #     self.pb_cover_rev.show()
+        #     self.le_cover_duration.show()
+        #     self.le_access_status_1.setStyleSheet("background-color: Yellow; color: Black")
+        # else:
+        #     self.le_access_status_1.setText("Open")
+        #     if self.access_open_time == 0:
+        #         self.access_open_time = _time.time()
+        #     self.le_cover_duration.hide()
+        #     self.le_access_status_1.setStyleSheet("background-color: Red; color: White")
+
+    @pyqtSlot(int)
+    def update_cover_duration(self, d):
+        if d < 0:
+            d = ""
+        self.le_cover_duration.setText(str(d))
+
+    @pyqtSlot(int, int)
+    def update_access_inputs(self, _input, _value):
+        """
+        Handles updates from DE Modules switch inputs
+        :param _input:
+        :type _input:
+        :param _value:
+        :type _value:
+        :return:
+        :rtype:
+        """
+        if _input == AUD_DOOR:
+            if _value == 1:
+                self.le_door_pos.setStyleSheet("background-color: Green; color: White")
+            else:
+                self.le_door_pos.setStyleSheet("background-color: Red; color: White")
+        elif _input == AUD_COVER_OPEN:  # Open limit sw
+            if _value == 0:  # Not in open position
+                if self.access.cover_closed_sw == 0:
+                    self.le_cover_pos_2.setStyleSheet("background-color: green; color: White")
+                else:  # In open position
+                    self.le_cover_pos_2.setStyleSheet("background-color: blue; color: White")
+            else:
+                self.le_cover_pos_2.setStyleSheet("background-color: red; color: White")
+        elif _input == AUD_COVER_CLOSED:
+            if _value == 0:
+                self.le_cover_pos_2.setStyleSheet("background-color: Green; color: White")
+            else:
+                if self.access.cover_open_sw == 0:
+                    self.le_cover_pos_2.setStyleSheet("background-color: blue; color: White")
+                else:
+                    self.le_cover_pos_2.setStyleSheet("background-color: red; color: White")
+        elif _input == AUD_AUTO_SET:
+            pass
+
     @pyqtSlot(list, name="updateSensors")
     def update_sensors(self, data):
         idx = 1
@@ -350,3 +530,37 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                     self.lbl_light_status_2.setPixmap(QtGui.QPixmap(":/normal/light_on.png"))
                 if self.area_controller.area_is_manual(2):
                     self.db.set_config(CFT_AREA, "mode {}".format(2), state + 1)
+
+    @pyqtSlot(str, float, name="updatePower")
+    def update_power(self, action, val):
+        if action == COM_KWH:
+            self.le_pwr_total_1.setText(str(val))
+            self.le_cost_total.setText(str(round(val * self.unit_price, 2)))
+        if action == COM_WATTS:
+            if val < 7000:
+                self.le_pwr_current.setText(str(val))
+                self.le_cost.setText(str(round(val / 1000 * self.unit_price, 2)))
+
+    def new_day(self):
+        print("*********** New day ***********")
+        self.today = datetime.now().day
+        # if self.mode == MASTER:
+        #     self.logger.new_day()
+        # self.outputs[OP_W_HEATER_1].new_day()
+        # self.outputs[OP_W_HEATER_2].new_day()
+        for a in range(1, 4):
+            if self.area_controller.area_has_process(a):
+                # Advance day in processes
+                p = self.area_controller.get_area_process(a)
+                p.day_advance()
+                self.check_stage(a)
+                # if p.is_feed_due_today():
+                #     self.feed_today = True
+        self.feed_controller.new_day()
+        # Update next feed dates
+        self.update_next_feeds()
+        # self.update_info_texts()
+        # # Reset feeder for new day
+        # self.water_control.new_day()
+        # self.water_control.start()
+

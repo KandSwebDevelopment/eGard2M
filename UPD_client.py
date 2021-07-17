@@ -69,5 +69,5 @@ class UdpClient(QObject):
         self.finished.emit()
 
     def send_only(self, command, to):
-        print("Sending Only {} to IP {} Port {}".format(command, to[0], to[1]))
+        # print("Sending Only {} to IP {} Port {}".format(command, to[0], to[1]))
         self.mySocket.sendto(command, to)

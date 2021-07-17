@@ -105,6 +105,7 @@ class CommunicationInterface(QObject):
             self.de_address = (self.de_ip, self.de_port)
             self.fu_address = (self.fu_ip, self.fu_port)
             self.slave_address = (self.slave_ip, self.slave_port)
+        self.slave_address = (self.slave_ip, self.slave_port)
 
         self.udp_client = UdpClient(self, 1)
         self.udp_relay = UdpClient(self, 2)
@@ -263,7 +264,7 @@ class CommunicationInterface(QObject):
             self.update_other_readings.emit(prams)
             self.relay_command(relay_command)
         elif command == COM_SOIL_READ:
-            self.calculate_soil(prams)
+            # self.calculate_soil(prams)
             self.relay_command(relay_command)
         elif command == COM_FLOAT_SWITCHES:
             self.update_float_switch.emit(int(prams[0]), int(prams[1]))
