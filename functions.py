@@ -1,8 +1,33 @@
+import ctypes
+import winsound
 from datetime import *
 
 from PyQt5 import QtCore
 # from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QRunnable
 from PyQt5.QtWidgets import *
+
+
+def m_box(title, text, style):
+    # Button styles:
+    # 0 : OK
+    # 1 : OK | Cancel
+    # 2 : Abort | Retry | Ignore
+    # 3 : Yes | No | Cancel
+    # 4 : Yes | No
+    # 5 : Retry | No
+    # 6 : Cancel | Try Again | Continue
+
+    # To also change icon, add these values to previous number
+    # 16 Stop-sign icon
+    # 32 Question-mark icon
+    # 48 Exclamation-point icon
+    # 64 Information-sign icon consisting of an 'i' in a circle
+    return ctypes.windll.user32.MessageBoxW(0, text, title, style)
+
+
+def play_sound(sound):
+    for s in range(0, len(sound), 2):  # read in pairs, freq and duration
+        winsound.Beep(sound[s], sound[s + 1])
 
 
 def find_it(key, my_list):

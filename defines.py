@@ -141,6 +141,7 @@ COM_IO_REBOOT = "reboot"            # IO Unit has rebooted
 CMD_IO_RESTART = "restart"          # Reboot IO
 CMD_VALVE_CLUSTER = "valve cluster"
 CMD_SET_FAN_SENSOR = "sensor fan"       # Set sensor number for fan, send fan num, sensor num
+CMD_FAN_SPEED = "speed"                 # fan number, speed
 
 # Feeder Mix tank
 COM_FEEDER_STATUS = "feeder status"

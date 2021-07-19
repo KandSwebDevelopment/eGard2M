@@ -4,18 +4,859 @@ from datetime import *
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import *
 from PyQt5.QtGui import QTextCursor
-from PyQt5.QtWidgets import QWidget, QDialog, QMdiSubWindow, QMessageBox, QListWidgetItem
+from PyQt5.QtWidgets import QWidget, QDialog, QMessageBox, QListWidgetItem
 
 from class_process import ProcessClass
 from defines import *
-from functions import string_to_float
+from plotter import *
+from ui.dialogDispatchCounter import Ui_DialogDispatchCounter
+from ui.dialogDispatchInternal import Ui_DialogDispatchInternal
+from functions import string_to_float, m_box, play_sound
 from ui.dialogAccess import Ui_DialogDEmodule
+from ui.dialogDispatchReports import Ui_DialogDispatchReport
 from ui.dialogEngineerCommandSender import Ui_DialogEngineerCommandSender
 from ui.dialogEngineerIO import Ui_DialogMessage
+from ui.dialogFan import Ui_DialogFan
 from ui.dialogFeedMix import Ui_DialogFeedMix
 from ui.area_manual import Ui_frm_area_manual
 from ui.dialogJournal import Ui_DialogJournal
 from ui.dialogProcessInfo import Ui_DialogProcessInfo
+from ui.dialogStrainFinder import Ui_DialogStrainFinder
+
+
+class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
+    def __init__(self, parent=None):
+        """ :type parent: MainWindow """
+        super(DialogDispatchCounter, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.my_parent = parent
+        self.db = parent.db
+        self.sub = None
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+
+        self.scales = parent.scales
+        self.logger = parent.logger
+        self.client = None
+        self.jar = None
+        self.reading = 0
+        self.weight_required = 0
+        self.display_factor = 1
+        self.is_reading = False
+        self.is_finished = True
+        self.has_vessel = True
+        self.strain_id = 0
+        self.strain_name = ""
+        self.ppg = string_to_float(self.db.get_config(CFT_DISPATCH, "ppg", 10))
+        self.progress_color = "Black"
+        self.zero_count = 1
+        self.gross = 0
+        self.factor = 1
+        self.amount = 0
+        self.has_got = False  # Set true when bar turns green so if you lift off it warns
+        self.frame.setStyleSheet("background-color: Yellow;")
+        self.frame_2.setStyleSheet("background-color: Red;")
+        self.le_progress.setStyleSheet("background-color: White")
+        self.l_marker_1.setStyleSheet("background-color: Orange;")
+        self.l_marker_2.setStyleSheet("background-color: Salmon;")
+        self.l_marker_3.setStyleSheet("background-color: Black;")
+        self.l_marker_4.setStyleSheet("background-color: Black;")
+        self.l_marker_last.setStyleSheet("background-color: Black;")
+
+        self.cb_jar.currentIndexChanged.connect(self.change_jar)
+        self.cb_client.currentIndexChanged.connect(self.change_client)
+        self.pb_start.clicked.connect(self.start)
+        self.pb_cancel.clicked.connect(self.cancel)
+        self.pb_tare.clicked.connect(self.tare)
+
+        self.scales.new_reading_p.connect(self.update_reading)
+        self.scales.update_status_p.connect(self.update_status)
+        self.scales.new_uid.connect(self.new_uid)
+
+        rows = self.db.execute("SELECT jar, strain FROM {} WHERE weight - nett > 5 AND location = 0"
+                               " ORDER BY jar".format(DB_JARS))
+        self.cb_jar.blockSignals(True)
+        self.cb_jar.addItem("Select", "000")
+        for row in rows:
+            strain = ""
+            if row[1] > 0:
+                strain = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_STRAINS, row[1]))
+            self.cb_jar.addItem("{} - {}".format(row[0], strain), row[0])
+        self.cb_jar.blockSignals(False)
+
+        rows = self.db.execute("SELECT name, id FROM {} ORDER BY sort_order".format(DB_CLIENTS))
+        self.cb_client.blockSignals(True)
+        self.cb_client.addItem("Select", "000")
+        for row in rows:
+            self.cb_client.addItem(row[0], row[1])
+        self.cb_client.blockSignals(False)
+        self.pb_start.setEnabled(False)
+
+        self.cb_type.addItem("Select", 0)
+        self.cb_type.addItem("CA", 1)  # Cash
+        self.cb_type.addItem("BT", 2)  # Bank
+        self.cb_type.addItem("CR", 3)  # Credit
+        self.cb_type.addItem("FR", 4)  # Foc
+        self.cb_type.addItem("PP", 5)  # Personal party
+        self.cb_type.addItem("OP", 6)  # Other forms
+
+        w = self.frame.size().width()
+        tw = int((w / 100) * 75)
+        self.frame_2.move(tw, 0)
+        self.frame_2.resize(w - tw, 75)
+        self.le_amount.installEventFilter(self)
+
+        self.font = QtGui.QFont()
+        self.font.setPointSize(13)
+        self.connect()
+        self.position_markers()
+        self.le_amount.returnPressed.connect(self.enter_pressed)
+
+    def eventFilter(self, source, event):
+        # print("Event ", event.type())
+        if event.type() == QtCore.QEvent.FocusOut and source is self.le_amount:
+            self.check_start()
+            self.check_enough()
+            return False
+        return False
+
+    @pyqtSlot(str, name='updateReadingP')
+    def update_reading(self, value):
+        value = string_to_float(value)
+        if self.has_got >= 3 and value < self.weight_required / 2:
+            self.has_got = 0
+            play_sound(SND_CHECK_OUT_ERROR)
+            print(m_box("Warning", "This has not been checked out\n\rReplace vessel and check out before removing", 64))
+            return
+        # Remove any text from progress
+        if (self.is_finished and value < 1) or (not self.has_vessel and value >= -0.15):
+            self.le_progress.setText("")
+            self.is_finished = False
+            self.has_vessel = True
+            self.check_start()
+        # Is vessel removed
+        if value < -2.00 and self.has_vessel:
+            self.le_progress.setText("Replace vessel")
+            self.has_vessel = False
+            self.check_start()
+        # Only proceed is actually weighing
+        if not self.is_reading:
+            return
+        self.reading = value
+        v = value * self.display_factor
+        if value > self.weight_required - 0.15:
+            self.pb_start.setEnabled(True)
+            self.progress_color = "Green"
+            self.has_got += 1
+        else:
+            self.pb_start.setEnabled(False)
+            self.progress_color = "Black"
+        self.update_display(v)
+
+    @pyqtSlot(str, name='updateStatusP')
+    def update_status(self, status):
+        if status == "tare":
+            if self.zero_count == 0:
+                self.le_progress.setText("Zero scale 2 of 2.... Please wait")
+                self.zero_count = 1
+            else:
+                self.has_vessel = True
+                self.update_display(0)
+                self.le_progress.setText("")
+        elif status == 'connected':
+            self.lb_connected.setStyleSheet("background-color: Green;")
+        elif status == 'disconnected':
+            self.lb_connected.setStyleSheet("background-color: Red;")
+
+    @pyqtSlot(str, name='newUID')
+    def new_uid(self, uid):
+        jar = self.db.execute_single(
+            "SELECT jar FROM {} WHERE UID ='{}'".format(DB_JARS, uid))
+        if jar is None:
+            self.cb_jar.setCurrentIndex(0)
+            self.lb_info.setText("Unknown Jar")
+            self.check_start()
+            return
+        idx = self.cb_jar.findData(jar)
+        if idx != -1:
+            self.cb_jar.setCurrentIndex(idx)
+            self.change_jar()
+
+    def enter_pressed(self):
+        self.check_start()
+        self.check_enough()
+
+    def start(self):
+        """
+        Starts and finishes the weighing operation
+        """
+        if not self.is_reading:
+            self.scales.tare_p()
+            self.le_progress.setFont(self.font)
+            self.le_progress.setText("Zero scale.... Please wait")
+            self.calculate_weight()
+            self.progress_color = "Orange"
+            self.update_display(self.weight_required * self.display_factor)
+            self.is_reading = True
+            self.is_finished = False
+            self.has_got = False
+            self.pb_start.setText("Check Out")
+            self.pb_start.setEnabled(False)
+            self.pb_cancel.setEnabled(True)
+            self.cb_jar.setEnabled(False)
+            self.cb_client.setEnabled(False)
+            self.cb_type.setEnabled(False)
+            self.le_amount.setEnabled(False)
+        else:  # BAG
+            self.le_progress.setText("Remove from scale")
+            self.deduct()
+            self.cb_jar.setCurrentIndex(0)
+            self.cb_client.setCurrentIndex(0)
+            self.le_amount.setText("")
+            self.lb_info.setText("")
+            self.is_finished = True
+            self.cancel()
+
+    def deduct(self):
+        sql = 'UPDATE {} SET weight = weight - {} WHERE jar = "{}"'.format(DB_JARS, self.reading, self.jar)
+        print(sql)
+        self.db.execute_write(sql)
+        sql = ('INSERT INTO {} (date, type, jar, strain, grams, amount, client, p_type) VALUES '
+               '("{}", "CTR", "{}", {}, {}, {}, {}, {})'.
+               format(DB_DISPATCH, datetime.now(), self.jar, self.strain_id, self.reading,
+                      self.le_amount.text(), self.cb_client.currentData(), self.cb_type.currentData()))
+        print(sql)
+        self.db.execute_write(sql)
+        self.logger.save_dispatch_counter(self.client, self.le_amount.text(), self.jar, self.strain_name,
+                                          self.strain_id, round(self.weight_required, 1), self.reading)
+        self.has_got = 0
+        self.my_parent.my_parent.update_stock()
+
+    def cancel(self):
+        self.cb_jar.setEnabled(True)
+        self.cb_client.setEnabled(True)
+        self.cb_type.setEnabled(True)
+        self.le_amount.setEnabled(True)
+        self.is_reading = False
+        # self.has_vessel = True
+        self.pb_start.setText("Start")
+        self.pb_cancel.setEnabled(False)
+        self.le_progress.setText("")
+        self.weight_required = 0
+        self.zero_count = 1
+        self.update_display(0)
+        self.cb_type.setCurrentIndex(0)
+
+    def tare(self):
+        self.zero_count = 1
+        self.scales.tare_p()
+        self.le_progress.setText("Zero ....")
+
+    def check_start(self):
+        if self.cb_client.currentIndex() > 0 and self.cb_jar.currentIndex() > 0 and string_to_float(
+                self.le_amount.text()) and self.cb_type.currentIndex() > 0:
+            self.pb_start.setEnabled(True)
+        else:
+            self.pb_start.setEnabled(False)
+
+    def position_markers(self):
+        w = self.le_progress.size().width()
+        # Percentage
+        # xp = int((w / 100) * 75)
+        # mx1 = xp * 1.05
+        # mx2 = xp * 1.1
+        # mx3 = xp * 1.15
+        # fixed weight
+        if self.weight_required == 0:
+            wr = 7
+        else:
+            wr = self.weight_required
+        xp = int((w / 100) * 75)
+        mx1 = xp + ((xp / wr) * 0.1)
+        mx2 = xp + ((xp / wr) * 0.25)
+        mx3 = xp + ((xp / wr) * 0.5)
+        mx4 = xp + ((xp / wr) * 1)
+        s = self.le_progress.geometry().x()
+        zp = s + mx1 + 1  # 1 = half its width
+        self.l_marker_1.move(zp, 0)
+        zp = s + mx2 + 1  # 1 = half its width
+        self.l_marker_2.move(zp, 0)
+        zp = s + mx3 + 1  # 1 = half its width
+        self.l_marker_3.move(zp, 0)
+        zp = s + mx4 + 1  # 1 = half its width
+        self.l_marker_4.move(zp, 0)
+
+    def position_last_marker(self):
+        w = self.le_progress.size().width()
+        last = self.my_parent.db.execute_single("SELECT grams FROM {} WHERE client = {} ORDER BY date DESC".
+                                                format(DB_DISPATCH, self.cb_client.currentData()))
+        if last is None or last == 0:
+            self.l_marker_last.hide()
+            return
+        xp = int((w / 100) * 75)
+        mx1 = xp + (xp / last)
+        y = self.le_progress.geometry().size().height() + self.le_progress.geometry().y()
+        s = self.le_progress.geometry().x()
+        zp = s + mx1 + 1  # 1 = half its width
+        self.l_marker_last.move(zp, y)
+        self.l_marker_last.show()
+
+    def update_display(self, value):
+        if value < 0:
+            value = 0
+        if value > 1:
+            value = 0.999
+        css = 'background: qlineargradient(x1:0, y1:0, x2:1, y2:0, '
+        pos = 0
+        css += 'stop: ' + str(pos) + " " + self.progress_color + ", "  # ' #000000, '
+        pos = value
+        css += 'stop: ' + str(pos) + " " + self.progress_color + ", "  # ' #000000, '
+        pos += 0.001
+        css += 'stop: ' + str(pos) + ' #ffffff, '
+        css += 'stop: ' + str(1) + ' rgba(0, 0, 0, 0), stop: 1 white); color: Red;'
+        self.le_progress.setStyleSheet(css)
+
+    def calculate_weight(self):
+        self.amount = string_to_float(self.le_amount.text())
+        self.weight_required = round(self.amount / self.ppg, 2)
+        if self.weight_required <= 0:
+            return
+        self.factor = self.get_factor(self.amount)
+        print("Factor = ", self.factor)
+        self.weight_required /= self.factor
+        print("After factor ", self.weight_required)
+        self.display_factor = 0.75 / self.weight_required
+        self.lbl_decode.setText(str(round(self.weight_required * 100, 0))[::-1])
+        self.position_markers()
+
+    def check_enough(self):
+        if self.cb_jar.currentIndex() > 0 and string_to_float(self.le_amount.text()) > 0 \
+                and self.cb_client.currentIndex() > 0:
+            if self.gross == 0:
+                self.gross = self.db.execute_single(
+                    "SELECT (weight - nett - hum_pac) as gross FROM {} WHERE jar ='{}'".format
+                    (DB_JARS, self.cb_jar.currentData()))
+            self.calculate_weight()
+            if self.weight_required > self.gross:
+                # Not enough
+                amount = self.gross * self.factor * self.ppg
+                amount = amount - amount % 5  # round down to next 5
+                self.lb_info.setText("<b>Not Enough</b> for there amount<br>This is only enough for £{}<br>or Select"
+                                     " a new jar".format(int(amount)))
+                self.pb_start.setEnabled(False)
+            else:
+                self.load_jar()
+
+    def get_factor(self, amount) -> float:
+        """
+
+        :param amount: Amount required in pounds
+        :type amount: float
+        :return: factor to apply to grams
+        :rtype: float
+        """
+        # factor will be from tables
+        sql = 'SELECT p.limit, p.factor FROM {} p INNER JOIN {} c ON p.plan = c.plan AND c.id = {} ORDER BY p.limit'. \
+            format(DB_CLIENT_PLANS, DB_CLIENTS, self.cb_client.currentData())
+        plan = self.db.execute(sql)
+        if len(plan) == 0:
+            m_box("Error", "No Account, using default", 1)
+            return 1
+        if plan[0][0] == 0:
+            return plan[0][1]
+        for row in plan:
+            if row[0] > amount:
+                return row[1]
+        return plan[len(plan) - 1][1]
+
+    def change_client(self):
+        if self.cb_client.currentData() != "000":
+            self.pb_start.setEnabled(True)
+            self.client = self.cb_client.currentText()
+            p_type = self.db.execute_single(
+                'SELECT default_type FROM {} WHERE id = {}'.format(DB_CLIENTS, self.cb_client.currentData()))
+            index = self.cb_type.findData(p_type)
+            if index >= 0:
+                self.cb_type.setCurrentIndex(index)
+                self.position_last_marker()
+
+        else:
+            self.cb_type.setCurrentIndex(0)
+            self.pb_start.setEnabled(False)
+            self.client = None
+        self.check_start()
+
+    def connect(self):
+        if not self.scales.is_connected:
+            self.scales.connect()
+        else:
+            self.lb_connected.setStyleSheet("background-color: Green;")
+
+    def change_jar(self):
+        self.jar = self.cb_jar.currentData()
+        self.load_jar()
+        self.check_start()
+        self.check_enough()
+
+    def load_jar(self):
+        strain = self.db.execute_one_row(
+            'SELECT s.name, s.type_sativa, s.type_indica, s.thc, s.cbd, s.flavour, s.effect, s.id, s.info FROM {} s INNER JOIN'
+            ' {} j ON s.id = j.strain AND j.jar = "{}"'.format(DB_STRAINS, DB_JARS, self.jar))
+        if strain is None:
+            return
+        self.strain_id = strain[7]
+        self.strain_name = strain[0]
+        self.lb_info.setText("<b>{}</b><br>Sativa: {}  Indica: {}<br>THC: {}   CBD: {}".
+                             format(strain[0], strain[1], strain[2], strain[3], strain[4]))
+        txt = ""
+        if strain[5] != "":
+            txt += "<b>Flavour</b><br>{}<br>".format(strain[5])
+        if strain[6] != "":
+            txt += "<b>Effect</b><br>{}<br>".format(strain[6])
+        if strain[8] != "":
+            txt += "<b>Info</b><br>{}<br>".format(strain[8])
+        self.lb_info.setToolTip(txt)
+
+
+class DialogDispatchReports(QDialog, Ui_DialogDispatchReport):
+    def __init__(self, parent=None):
+        """ :type parent: MainWindow """
+        super(DialogDispatchReports, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.my_parent = parent
+        self.db = parent.db
+        self.sub = None
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.weeks_use = collections.defaultdict()
+        self.legend = []
+        self.pb_refresh.clicked.connect(self.refresh)
+        self.pb_search.clicked.connect(self.search)
+        self.plot_by_out = None
+        self.plot_by_strain = None
+        self.plot_by_out_weekly = None
+        self.refresh()
+        self.db.fill_combo(self.cb_client, DB_CLIENTS, 1, 0, ("All", 0))
+        self.cb_type.addItem("All", 0)
+        self.cb_type.addItem("CA", 1)  # Cash
+        self.cb_type.addItem("BT", 2)  # Bank
+        self.cb_type.addItem("CR", 3)  # Credit
+        self.cb_type.addItem("FR", 4)  # Foc
+        self.cb_type.addItem("PP", 5)  # Personal party
+        self.cb_type.addItem("OP", 5)  # Other forms
+        rows = self.db.execute("SELECT jar, strain FROM {} WHERE weight - nett > 0 ORDER BY jar".format(DB_JARS))
+        # self.cb_jar.blockSignals(True)
+        self.cb_jar.addItem("All", 0)
+        for row in rows:
+            # strain = ""
+            # if row[1] > 0:
+            #     strain = self.db.execute_single("SELECT name, id FROM {} WHERE id = {}".format(DB_STRAINS, row[1]))
+            self.cb_jar.addItem("{}".format(row[0]), row[1])
+        # self.cb_jar.blockSignals(False)
+
+    def refresh(self):
+        self.plot_internal()
+        self.out_going_summary()
+        self.plot_output()
+        self.out_totals()
+
+    def search(self):
+        sql = 'SELECT `date`, jar, strain, grams, amount, client, p_type FROM {} WHERE '.format(DB_DISPATCH)
+        if self.cb_client.currentData() > 0:
+            sql += 'client = {}'.format(self.cb_client.currentData())
+        if self.cb_jar.currentData() > 0:
+            if self.cb_client.currentData() > 0:
+                sql += ' AND'
+            sql += ' jar = {}'.format(self.cb_jar.currentData())
+        sql += " ORDER BY `date` DESC"
+        rows = self.db.execute(sql)
+        table = '<table cellspacing = "5"  border = "0" width = "100%">'
+        for row in rows:
+            table += '<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>'. \
+                format(row[0], row[1], row[2], row[3], row[4], row[5], row[6])
+        table += '</table>'
+        self.te_search.setHtml(table)
+
+    def plot_internal(self):
+        sql = 'SELECT d.grams, d.strain, d.date FROM dispatch d WHERE DATE >= "{}" AND client = 1 ORDER BY date' \
+            .format(datetime.now() - timedelta(days=7))
+        rows = self.db.execute(sql)
+        for row in rows:
+            if self.weeks_use.get(row[1]) is None:
+                strain = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_STRAINS, row[1]))
+                self.weeks_use[row[1]] = [row[0], strain]
+                self.legend.append(strain)
+            else:
+                self.weeks_use[row[1]][0] += row[0]
+        amounts = []
+        legend = []
+        for item in self.weeks_use:
+            amounts.append(round(self.weeks_use[item][0], 1))
+            legend.append(self.weeks_use[item][1])
+
+        self.plot_by_strain = MplWidget(self.frame, 3, 5)
+        self.plot_by_strain.plot_bar(legend, amounts)
+        self.plot_by_strain.canvas.axes.tick_params(
+            axis='x', which='major', labelcolor='Green', rotation=90, labelsize=7)
+        self.plot_by_strain.auto_label()
+        self.plot_by_strain.grid(True)
+
+    def out_going_summary(self):
+        # Client Weekly breakdown
+        query_date = self.get_date_range()
+        print(query_date)
+        sql = "SELECT c.name, d.`client`, ROUND(SUM(d.grams), 2) AS total, " \
+              "CASE WHEN (WEEKDAY(`date`)<=3) THEN DATE(`date` + INTERVAL (3- WEEKDAY(`date`)) DAY) " \
+              "ELSE DATE(`date` + INTERVAL (3+7- WEEKDAY(`date`)) DAY) END AS week_ending " \
+              'FROM dispatch d INNER JOIN clients c ON d.`client` = c.id WHERE d.date >= "{}" AND d.client != 1 ' \
+              "GROUP BY week_ending, d.`client` ORDER BY week_ending DESC".format(query_date)
+        rows = self.db.execute(sql)
+        txt = '<h2 style="color:blue;">Clients Weekly</h2><table cellspacing = "5"  border = "0" width = "100%">'
+        txt += '<tr><th>Week Start</th><th>Client</th><th>Amount</th></tr>'
+        lw = 0  # Tracking as when to put in date
+        wt = 0  # Week total
+        for row in rows:
+            if row[3] != lw:
+                # Put total in but not for first week
+                if lw != 0:
+                    txt += '<tr style="font-size:14px;"><td colspan="2"><b>Total</b></td><td style="text-align:' \
+                           'center;"><b>{}</b></td></tr>'.format(round(wt, 1))
+                    wt = 0
+                if lw == 0:
+                    # Put This Week as date
+                    txt += '<tr><td><b>Current</b></td><td style="text-align:center;">{}</td>' \
+                           '<td style="text-align:center;">{}</td></tr>'. \
+                        format(row[0], row[2])
+                else:
+                    # Put line in with date
+                    txt += '<tr><td><b>{}</b></td><td style="text-align:center;">{}</td>' \
+                           '<td style="text-align:center;">{}</td></tr>'. \
+                        format(datetime.strftime(row[3] - timedelta(days=6), "%a %d %b"), row[0], row[2])
+            else:
+                # Put line in without date
+                txt += '<tr><td> </td><td style="text-align:center;">{}</td>' \
+                       '<td style="text-align:center;">{}</td></tr>'.format(row[0], row[2])
+            wt += row[2]
+            lw = row[3]
+        txt += "<tr style='font-size:14px;'><td>Total</td><td> </td>" \
+               "<td style='text-align:center;'><b>{}</b></td></tr>" \
+            .format(round(wt, 1))
+        txt += "</table>"
+        self.te_weeks_summary_2.setHtml(txt)
+
+        # Weekly Totals #############################################################################
+
+        sql = "select SUM(d.amount) AS value, ROUND(SUM(d.grams), 2) AS total, " \
+              "CASE WHEN (WEEKDAY(`date`)<=3) THEN DATE(`date` + INTERVAL (3-WEEKDAY(`date`)) DAY) " \
+              " ELSE DATE(`date` + INTERVAL (3+7-WEEKDAY(`date`)) DAY) " \
+              "END as week_ending " \
+              'FROM dispatch d WHERE CLIENT = 1 and d.date >= "{}" ' \
+              "GROUP BY week_ending, d.`client` ORDER BY week_ending DESC".format(query_date)
+        rows = self.db.execute(sql)
+        x = 0
+        t1 = t2 = t3 = 0
+        wtd = []
+        wt = []
+        txt = '<h2>Output</h2><h3>Weekly</h3><table cellspacing = "5"  border = "0">'
+        txt += '<tr><th>Week Start</th><th>Int.</th><th>Count</th><th></th></tr>'
+        for row in rows:
+            sql = "SELECT ROUND(SUM(d.grams), 2) total_grams, ROUND(SUM(d.amount), 2) tc " \
+                  'FROM dispatch d WHERE client != 1  AND d.`date` >= "{}" AND d.date <= "{}" ' \
+                .format(row[2] - timedelta(days=6), row[2])
+            counter = self.db.execute_one_row(sql)
+            if counter[0] is None:
+                col1 = 0
+                col2 = 0
+            else:
+                col1 = counter[0]
+                col2 = counter[1]
+                t1 += row[1]
+                t2 += col1
+                t3 += col2
+                wt.append(col1 + row[1])
+                wtd.append(row[2])
+            if x == 0:
+                txt += '<tr><td>Current</td><td>{}</td><td>{}</td><td style="text-align:right;">{}</td></tr>'. \
+                    format(row[1], col1, col2)
+            else:
+                txt += '<tr><td>{}</td><td>{}</td><td>{}</td><td style="text-align:right;">{}</td></tr>'. \
+                    format(datetime.strftime(row[2] - timedelta(days=6), "%a %d %b"), row[1], col1, col2)
+            x += 1
+        txt += '<tr style="font-size:12px;"><td>Totals</td><td>{}</td><td>{}</td><td style="text-align:center;">' \
+               '{}</td></tr>'.format(round(t1, 2), round(t2, 2), round(t3, 2))
+        txt += "</table>"
+
+        # Weekly total of out
+        txt += '<h3>Total Out</h3><table><tr><th>Week Start</th><th>Total</th></tr>'
+        x = 0
+        t1 = 0
+        for d in wtd:
+            txt += '<tr><td>{}</td><td style="text-align:center;">{}</td></tr>'. \
+                format(d, round(wt[x], 2))
+            t1 += wt[x]
+            x += 1
+        txt += "</table>"
+        txt += "<b>Average  {}</b>".format(round(t1 / len(wt), 2))
+
+        # Monthly Counter Totals #####################################################################
+
+        sql = "SELECT MONTHNAME(d.`date`) month_name, MONTH(d.date) month_number, ROUND(SUM(d.grams), 2) " \
+              "total_grams, SUM((d.amount)) total_amount FROM dispatch d WHERE d.p_type = 1 " \
+              "GROUP BY month_name ORDER BY month_number DESC"
+        rows = self.db.execute(sql)
+        txt += '<h3>Monthly</h3><h4>Counter</h4>' \
+               '<table cellspacing = "5"  border = "0">'
+        txt += '<tr><th>Month</th><th>Amount</th><th>Total</th></tr>'
+        t1 = 0
+        t2 = 0
+        for row in rows:
+            txt += '<tr><td>{}</td><td style="text-align:center;">{}</td><td>{}</td></tr>'.format(row[0], row[2],
+                                                                                                  row[3])
+            t1 += row[2]
+            t2 += row[3]
+        txt += '<tr style="font-size:12px;"><td>Totals</td><td>{}</td><td style="text-align:center;">{}</td></tr>'. \
+            format(round(t1, 1), round(t2, 2))
+        txt += "</table>"
+
+        # Monthly Internal Totals
+        sql = "SELECT MONTHNAME(d.`date`) month_name, MONTH(d.date) month_number, ROUND(SUM(d.grams), 2) total_grams " \
+              "FROM dispatch d WHERE d.client = 1 " \
+              "GROUP BY month_name ORDER BY month_number DESC"
+        rows = self.db.execute(sql)
+        txt += '<h4>Internal</h4><table cellspacing = "5"  border = "0">'
+        txt += '<tr><th>Month</th><th>Amount</th></tr>'
+        t1 = 0
+        for row in rows:
+            txt += '<tr><td>{}</td><td style="text-align:center;">{}</td></tr>'.format(row[0], row[2])
+            t1 += row[2]
+        txt += '<tr style="font-size:12px;"><td>Totals</td><td style="text-align:center;">{}</td></tr>'. \
+            format(round(t1, 2))
+        txt += "</table>"
+        self.te_weeks_summary.setHtml(txt)
+        self.monthly_totals_by_type()
+
+    def monthly_totals_by_type(self):
+        txt = '<h3>Monthly</h3><h4>Types</h4>' \
+               '<table cellspacing = "5"  border = "0">'
+        txt += '<tr><th>Month</th><th>Type 1</th><th>Type 2</th><th>Total</th></tr>'
+        sql = "SELECT MONTHNAME(d.`date`) month_name, MONTH(d.date) month_number, ROUND(SUM(d.amount), 2) total " \
+              "FROM dispatch d WHERE d.p_type = 1 " \
+              "GROUP BY month_name ORDER BY month_number DESC"
+        rows = self.db.execute(sql)
+        sql = "SELECT MONTHNAME(d.`date`) month_name, MONTH(d.date) month_number, ROUND(SUM(d.amount), 2) total " \
+              "FROM dispatch d WHERE d.p_type = 2 " \
+              "GROUP BY month_name ORDER BY month_number DESC"
+        rows2 = self.db.execute(sql)
+        t1 = t2 = 0
+        # r2 = 0
+        bt = collections.defaultdict(dict)
+        for row in rows2:
+            bt[row[0]] = {"b": row[2]}
+        for row in rows:
+            b = 0
+            if row[0] in bt:
+                b = float(bt[row[0]]['b'])
+            else:
+                bt[row[0]]['b'] = 0
+            txt += '<tr><td>{}</td><td style="text-align:center;">£{:0,.0f}</td>' \
+                   '<td style="text-align:center;">£{:0,.0f}</td><td style="text-align:center;">£{:0,.0f}' \
+                   '</td></tr>'.format(row[0], row[2], b, float(row[2]) + b).replace('£-', '-£')
+            t1 += row[2]
+            t2 += bt[row[0]]['b']
+            # r2 += 1
+        txt += '<tr style="font-size:12px;"><td>Totals</td><td style="text-align:center;">£{:0,.0f}' \
+               '</td><td style="text-align:center;">£{:0,.0f}</td><td style="text-align:center;">£{:0,.0f}' \
+               '</td></tr>'. \
+            format(round(t1, 2), t2, t1 + t2).replace('£-', '-£')
+        txt += "</table>"
+        self.te_weeks_summary.append(txt)
+
+    def plot_output(self):
+        query_date = self.get_date_range(8)
+        sql = "select SUM(d.amount) AS value, ROUND(SUM(d.grams), 2) AS total, " \
+              "CASE WHEN (WEEKDAY(`date`)<=3) THEN DATE(`date` + INTERVAL (3-WEEKDAY(`date`)) DAY) " \
+              " ELSE DATE(`date` + INTERVAL (3+7-WEEKDAY(`date`)) DAY) " \
+              "END as week_ending " \
+              'FROM dispatch d WHERE d.date >= "{}" ' \
+              "GROUP BY week_ending ORDER BY week_ending".format(query_date)
+        rows = self.db.execute(sql)
+        amounts = []
+        legend = []
+        for row in rows:
+            legend.append(row[2] - timedelta(days=6))
+            amounts.append(row[1])
+        self.plot_by_out = MplWidget(self.wg_graph_1, 4.75, 3)
+        # plt_dates = m_dates.date2num(list(legend))
+        self.plot_by_out.plot_line(legend, amounts)
+        self.plot_by_out.canvas.axes.tick_params(
+            axis='x', which='major', labelcolor='Green', rotation=90, labelsize=7)
+        self.plot_by_out.canvas.axes.xaxis.set_major_formatter(self.plot_by_out.date_fmt)
+
+    def out_totals(self):
+        query_date = self.get_date_range(12)
+        sql = "select ROUND(SUM(d.grams), 2) AS total, " \
+              "CASE WHEN (WEEKDAY(`date`)<=3) THEN DATE(`date` + INTERVAL (3-WEEKDAY(`date`)) DAY) " \
+              " ELSE DATE(`date` + INTERVAL (3+7-WEEKDAY(`date`)) DAY) " \
+              "END as week_ending " \
+              'FROM dispatch d WHERE d.date >= "{}" ' \
+              "GROUP BY week_ending ORDER BY week_ending DESC".format(query_date)
+        rows = self.db.execute(sql)
+        amounts = []
+        legend = []
+        for row in rows:
+            legend.append(row[1] - timedelta(days=6))
+            amounts.append(row[0])
+        self.plot_by_out_weekly = MplWidget(self.wg_graph_4, 10, 4.75)
+        plt_dates = m_dates.date2num(list(legend))
+        self.plot_by_out_weekly.plot_bar(plt_dates, amounts)
+        self.plot_by_out_weekly.canvas.axes.tick_params(
+            axis='x', which='major', labelcolor='Green', rotation=90, labelsize=7)
+        self.plot_by_out_weekly.canvas.axes.xaxis.set_major_formatter(self.plot_by_out_weekly.date_fmt)
+
+    @staticmethod
+    def get_date_range(weeks=6):
+        day = datetime.now()
+        wd = day - timedelta(days=(day.weekday() - 4) % 7, weeks=0)  # Get last Friday
+        return (wd - timedelta(weeks=weeks)).date()
+
+
+class DialogDispatchInternal(QDialog, Ui_DialogDispatchInternal):
+    def __init__(self, parent):
+        """
+        :type parent: MainWindow
+        """
+        super(DialogDispatchInternal, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.my_parent = parent
+        self.sub = None
+        self.db = parent.db
+        self.reading = self.reading_last = 0
+        self.jar = None
+        self.is_finished = False
+        self.is_return = False
+        self.strain_name = ""
+        self.strain_id = 0
+        self.scales = self.my_parent.scales
+        self.scales.new_reading_p.connect(self.update_reading)
+        self.scales.update_status.connect(self.update_status)
+        self.scales.new_uid.connect(self.new_uid)
+        self.ckb_return.clicked.connect(self.check_return)
+        self.tare()
+        self.cb_jar.currentIndexChanged.connect(self.load_jar)
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.pb_start.clicked.connect(self.deduct)
+        self.pb_tare.clicked.connect(self.tare)
+
+        self.load_jars_list()
+
+    @pyqtSlot(str, name='updateReadingP')
+    def update_reading(self, value):
+        self.reading = float(value)
+        if self.jar is not None and self.reading_last > 5 and self.reading < 1:  # Jar removed
+            # self.jar = None
+            # self.lb_info.setText("")
+            self.cb_jar.setEnabled(True)
+            # self.cb_jar.setCurrentIndex(0)
+            self.pb_start.setEnabled(False)
+        if self.is_finished and self.reading < 0.2:
+            self.lb_info.setText("Replace vessel")
+            self.is_finished = False
+        if not self.is_finished:
+            self.le_weight.setText(str(self.reading))
+            self.reading_last = self.reading
+            self.check_start()
+
+    @pyqtSlot(str, name='updateStatusP')
+    def update_status(self, status):
+        if status == 'tare':
+            self.le_weight.setText("Tare")
+
+    @pyqtSlot(str, name='newUID')
+    def new_uid(self, uid):
+        jar = self.db.execute_single(
+            "SELECT jar FROM {} WHERE UID ='{}'".format(DB_JARS, uid))
+        if jar is None:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("This tag has not been registered {}".format(uid))
+            msg.setWindowTitle("Unregistered UID")
+            msg.setStandardButtons(QMessageBox.Cancel)
+            msg.setDefaultButton(QMessageBox.Cancel)
+            msg.exec_()
+            return False
+
+        idx = self.cb_jar.findData(jar)
+        if idx != -1:
+            self.cb_jar.setCurrentIndex(idx)
+            self.load_jar()
+
+    def tare(self):
+        self.scales.tare_p()
+
+    def check_return(self):
+        if self.ckb_return.isChecked():
+            self.is_return = True
+            self.pb_start.setText("Return")
+        else:
+            self.is_return = False
+            self.pb_start.setText("Deduct")
+
+    def load_jar(self):
+        self.jar = self.cb_jar.currentData()
+        strain = self.db.execute_one_row(
+            'SELECT s.name, s.type_sativa, s.type_indica, s.thc, s.cbd, s.flavour, s.effect, s.id FROM {} s INNER JOIN {} j '
+            'ON s.id = j.strain AND j.jar = "{}"'.format(DB_STRAINS, DB_JARS, self.jar))
+        if strain is None:
+            return
+        self.strain_name = strain[0]
+        self.strain_id = strain[7]
+        self.lb_info.setText("<b>{}</b><br>Sativa: {}  Indica: {}<br>THC: {}   CBD: {}".
+                             format(strain[0], strain[1], strain[2], strain[3], strain[4]))
+        self.lb_info.setToolTip("<b>Flavour</b><br>{}<br>Effect:<br>{}".format(strain[5], strain[6]))
+        self.check_start()
+
+    def check_start(self):
+        if self.cb_jar.currentIndex() > 0 and self.reading > 0.2:
+            self.pb_start.setEnabled(True)
+        else:
+            self.pb_start.setEnabled(False)
+
+    def deduct(self):
+        if self.is_return:
+            amount = 0 - self.reading
+            t_type = "INT-R"
+        else:
+            amount = self.reading
+            t_type = "INT"
+        sql = 'UPDATE {} SET weight = weight - {} WHERE jar = "{}"'.format(DB_JARS, amount, self.jar)
+        print(sql)
+        self.db.execute_write(sql)
+        self.my_parent.logger.save_dispatch_counter("INT", "--", self.jar, self.strain_name, self.strain_id,
+                                                    self.reading, self.reading)
+        self.db.execute_write('INSERT INTO {} (date, type, jar, strain, grams, client) VALUES ("'
+                              '{}", "{}", "{}", {}, {}, 1)'.
+                              format(DB_DISPATCH, datetime.now(), t_type, self.jar, self.strain_id, amount))
+        self.is_finished = True
+        self.le_weight.setText("Remove")
+        self.lb_info.setText("")
+        self.cb_jar.setCurrentIndex(0)
+        self.my_parent.my_parent.update_stock()
+        self.pb_start.setEnabled(False)
+
+    def load_jars_list(self):
+        self.cb_jar.clear()
+        sql = "SELECT jar, strain FROM {} WHERE location = 0 AND (weight - nett - hum_pac) > 0 ORDER BY jar ".format(
+            DB_JARS)
+        self.cb_jar.blockSignals(True)
+        self.cb_jar.addItem("Select", "000")
+        rows = self.db.execute(sql)
+        for row in rows:
+            strain = ""
+            if row[1] > 0:
+                strain = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_STRAINS, row[1]))
+            self.cb_jar.addItem("{} - {}".format(row[0], strain), row[0])
+        self.cb_jar.blockSignals(False)
 
 
 class DialogFeedMix(QWidget, Ui_DialogFeedMix):
@@ -124,7 +965,6 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         self.mix_number = mix_num
         feed_data = self.feed_control.feeds[self.area].get_mixes()
         # Set check boxes
-        x = 0
         for x in range(1, 9):   # Loop through all check boxes and tick if in items
             getattr(self, "ck_fed_%i" % (x + 10)).blockSignals(True)
             if x in feed_data[self.mix_number]['items']:
@@ -303,8 +1143,6 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
 
 
 class DialogAreaManual(QWidget, Ui_frm_area_manual):
-    my_parent = ...  # type: MainPanel
-
     def __init__(self, parent, area=0):
         """
         :type parent: MainPanel
@@ -542,7 +1380,6 @@ class DialogEngineerIo(QDialog, Ui_DialogMessage):
         self.setWindowTitle(title)
 
     def check_show(self, sender) -> bool:
-        ip = sender[0]
         port = sender[1]
         if port == self.my_parent.coms_interface.io_port and not self.show_io:
             return False
@@ -774,6 +1611,25 @@ class DialogAccessModule(QDialog, Ui_DialogDEmodule):
             self.my_parent.coms_interface.send_data(CMD_REBOOT, False, MODULE_DE)
 
 
+class DialogStrainFinder(QWidget, Ui_DialogStrainFinder):
+    def __init__(self, parent=None):
+        """ :type parent: MainWindow """
+        super(DialogStrainFinder, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.my_parent = parent
+        self.db = parent.db
+        self.sub = None
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+
+        sql = 'SELECT id, name, breeder FROM {} ORDER BY name'.format(DB_STRAINS)
+        rows = self.db.execute(sql)
+        for row in rows:
+            self.cb_name.addItem("{} ({})".format(row[1], row[2]), row[0])
+
+        self.cb_name.currentIndexChanged.connect(lambda: self.le_id.setText(str(self.cb_name.currentData())))
+
+
 class DialogProcessInfo(QDialog, Ui_DialogProcessInfo):
     def __init__(self, parent, process=None):
         super(DialogProcessInfo, self).__init__()
@@ -996,6 +1852,60 @@ class DialogProcessInfo(QDialog, Ui_DialogProcessInfo):
         self.teoutputs.setHtml(table)
 
 
+class DialogFan(QDialog, Ui_DialogFan):
+    def __init__(self, parent, fan):
+        super(DialogFan, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint)
+        self.setupUi(self)
+        self.sub = None
+        self.setFixedSize(self.width(), self.height())
+        self.setWindowTitle("Fan {}".format(fan))
+        self.my_parent = parent
+        self.db = self.my_parent.db
+        self.id = fan
+        self.fan = self.my_parent.area_controller.fans[fan]
+        if self.fan.mode == 0:
+            self.dl_fan.setValue(0)
+            self.pb_mode.setText("Manual")
+        elif self.fan.mode == 2:
+            self.dl_fan.setValue(self.fan.speed)
+            self.pb_mode.setText("Auto")
+        else:
+            self.pb_mode.setText("Off")
+        self.dl_fan.valueChanged.connect(self.change_speed)
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.pb_mode.clicked.connect(self.change_mode)
 
+        self.my_parent.coms_interface.update_fan_speed.connect(self.update_speed)
 
+    def change_speed(self, speed):
+        """
+        Manually set speed
+        @param speed:
+        @type speed: int
+        """
+        if speed > 0:
+            self.fan.mode = 1
+            self.fan.speed = speed
+        if speed == 0:
+            self.fan.stop()
 
+    def change_mode(self):
+        if self.fan.mode == 0:
+            self.fan.mode = 1
+            self.pb_mode.setText("Manual")
+            self.dl_fan.setValue(5)
+        elif self.fan.mode == 1:
+            self.fan.mode = 2
+            self.pb_mode.setText("Auto")
+            self.fan.start_auto()
+        elif self.fan.mode == 2:
+            self.fan.mode = 0
+            self.pb_mode.setText("Off")
+            self.dl_fan.setValue(0)
+
+    @pyqtSlot(int, int, name="updateFanSpeed")
+    def update_speed(self, fan, speed):
+        if fan == self.id and self.fan.mode == 2:
+            self.dl_fan.setValue(speed)

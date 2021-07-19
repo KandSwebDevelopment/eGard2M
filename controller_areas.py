@@ -4,7 +4,9 @@ from PyQt5 import QtGui
 from PyQt5.QtCore import QObject
 from PyQt5.QtGui import QPixmap
 
+from class_fan import FanController
 from class_sensor import SensorClass
+from class_soil_sensors import SoilSensorClass
 from defines import *
 from class_process import ProcessClass
 
@@ -30,6 +32,11 @@ class AreaController(QObject):
         self.load_sensors(1)
         self.load_sensors(2)
         self.load_sensors(3)
+        self.soil_sensors = SoilSensorClass(self)
+
+        self.fans = collections.defaultdict(FanController)
+        self.fans[1] = FanController(self, 1)
+        self.fans[2] = FanController(self, 2)
 
         self.main_panel.timer.start()
 
@@ -164,4 +171,5 @@ class AreaController(QObject):
         try:
             return self.areas_processes[area]
         except Exception as e:
+            print(e)
             return 0

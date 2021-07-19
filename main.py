@@ -12,7 +12,8 @@ from communication_interface import CommunicationInterface
 from controller_feeding import FeedControl
 from controller_windows import WindowsController
 from dbController import MysqlDB
-from dialogs import DialogEngineerCommandSender, DialogEngineerIo
+from dialogs import DialogEngineerCommandSender, DialogEngineerIo, DialogDispatchInternal, DialogDispatchCounter, \
+    DialogDispatchReports, DialogStrainFinder
 from functions import multi_status_bar, get_last_friday
 from functions_colors import get_css_colours
 from status_codes import *
@@ -51,50 +52,74 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.update_status_bar(SBP_MODE, "Slave", OK)
 
         self.logger = Logger(self)
-
         self.msg_sys = MessageSystem(self, self.main_panel.listWidget)
         self.coms_interface = CommunicationInterface(self)
-
         self.access = Access(self)
-
         self.area_controller = AreaController(self)
         self.feed_controller = FeedControl(self)
 
-        self.main_panel.connect_to_main_window()
-        self.main_panel.update_next_feeds()
+        self.connect_signals()
 
+        self.main_panel.connect_to_main_window()
+
+        self.main_panel.update_next_feeds()
         self.main_panel.check_stage(1)
         self.main_panel.check_stage(2)
-        self.main_panel.check_stage(3)
+        # self.main_panel.check_stage(3)
 
         self.update_stock()
         self.main_panel.check_light()
 
-        self.connect_signals()
-
     def connect_signals(self):
+        # System
         self.actionI_O_Data.triggered.connect(lambda: self.wc.show(DialogEngineerIo(self)))
         self.actionSend_Command.triggered.connect(lambda: self.wc.show(DialogEngineerCommandSender(self)))
 
-    def load_sensors(self, area):
-        sql = 'SELECT * FROM {} WHERE area = {}'.format(DB_SENSORS_CONFIG, area)
-        rows = self.db.execute(sql)
-        p = self.area_controller.get_area_process(area)
-        for row in rows:
-            sid = row[0]
-            if sid not in self.sensors.keys():
-                self.sensors[sid] = SensorClass(self, sid)
-            else:
-                self.sensors[sid].load_profile()
-            if self.sensors[sid].area < 3:  # Only load process temperature ranges for areas 1 & 2
-                if p != 0:
-                    r = p.temperature_ranges_active
-                    if r is not None:
-                        r = r[self.sensors[sid].area_range]
-                        self.sensors[sid].set_range(r)
-                        if area == 1 or area == 2:
-                            ro = p.temperature_ranges_active_org[self.sensors[sid].area_range]
-                            self.sensors[sid].set_range_org(ro)
+        # Dispatch
+        self.actionCounter.triggered.connect(lambda: self.wc.show(DialogDispatchCounter(self.main_panel)))
+        self.actionInternal.triggered.connect(lambda: self.wc.show(DialogDispatchInternal(self.main_panel)))
+        self.actionReport.triggered.connect(lambda: self.wc.show(DialogDispatchReports(self.main_panel)))
+
+        # Materials
+        self.actionFinder.triggered.connect(lambda: self.wc.show(DialogStrainFinder(self.main_panel)))
+
+        self.coms_interface.update_que_status.connect(self.update_que)
+
+        # Scales
+        self.main_panel.scales.update_status.connect(self.update_scales_status)
+
+    # def load_sensors(self, area):
+    #     sql = 'SELECT * FROM {} WHERE area = {}'.format(DB_SENSORS_CONFIG, area)
+    #     rows = self.db.execute(sql)
+    #     p = self.area_controller.get_area_process(area)
+    #     for row in rows:
+    #         sid = row[0]
+    #         if sid not in self.sensors.keys():
+    #             self.sensors[sid] = SensorClass(self, sid)
+    #         else:
+    #             self.sensors[sid].load_profile()
+    #         if self.sensors[sid].area < 3:  # Only load process temperature ranges for areas 1 & 2
+    #             if p != 0:
+    #                 r = p.temperature_ranges_active
+    #                 if r is not None:
+    #                     r = r[self.sensors[sid].area_range]
+    #                     self.sensors[sid].set_range(r)
+    #                     if area == 1 or area == 2:
+    #                         ro = p.temperature_ranges_active_org[self.sensors[sid].area_range]
+    #                         self.sensors[sid].set_range_org(ro)
+
+    @pyqtSlot(int, int, int, name="updateQueStatus")
+    def update_que(self, pri, norm, lock_status):
+        level = INFO
+        if pri + norm > 5:
+            level = WARNING
+        elif pri + norm > 10:
+            level = CRITICAL
+        if lock_status == 2 or lock_status == 3:
+            level = PENDING
+        elif lock_status == 1:
+            level = OPERATE
+        self.update_status_bar(SBP_QUE, str(pri) + " - " + str(norm), level)
 
     def update_stock(self):
         tot = round(self.db.execute_single('SELECT SUM(weight - nett - hum_pac) FROM {}'.format(DB_JARS)), 1)
@@ -135,6 +160,20 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         ctrl.setText(text)
         ctrl.setStyleSheet(css)
         ctrl.setToolTip("Hello")
+
+    @pyqtSlot(str, name='updateStatus')
+    def update_scales_status(self, status):
+        if status == 'cal1':
+            pass
+        elif status == 'cal2':
+            pass
+        elif status == 'connected':
+            self.update_status_bar(SBP_REMOTE_SS, "S/S Connected", OK)
+        elif status == 'disconnected':
+            self.update_status_bar(SBP_REMOTE_SS, "S/S Lost", WARNING)
+        elif status == 'tare':
+            # self.te_info.append("Tare")
+            pass
 
 
 if __name__ == '__main__':

@@ -35,6 +35,7 @@ class CommunicationInterface(QObject):
     update_mix_weight = pyqtSignal(float, name="update_mix_weight")
     update_for_helper = pyqtSignal(str, list, name="updateForHelper")
     update_switch = pyqtSignal(int, int, int, name="updateSwitch")   # Sw No, State, From Module
+    update_fan_speed = pyqtSignal(int, int, name="updateFanSpeed")     # Fan no, speed
 
     def __init__(self, parent=None):
         """
@@ -248,13 +249,13 @@ class CommunicationInterface(QObject):
         @type prams: list
         """
         # Inputs
-        # if command == COM_FANS:
-        #     if self.my_parent.mode == MASTER:
-        #         if len(prams) > 0:
-        #             self.my_parent.fans[1].set_input_value(string_to_float(prams[0]))
-        #             if len(prams) > 1:
-        #                 self.my_parent.fans[2].set_input_value(string_to_float(prams[1]))
-        #     return
+        if command == COM_FANS:
+            if self.my_parent.mode == MASTER:
+                if len(prams) > 0:
+                    self.my_parent.area_controller.fans[1].update_input_value(string_to_float(prams[0]))
+                    if len(prams) > 1:
+                        self.my_parent.area_controller.fans[2].update_input_value(string_to_float(prams[1]))
+            return
         if command == CMD_SWITCH:
             self.update_switch.emit(int(prams[0]), int(prams[1]), module)
         elif command == COM_SENSOR_READ:
@@ -263,8 +264,11 @@ class CommunicationInterface(QObject):
         elif command == COM_OTHER_READINGS:
             self.update_other_readings.emit(prams)
             self.relay_command(relay_command)
+        elif command == CMD_FAN_SPEED:
+            self.update_fan_speed.emit(int(prams[0]), int(prams[1]))
+            self.relay_command(relay_command)
         elif command == COM_SOIL_READ:
-            # self.calculate_soil(prams)
+            self.update_soil_reading.emit(prams)
             self.relay_command(relay_command)
         elif command == COM_FLOAT_SWITCHES:
             self.update_float_switch.emit(int(prams[0]), int(prams[1]))
@@ -356,51 +360,6 @@ class CommunicationInterface(QObject):
 
         elif command == NWC_WATER_LEVELS:
             self.update_for_helper.emit(command, [float(prams[0]), float(prams[1])])
-
-    def calculate_soil(self, data):
-        if len(data) < 8:
-            print("ERROR soil data to short")
-            return
-        if len(self.my_parent.soil_sensors) < 8:
-            return      # For slave in case is receives an update before fully init
-        total = 0
-        avg = 0
-        cnt = 0
-        for x in range(0, 4):
-            if self.my_parent.soil_sensors[x + 1]:
-                if int(data[x]) < 1000:
-                    total += int(data[x])
-                    cnt += 1
-        if total > 0:
-            avg = total / cnt
-            r = 100 - (((avg - self.my_parent.soil_wet) / (
-                    self.my_parent.soil_dry - self.my_parent.soil_wet)) * 100)
-            avg = round(r, 1)
-            avg = 0 if avg < 0 else avg
-            avg = 100 if avg > 100 else avg
-        data.append(avg)
-        # print(str(avg) + "%")
-        # Area 2
-        total = 0
-        avg = 0
-        cnt = 0
-        for x in range(0, 4):
-            try:
-                if self.my_parent.soil_sensors[x + 5]:
-                    total += int(data[x + 4])
-                    cnt += 1
-            except Exception as e:
-                print("Update display error COM_SOIL_READ 2 - ", e.args)
-                pass
-        if total > 0:
-            avg = total / cnt
-            r = 100 - (((avg - self.my_parent.soil_wet) / (
-                    self.my_parent.soil_dry - self.my_parent.soil_wet)) * 100)
-            avg = round(r, 1)
-            avg = 0 if avg < 0 else avg
-            avg = 100 if avg > 100 else avg
-        data.append(avg)
-        self.update_soil_reading.emit(data)  # Signal new data
 
     # Sending functions communication
     def get_next_udp_communication(self, who) -> (str, tuple):

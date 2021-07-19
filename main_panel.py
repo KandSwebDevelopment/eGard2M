@@ -1,26 +1,19 @@
+import collections
 from datetime import *
 from time import strftime
 import time as _time
 
 from PyQt5 import QtCore, QtGui
-from PyQt5.QtCore import pyqtSlot, QObject, Qt, QTimer
+from PyQt5.QtCore import pyqtSlot, Qt, QTimer
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QWidget, QMdiSubWindow
 
-from controller_windows import WindowsController
+from class_fan import FanController
+from class_soil_sensors import SoilSensorClass
 from defines import *
-from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule
-from functions import get_last_friday
-from functions_colors import get_css_colours
+from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan
+from scales_com import ScalesComs
 from ui.main import Ui_Form
-
-
-def show_main(p):
-    w = MainPanel(p)
-    w.ControlBox = False
-    w.TopLevel = True
-    sub = p.mdiArea.addSubWindow(w)
-    w.show()
 
 
 class MainPanel(QMdiSubWindow, Ui_Form):
@@ -43,6 +36,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.le_stage_2.installEventFilter(self)
         self.le_stage_3.installEventFilter(self)
         self.lbl_access_2.installEventFilter(self)
+        self.lbl_fan_1.installEventFilter(self)
+        self.lbl_fan_2.installEventFilter(self)
 
         self.today = datetime.now().day  # Holds today's date. Used to detect when day changes
 
@@ -51,6 +46,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.coms_interface = None
         self.access = None
         self.logger = None
+        self.soil_sensors = None
         self.ck_auto_boost.setChecked(int(self.db.get_config(CFT_ACCESS, "auto boost", 1)))
         self.stage_change_warning_days = int(self.db.get_config(CFT_PROCESS, "stage change days", 7))
         self.unit_price = float(self.db.get_config(CFT_ACCESS, "unit price")) / 100
@@ -64,7 +60,16 @@ class MainPanel(QMdiSubWindow, Ui_Form):
 
         self.ck_auto_boost.setChecked(int(self.db.get_config(CFT_ACCESS, "auto boost", 1)))
 
-        # self.timer.start()
+        self.has_scales = int(self.db.get_config(CFT_MODULES, "ss unit", 0))
+        self.scales = ScalesComs(self)
+        if not self.has_scales:
+            self.panel_9.hide()
+            self.my_parent.actionCounter.setEnabled(False)
+            self.my_parent.actionInternal.setEnabled(False)
+            self.my_parent.actionScales.setEnabled(False)
+            self.my_parent.actionStorage.setEnabled(False)
+            self.my_parent.actionReconciliation.setEnabled(False)
+            self.my_parent.actionLoading.setEnabled(False)
 
     def eventFilter(self, source, event):
         # Remember to install event filter for control first
@@ -77,6 +82,11 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 self.wc.show(DialogAreaManual(self, 3))
             if source is self.lbl_access_2:
                 self.wc.show(DialogAccessModule(self))
+            if source is self.lbl_fan_1:
+                self.wc.show(DialogFan(self, 1))
+            if source is self.lbl_fan_2:
+                self.wc.show(DialogFan(self, 2))
+
         return QWidget.eventFilter(self, source, event)
 
     def recurring_timer(self):
@@ -122,8 +132,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
 
     def loop_3(self):  # 10 sec
         if self.mode == MASTER:
-            # self.coms_interface.send_command(NWC_SOIL_READ)
-            # self.coms_interface.send_command(COM_OTHER_READINGS)
+            self.coms_interface.send_command(NWC_SOIL_READ)
+            self.coms_interface.send_command(COM_OTHER_READINGS)
             self.coms_interface.send_data(COM_WATTS, False, MODULE_DE)
             self.coms_interface.send_data(COM_READ_KWH, False, MODULE_DE)
 
@@ -146,6 +156,10 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.access = self.my_parent.access
         self.connect_signals()
 
+        if self.has_scales:     # These have to be here to allow signals to connect
+            self.scales.connect()
+        self.update_info_texts()
+
     def connect_signals(self):
         self.pbjournal_1.clicked.connect(lambda: self.wc.show_journal(1))
         self.pbjournal_2.clicked.connect(lambda: self.wc.show_journal(2))
@@ -157,19 +171,22 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.pb_cover.clicked.connect(lambda: self.access.open())
         self.pb_cover_close.clicked.connect(lambda: self.access.close_cover())
         self.b1.clicked.connect(self.test)
-        self.pbinfo_1.clicked.connect(lambda : self.wc.show_process_info(1))
-        self.pbinfo_2.clicked.connect(lambda : self.wc.show_process_info(2))
-        self.pbinfo_3.clicked.connect(lambda : self.wc.show_process_info(3))
+        self.pbinfo_1.clicked.connect(lambda: self.wc.show_process_info(1))
+        self.pbinfo_2.clicked.connect(lambda: self.wc.show_process_info(2))
+        self.pbinfo_3.clicked.connect(lambda: self.wc.show_process_info(3))
 
         self.coms_interface.update_sensors.connect(self.update_sensors)
         self.coms_interface.update_switch.connect(self.update_switch)
         self.access.update_access.connect(self.update_access)
         self.access.update_duration.connect(self.update_cover_duration)
         self.coms_interface.update_power.connect(self.update_power)
+        self.coms_interface.update_other_readings.connect(self.update_others)
+        self.area_controller.soil_sensors.update_soil_reading.connect(self.update_soil_display)
+        self.coms_interface.update_fan_speed.connect(self.update_fans)
 
     def test(self):
         print(self.my_parent.mdiArea.subWindowList())
-        self.my_parent.mdiArea.cascadeSubWindows()
+        # self.my_parent.mdiArea.cascadeSubWindows()
 
     def update_next_feeds(self):
         """
@@ -501,6 +518,21 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         elif _input == AUD_AUTO_SET:
             pass
 
+    @pyqtSlot(list, name="updateSoil")
+    def update_soil_display(self, lst):
+        try:
+            self.le_avg_soil_1.setText(str(lst[8]))
+            self.le_avg_soil_2.setText(str(lst[9]))
+            for a in range(1, 3):
+                for c in range(1, 5):
+                    idx = ((a - 1) * 4) + c
+                    if int(lst[idx - 1]) > 1020:
+                        getattr(self, "le_soil_{}_{}".format(a, c)).setText("--")
+                    else:
+                        getattr(self, "le_soil_{}_{}".format(a, c)).setText(lst[idx - 1])
+        except Exception as e:
+            print("Update soil display - ", e.args)
+
     @pyqtSlot(list, name="updateSensors")
     def update_sensors(self, data):
         idx = 1
@@ -541,6 +573,57 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 self.le_pwr_current.setText(str(val))
                 self.le_cost.setText(str(round(val / 1000 * self.unit_price, 2)))
 
+    @pyqtSlot(int, int, name="updateFanSpeed")
+    def update_fans(self, fan, speed):
+        if fan == 1:
+            self.lefanspeed_1.setText(str(speed))
+        elif fan == 2:
+            self.lefanspeed_2.setText(str(speed))
+
+    def update_info_texts(self):
+        """ Update the days elapsed and remaining for areas 1 and 2"""
+        for a in range(1, 3):
+            if self.area_controller.area_has_process(a):
+                p = self.area_controller.get_area_process(a)
+                ctrl = getattr(self, "le_day_%i" % a)
+                ctrl.setText(str(p.stage_days_elapsed))
+                ctrl.setToolTip("Days elapsed in current stage")
+                ctrl = getattr(self, "le_remaining_%i" % a)
+                if p.current_stage == 3:
+                    ss = p.strain_shortest - p.stage_days_elapsed
+                    if ss < 0:
+                        ss = "C"
+                    ctrl.setText("{}-{}".format(ss, p.strain_longest -
+                                                p.stage_days_elapsed))
+                    ctrl.setToolTip("This stage will finish in this range of days")
+                else:
+                    ctrl.setText(str(p.stage_days_remaining))
+                    ctrl.setToolTip("Days remaining in current stage")
+                if p.stage_day_adjust < 0:
+                    ctrl = getattr(self, "lbl_over_run_%i" % a)
+                    ctrl.setText("-{}".format(p.stage_day_adjust))
+                    ctrl.setToolTip("Days the current stage has been shortened by")
+                elif p.stage_day_adjust > 0:
+                    ctrl = getattr(self, "lbl_over_run_%i" % a)
+                    ctrl.setText("+{}".format(p.stage_day_adjust))
+                    ctrl.setToolTip("Days the current stage has been extended by")
+                else:
+                    ctrl = getattr(self, "lbl_over_run_%i" % a)
+                    ctrl.setText("")
+                    ctrl.setToolTip(None)
+
+    @pyqtSlot(list, name="updateOthers")
+    def update_others(self, data):
+        # print(data)
+        try:
+            self.lelightlevel_1.setText(str(round((100 / 1024) * int(data[0]), 1)))
+            self.lelightlevel_2.setText(str(round((100 / 1024) * int(data[1]), 1)))
+            # self.outputs[OP_W_HEATER_1].float_update(1, int(data[2]))
+            # self.outputs[OP_W_HEATER_1].float_update(int(data[2]), int(data[3]))
+            # self.update_float(int(data[2]), int(data[3]))
+        except Exception as e:
+            print("UPDATE OTHERS ERROR ", e.args)
+
     def new_day(self):
         print("*********** New day ***********")
         self.today = datetime.now().day
@@ -559,8 +642,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.feed_controller.new_day()
         # Update next feed dates
         self.update_next_feeds()
-        # self.update_info_texts()
+        self.update_info_texts()
         # # Reset feeder for new day
         # self.water_control.new_day()
         # self.water_control.start()
-

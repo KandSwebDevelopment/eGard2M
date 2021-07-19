@@ -15,10 +15,11 @@ class WindowsController(QObject):
     def show(self, dialog_, **kwargs):
         s = self.mdiArea.addSubWindow(dialog_)
         s.setGeometry(50, 50, dialog_.frameGeometry().width() + 15, dialog_.frameGeometry().height() + 30)
-        # s.setFixedSize(dialog_.frameGeometry().width() + 15, dialog_.frameGeometry().height() + 30)
+        s.setFixedSize(dialog_.frameGeometry().width() + 15, dialog_.frameGeometry().height() + 30)
         s.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint)
         dialog_.sub = s
         dialog_.show()
+        # s.show()
 
     def show_journal(self, area):
         if self.my_parent.area_controller.area_has_process(area):
@@ -31,12 +32,13 @@ class WindowsController(QObject):
     def __window_list_menu_about_to_show(self):
         self.__window_list_menu.clear()
         windows = self.mdiArea.subWindowList()
-        index = 1
+        index = 0
         for window in windows:
             action = QAction(str(index) + '. ' + window.windowTitle(), self.__window_list_menu)
             action.setProperty('WindowObject', window)
             action.triggered.connect(self.__on_select_window)
-            self.__window_list_menu.addAction(action)
+            if index > 0:
+                self.__window_list_menu.addAction(action)
             index += 1
 
     def __on_select_window(self):

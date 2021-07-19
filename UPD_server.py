@@ -42,6 +42,6 @@ class UdpServer(QObject):
                 # print("Message: ", data)
                 # print("From: ", ip)
                 self.my_parent.process_incoming(data, self.name, ip)
-                time.sleep(1)
             except Exception as e:
                 print(e)
+            time.sleep(1)
