@@ -49,7 +49,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.soil_sensors = None
         self.ck_auto_boost.setChecked(int(self.db.get_config(CFT_ACCESS, "auto boost", 1)))
         self.stage_change_warning_days = int(self.db.get_config(CFT_PROCESS, "stage change days", 7))
-        self.unit_price = float(self.db.get_config(CFT_ACCESS, "unit price")) / 100
+        self.unit_price = float(self.db.get_config(CFT_ACCESS, "unit price", 20)) / 100
 
         self.access_open_time = 0  # Timestamp when cover was opened
         self.timer_counter = 0
@@ -413,7 +413,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.pb_cover_close.setEnabled(False)
             self.pb_cover.setEnabled(True)
         else:  # In open position or somewhere between
-            if self.access.has_status(ACS_CLOSING):
+            if self.access.has_status(ACS_CLOSING) or self.access.has_status(ACS_OPENING):
                 self.le_cover_pos_2.setStyleSheet("background-color: blue; color: White")
                 self.le_access_status_1.setText("Closing")
             self.pb_cover.setEnabled(False)
@@ -579,6 +579,21 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.lefanspeed_1.setText(str(speed))
         elif fan == 2:
             self.lefanspeed_2.setText(str(speed))
+
+    def update_fan_mode(self, fan, mode):
+        if fan == 1:
+            ctrl = self.lbl_fan_mode_1
+        else:
+            ctrl = self.lbl_fan_mode_2
+        if mode == 0:
+            ctrl.setPixmap(QtGui.QPixmap(":/normal/002-stop.png"))
+            ctrl.setStyleSheet("background-color: red; color: White")
+        elif mode == 1:
+            ctrl.setPixmap(QtGui.QPixmap(":/normal/output_manual_1.png"))
+            ctrl.setStyleSheet("background-color: lightblue; color: White")
+        elif mode == 2:
+            ctrl.setPixmap(QtGui.QPixmap(":/normal/output_auto.png"))
+            ctrl.setStyleSheet("")
 
     def update_info_texts(self):
         """ Update the days elapsed and remaining for areas 1 and 2"""

@@ -11,9 +11,11 @@ from defines import *
 from plotter import *
 from ui.dialogDispatchCounter import Ui_DialogDispatchCounter
 from ui.dialogDispatchInternal import Ui_DialogDispatchInternal
-from functions import string_to_float, m_box, play_sound
+from functions import string_to_float, m_box, play_sound, auto_capital
 from ui.dialogAccess import Ui_DialogDEmodule
+from ui.dialogDispatchOverview import Ui_DialogLogistics
 from ui.dialogDispatchReports import Ui_DialogDispatchReport
+from ui.dialogDispatchStorage import Ui_Form
 from ui.dialogEngineerCommandSender import Ui_DialogEngineerCommandSender
 from ui.dialogEngineerIO import Ui_DialogMessage
 from ui.dialogFan import Ui_DialogFan
@@ -857,6 +859,622 @@ class DialogDispatchInternal(QDialog, Ui_DialogDispatchInternal):
                 strain = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_STRAINS, row[1]))
             self.cb_jar.addItem("{} - {}".format(row[0], strain), row[0])
         self.cb_jar.blockSignals(False)
+
+
+class DialogDispatchStorage(QDialog, Ui_Form):
+    my_parent = ...  # type: MainWindow
+
+    def __init__(self, parent):
+        """
+
+        :type parent: MainWindow
+        """
+        super(DialogDispatchStorage, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.sub = None
+        self.my_parent = parent
+        self.db = parent.db
+        self.jar = None  # jar, weight, nett, UID, strain, hum_pac
+        self.is_scan = False  # When True next UID scan will be entered
+        self.is_set_nett = False  # When True next weight reading will be entered as nett value
+        self.is_read = False  # When True next weight reading will be entered current weight
+        self.on_scale = 0  # Used in jar removal detection
+        self.new_nett = False  # True when nett has been set
+        self.strain = 0
+        self.new_weight = 0
+        self.gross = 0
+        self.org_gross = 0
+        self.hum_pac = 0
+        self.transfer_to_jar = ""
+        self.scales = self.my_parent.scales
+        self.nett_tol = self.db.get_config(CFT_ACCESS, "nett set", 5)
+        self.scales.new_reading.connect(self.update_reading)
+        # self.scales.update_status.connect(self.update_status)
+        self.scales.new_uid.connect(self.new_uid)
+        self.cb_jar.currentIndexChanged.connect(self.select_jar)
+        self.le_name.textChanged.connect(lambda: auto_capital(self.le_name))
+        self.cb_jar_transfer.currentIndexChanged.connect(self.select_transfer_jar)
+
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.pb_add.clicked.connect(self.add)
+        self.pb_remove.clicked.connect(self.remove)
+        self.pb_save.clicked.connect(self.save)
+        self.pb_scan.clicked.connect(self.scan)
+        self.pb_set.clicked.connect(self.set_nett)
+        self.pb_read.clicked.connect(self.read)
+        self.pb_tare.clicked.connect(lambda: self.scales.tare())
+        self.pb_empty.clicked.connect(self.empty)
+        self.pb_transfer.clicked.connect(self.transfer)
+        self.pb_cancel.clicked.connect(self.clear)
+        self.font = QtGui.QFont()
+        self.font.setPointSize(11)
+
+        self.msg = QMessageBox()
+        self.msg.setIcon(QMessageBox.Warning)
+
+        self.load_jars_list()
+        rows = self.db.execute("SELECT name, breeder, id FROM {} ORDER BY name, breeder".format(DB_STRAINS))
+        self.cb_strain.blockSignals(True)
+        self.cb_strain.addItem("Select", "0")
+        for row in rows:
+            self.cb_strain.addItem("{} ({})".format(row[0], row[1]), row[2])
+        self.cb_strain.blockSignals(False)
+
+        self.cb_location.addItem("", -1)
+        self.cb_location.addItem("A", 0)
+        self.cb_location.addItem("B", 1)
+        self.cb_location.addItem("C", 2)
+        self.cb_location.addItem("D", 3)
+
+    @pyqtSlot(str, name='newUID')
+    def new_uid(self, uid):
+        if self.is_scan:
+            if not self.check_uid(uid):
+                self.le_uid.setText(uid)
+                self.is_scan = False
+                self.le_uid.setStyleSheet("background-color: White;  color: Black;")
+                self.le_uid.setFont(self.font)
+                return
+        if self.jar is not None:  # Jar was select manual and then jar added to scale, check same jar
+            jar = self.db.execute_single("SELECT jar FROM {} WHERE UID = '{}'".format(DB_JARS, uid))
+            if jar != self.jar[0]:
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Warning)
+                msg.setText("The jar placed on the scales ({}) does not match the one selected ({}).<br>Either "
+                            "place correct jar of cancel the one loaded".format(jar, self.jar[0]))
+                msg.setWindowTitle("Incorrect Jar")
+                msg.setStandardButtons(QMessageBox.Cancel)
+                msg.setDefaultButton(QMessageBox.Cancel)
+                msg.exec_()
+                return False
+
+        if self.jar is None:
+            # If you alter this do same to one below in select_jar
+            self.jar = self.db.execute_one_row(
+                "SELECT jar, weight, nett, UID, strain, hum_pac, last_recon, last_nett, weight - nett - hum_pac "
+                "as org_gross, location, capacity FROM {} WHERE UID ='{}'".format(
+                    DB_JARS, uid))
+        if self.jar is None:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("This tag has not been registered {}".format(uid))
+            msg.setWindowTitle("Unregistered UID")
+            msg.setStandardButtons(QMessageBox.Cancel)
+            msg.setDefaultButton(QMessageBox.Cancel)
+            msg.exec_()
+        self.load_jar()
+
+    @pyqtSlot(str, name='updateReading')
+    def update_reading(self, value):
+        self.le_live.setText(value)
+        if self.is_set_nett:
+            if float(value) < self.new_weight:
+                value = str(self.new_weight)
+            self.le_nett.setText(value)
+            self.new_nett = True
+            self.le_weight.setText(value)
+            self.get_gross()
+        elif self.is_read:
+            if float(value) < 0:
+                value = "0.0"
+            self.le_weight.setText(str(value))
+            self.new_weight = float(value)
+            self.get_gross()
+        if self.jar is not None:
+            self.get_gross()
+            if float(value) > self.jar[2]:
+                self.on_scale = 2
+            if string_to_float(value) < self.jar[2] and self.on_scale == 2:
+                self.clear()
+                self.on_scale = 0
+                self.jar = None
+            # elif string_to_float(value) < self.jar[2]:
+
+    def read(self):  # Read weight
+        if self.is_read:
+            self.is_read = False
+            self.le_weight.setStyleSheet("background-color: none;")
+            self.le_weight.setFont(self.font)
+        else:
+            self.is_read = True
+            self.le_weight.setStyleSheet("background-color: Orange;")
+            self.le_weight.setFont(self.font)
+
+    def set_nett(self):
+        # Set nett is only available when weight is close to nett
+        if not self.is_set_nett:
+            if self.jar is not None and self.new_weight - self.jar[2] > self.nett_tol:
+                msg = QMessageBox()
+                msg.setIcon(QMessageBox.Warning)
+                msg.setText("You can not set the nett unless the contents are less the {}grams\nThis jar "
+                            "has {}grams".format(1, self.new_weight - self.jar[2]))
+                msg.setWindowTitle("Unable to set Nett")
+                msg.setStandardButtons(QMessageBox.Cancel)
+                msg.exec_()
+                return
+            self.le_nett.setStyleSheet("background-color: Orange;")
+            self.le_nett.setFont(self.font)
+            self.is_set_nett = True
+        else:
+            self.le_nett.setStyleSheet("background-color: none;")
+            self.le_nett.setFont(self.font)
+            self.is_set_nett = False
+
+    def check_uid(self, uid) -> bool:
+        # Check to see if tag scanned can be used
+        jar = self.db.execute_single(
+            "SELECT jar FROM {} WHERE UID = '{}'".format(
+                DB_JARS, uid))
+        if jar is None:
+            return False
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Warning)
+        msg.setText("This UID is assigned to {}".format(jar[0]))
+        msg.setWindowTitle("UID Clash")
+        msg.setStandardButtons(QMessageBox.Cancel)
+        msg.setDefaultButton(QMessageBox.Cancel)
+        msg.exec_()
+        self.le_uid.setText("")
+        return True
+
+    def select_jar(self):
+        jar = self.cb_jar.currentData()
+        if jar == "000" or jar is None:
+            self.frame.setEnabled(False)
+            self.clear()
+            return
+        # If you alter this do same to one above in new_uid
+        self.jar = self.db.execute_one_row(
+            "SELECT jar, weight, nett, UID, strain, hum_pac, last_recon, last_nett, weight - nett - hum_pac "
+            "as org_gross, location, capacity FROM {} WHERE jar = '{}'".format(
+                DB_JARS, jar))
+        self.load_jar()
+
+    def scan(self):
+        if self.is_scan:
+            self.is_scan = False
+            self.le_uid.setStyleSheet("background-color: none;")
+            self.le_uid.setFont(self.font)
+        else:
+            self.is_scan = True
+            self.le_uid.setStyleSheet("background-color: Orange;")
+            self.le_uid.setFont(self.font)
+
+    def load_jars_list(self):
+        self.cb_jar.blockSignals(True)
+        self.cb_jar.clear()
+        count = self.db.execute_single("SELECT COUNT(jar) FROM {}".format(DB_JARS))
+        self.lbl_count.setText(str(count))
+        sql = "SELECT jar, strain FROM {} ORDER BY jar".format(DB_JARS)
+        self.cb_jar.addItem("Select", "000")
+        rows = self.db.execute(sql)
+        for row in rows:
+            strain = ""
+            if row[1] > 0:
+                strain = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_STRAINS, row[1]))
+            self.cb_jar.addItem("{} - {}".format(row[0], strain), row[0])
+        self.cb_jar.blockSignals(False)
+
+    def load_transfer_jars(self):
+        sql = "SELECT jar, strain FROM {} WHERE weight - nett <= 1 OR strain = {} ORDER BY jar".format(DB_JARS,
+                                                                                                       self.jar[4])
+        rows = self.db.execute(sql)
+
+        self.cb_jar_transfer.blockSignals(True)
+        self.cb_jar_transfer.clear()
+
+        if rows is None:
+            self.cb_jar_transfer.addItem("None Available", "000")
+        else:
+            self.cb_jar_transfer.addItem("Select", "000")
+        for row in rows:
+            if row[0] != self.cb_jar.currentData():  # Check not the jar selected
+                self.cb_jar_transfer.addItem(row[0], row[0])
+        self.cb_jar_transfer.blockSignals(False)
+
+    def load_jar(self):
+        if self.jar is None:
+            return
+        self.le_name.setText(self.jar[0])
+        self.le_name.setReadOnly(True)
+        self.le_weight.setText(str(self.jar[1]))
+        self.le_weight.setToolTip(str(self.jar[6]))
+        self.le_nett.setToolTip(str(self.jar[7]))
+        self.new_weight = self.jar[1]
+        self.le_nett.setText(str(self.jar[2]))
+        self.le_uid.setText(self.jar[3])
+        self.le_hum_pac.setText(str(self.jar[5]))
+        self.le_size.setText(str(self.jar[10]))
+        self.org_gross = round(self.jar[8], 1)
+        self.le_gross_2.setText(str(self.org_gross))
+        self.hum_pac = self.jar[5]
+        self.strain = self.jar[4]
+        index = self.cb_strain.findData(self.jar[4])
+        if index >= 0:
+            self.cb_strain.setCurrentIndex(index)
+        index = self.cb_location.findData(self.jar[9])
+        if index >= 0:
+            self.cb_location.setCurrentIndex(index)
+        self.frame.setEnabled(True)
+        # self.pb_add.setText("Save")
+        self.pb_remove.setEnabled(True)
+        self.pb_add.setEnabled(False)
+        self.pb_transfer.setEnabled(False)
+        self.load_transfer_jars()
+        if self.jar[5] > 1:  # Check if there is a hum pac
+            self.pb_hum_pac.setText("Remove")
+        self.get_gross()
+
+    def get_gross(self):
+        self.gross = round(string_to_float(self.le_live.text()) - string_to_float(self.le_nett.text()) -
+                           string_to_float(self.le_hum_pac.text()), 1)
+        if self.gross < 0:
+            self.le_gross.setText("---")
+            self.le_diff.setText("---")
+        else:
+            self.le_gross.setText(str(self.gross))
+            self.le_diff.setText(str(round(self.gross - self.org_gross, 1)))
+
+    def save(self):
+        if self.jar is None:  # New
+            # Check if new name is in use
+            if self.db.execute_single(
+                    'SELECT jar FROM {} WHERE jar = "{}"'.format(DB_JARS, self.le_name.text())) is not None:
+                self.msg.setWindowTitle("Invalid Name")
+                self.msg.setText("This name is already in use")
+                self.msg.setStandardButtons(QMessageBox.Cancel)
+                self.msg.exec_()
+                return
+            sql = 'INSERT INTO {} (jar, weight, nett, UID, strain, hum_pac, last_nett) VALUES ' \
+                  '("{}", {}, {}, "{}", {}, {}, "{}")' \
+                .format(DB_JARS, self.le_name.text(), string_to_float(self.le_weight.text()),
+                        string_to_float(self.le_nett.text()), self.le_uid.text(), self.cb_strain.currentData(),
+                        string_to_float(self.le_hum_pac.text()), datetime.now())
+            self.db.execute_write(sql)
+            self.clear()
+            self.load_jars_list()
+            return
+        else:  # Update
+            sql = "UPDATE {} SET weight = {}, nett = {}, UID = '{}', strain = {}, hum_pac = {}, location = {}, " \
+                  "capacity = {} WHERE jar = '{}' LIMIT 1" \
+                .format(DB_JARS, string_to_float(self.le_weight.text()), string_to_float(self.le_nett.text()),
+                        self.le_uid.text(), self.cb_strain.currentData(), string_to_float(self.le_hum_pac.text()),
+                        self.cb_location.currentData(),
+                        string_to_float(self.le_size.text()), self.jar[0])
+            self.db.execute_write(sql)
+        if self.new_nett:
+            self.db.execute_write('UPDATE {} SET last_nett = "{}" WHERE jar = "{}" LIMIT 1'.
+                                  format(DB_JARS, datetime.now(), self.jar[0]))
+        # Stop setting weight < than jar weight
+        if string_to_float(self.le_weight.text()) < string_to_float(self.le_nett.text()):
+            self.msg.setWindowTitle("Invalid Weight")
+            self.msg.setText("You can not set the weight to less than the empty jar.")
+            self.msg.setStandardButtons(QMessageBox.Cancel)
+            self.msg.exec_()
+            return
+        self.clear()
+        self.load_jars_list()
+        self.my_parent.my_parent.update_stock()
+
+    def transfer(self):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Question)
+        msg.setText("Do you wish to transfer {}grams from jar <b>{}</b> to jar {}".
+                    format(str(self.gross), self.jar[0], self.transfer_to_jar))
+        msg.setWindowTitle("Confirm")
+        msg.setStandardButtons(QMessageBox.Cancel | QMessageBox.Yes)
+        msg.setDefaultButton(QMessageBox.Cancel)
+        if msg.exec_() == QMessageBox.Cancel:
+            return
+        move_hum_pac = 0
+        if self.hum_pac > 0:
+            msg.setText("This jar contains a humidity pack.<br>Do you wish to transfer it also")
+            msg.setWindowTitle("Confirm")
+            msg.setStandardButtons(QMessageBox.Cancel | QMessageBox.Yes | QMessageBox.No)
+            msg.setDefaultButton(QMessageBox.Cancel)
+            r = msg.exec_()
+            if r == QMessageBox.Cancel:
+                return
+            if r == QMessageBox.Yes:
+                move_hum_pac = self.hum_pac
+        # Zero this jar
+        sql = 'UPDATE {} SET weight = nett, hum_pac = 0, strain = 0 WHERE jar = "{}" LIMIT 1'.format(DB_JARS,
+                                                                                                     self.jar[0])
+        print(sql)
+        self.db.execute_write(sql)
+        # Update new jar values
+        sql = 'UPDATE {} SET weight = weight + {} + {}, hum_pac = {}, strain = {} WHERE jar = "{}" LIMIT 1'. \
+            format(DB_JARS, self.gross, move_hum_pac, move_hum_pac, self.jar[4], self.transfer_to_jar)
+        print(sql)
+        self.db.execute_write(sql)
+        play_sound(SND_OK)
+        self.clear()
+
+    def add(self):
+        if self.jar is None:  # Add new jar
+            self.frame.setEnabled(True)
+            self.le_name.setReadOnly(False)
+
+    def remove(self):
+        if self.jar is not None:  # Remove jar
+            self.msg.setText("Confirm you wish to remove this jar")
+            self.msg.setWindowTitle("Confirm Removal")
+            if self.msg.exec_() == QMessageBox.Cancel:
+                return
+            self.db.execute_write('DELETE from {} WHERE jar = "{}" LIMIT 1'.format(DB_JARS, self.jar[0]))
+            self.clear()
+            self.load_jars_list()
+        else:  #
+            pass
+
+    def empty(self):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Question)
+        msg.setText("Do you wish to record this jar as empty")
+        msg.setWindowTitle("Confirm")
+        msg.setStandardButtons(QMessageBox.Cancel | QMessageBox.Yes)
+        msg.setDefaultButton(QMessageBox.Cancel)
+        if msg.exec_() == QMessageBox.Cancel:
+            return
+        sql = "UPDATE {} SET weight = {}, strain = {}, hum_pac = 0 WHERE jar = '{}' LIMIT 1". \
+            format(DB_JARS, self.jar[2], 0, self.jar[0])
+        self.my_parent.db.execute_write(sql)
+        self.load_jars_list()
+        self.cb_jar.setCurrentIndex(self.cb_jar.findData(self.jar[0]))
+        # self.select_jar()
+
+    def clear(self):
+        self.le_name.setText("")
+        self.le_name.setReadOnly(True)
+        self.le_weight.setText("")
+        self.le_nett.setText("")
+        self.le_uid.setText("")
+        self.le_hum_pac.setText("")
+        self.le_gross.setText("")
+        self.le_gross_2.setText("")
+        self.le_diff.setText("")
+        self.cb_strain.setCurrentIndex(0)
+        self.cb_jar.setCurrentIndex(0)
+        self.pb_add.setText("Add")
+        self.pb_remove.setText("Remove")
+        self.pb_remove.setEnabled(False)
+        self.pb_add.setEnabled(True)
+        self.on_scale = 0
+        self.is_read = False
+        self.is_scan = False
+        self.is_set_nett = False
+        self.jar = None
+        self.frame.setEnabled(False)
+
+    def select_transfer_jar(self):
+        if self.cb_jar_transfer.currentIndex() > 0:
+            self.pb_transfer.setEnabled(True)
+            self.transfer_to_jar = self.cb_jar_transfer.currentData()
+        else:
+            self.pb_transfer.setEnabled(False)
+            self.transfer_to_jar = ""
+
+
+class DialogDispatchOverview(QDialog, Ui_DialogLogistics):
+    def __init__(self, parent):
+        """
+        :type parent: MainPanel
+        """
+        super(DialogDispatchOverview, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.sub = None
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.my_parent = parent
+        self.db = parent.db
+        self.up_coming = []
+        self.up_coming_yield = []
+        self.estimate_per_plant = int(self.db.get_config(CFT_DISPATCH, "estimate per plant", 50))
+        self.stock = collections.defaultdict()
+        self.weekly_total = 0
+        self.stock_total = 0
+        self.sort_order = "jar"
+        self.le_weeks.setText("25")
+        self.pb_refresh.clicked.connect(self.refresh)
+        self.refresh()
+        self.get_up_coming()
+        self.rb_sort_1.toggled.connect(self.change_sort_order)
+        self.rb_sort_2.toggled.connect(self.change_sort_order)
+        self.rb_sort_3.toggled.connect(self.change_sort_order)
+        self.lw_available.doubleClicked.connect(self.display_strain)
+        self.lw_available.currentItemChanged.connect(self.display_strain)
+
+    def refresh(self):
+        self.load_stock()
+        self.load_clients()
+        # self.get_up_coming()
+        self.get_future()
+        self.load_available()
+
+    def change_sort_order(self):
+        rb_tn = self.sender()
+        if rb_tn.isChecked():
+            if rb_tn.text() == "Jar":
+                self.sort_order = "jar"
+            elif rb_tn.text() == "Strain":
+                self.sort_order = "strain"
+            elif rb_tn.text() == "Availability":
+                self.sort_order = "gross"
+            self.load_stock()
+
+    def load_stock(self):
+        self.te_stock_list.clear()
+        self.stock.clear()
+        total = 0
+        sql = 'SELECT (weight - nett - hum_pac) as gross, jar, strain, weight, nett, UID, hum_pac, last_recon, ' \
+              'last_nett, location, capacity FROM {} ORDER BY {}'.format(DB_JARS, self.sort_order)
+        rows = self.db.execute(sql)
+        txt = '<table cellpadding = "5"  border = "1">'
+        for row in rows:
+            if row[0] > 0:
+                total += row[0]
+                if row[9] != 0:
+                    css = ' style="background-color:lightgray"'
+                else:
+                    css = ""
+                strain = self.db.execute_single('SELECT name FROM {} WHERE id = {}'.format(DB_STRAINS, row[2]))
+                txt += '<tr{}><td>{}</td><td>{}</td><td>{}</td><td>{}</td>'.format(css, strain, row[1], row[9],
+                                                                                   round(row[0], 1))
+                txt += '<td>{}</td><td>{}</td><td>{}</td>'.format(row[3], round(row[4], 1), row[6])
+                txt += '<td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>'.format(row[5], row[10], row[7], row[8])
+                print("strain = ", row[2])
+                if row[2] in self.stock:
+                    self.stock[row[2]]['amount'] += round(row[0], 1)
+                    # print("add stock =", self.stock[row[2]]['amount'])
+                else:
+                    self.stock[row[2]] = {'amount': round(row[0], 1), 'name': strain}
+                # print("new stock =", self.stock[row[2]]['amount'])
+        txt += '</table>'
+        self.te_stock_list.setHtml(txt)
+        self.le_weight.setText(str(round(total, 1)))
+        self.stock_total = total
+        self.summary()
+
+    def summary(self):
+        a_list = {}
+        for key, value in self.stock.items():
+            a_list[value['name']] = value['amount']
+        as_list = sorted(a_list.items(), key=lambda x: x[1])    # This sorts it by weight
+        txt = '<table>'
+        for item in as_list:
+            txt += '<tr><td>{}</td><td>{}</td></tr>'.format(item[0], round(item[1], 1))
+        txt += '</table>'
+        self.te_instock.setHtml(txt)
+
+    def load_clients(self):
+        total = 0
+        sql = 'SELECT amount, name FROM {} WHERE frequency = 1 ORDER BY sort_order'.format(DB_CLIENTS)
+        rows = self.db.execute(sql)
+        self.lw_clients.clear()
+        for row in rows:
+            total += row[0]
+            lw_item = QListWidgetItem(row[1] + "  " + str(row[0]))
+            v_item = QVariant(row[0])
+            lw_item.setData(Qt.UserRole, v_item)
+            self.lw_clients.addItem(lw_item)
+
+        self.le_weekly.setText(str(round(total, 1)))
+        self.weekly_total = total
+
+    def get_up_coming(self):
+        self.te_upcomming.clear()
+        self.up_coming.clear()
+        for loc in range(3, 0, -1):
+            if self.my_parent.area_controller.area_has_process(loc):
+                d = self.my_parent.area_controller.get_area_process(loc).end
+                q = self.my_parent.area_controller.get_area_process(loc).quantity
+                if d.date() > datetime.now().date():
+                    getattr(self, "lbl_upcoming_{}".format(loc)).setText(
+                        "{} > {}".format(datetime.strftime(d, "%d/%m/%y"), q))
+                    getattr(self, "le_upcoming_total_{}".format(loc)).setText("{}".format(q * self.estimate_per_plant))
+                    # getattr(self, "ck_upcoming_{}".format(loc)).setChecked(True)
+                    self.up_coming.append([d, q, loc])
+                    # self.up_coming_yield.append(q)
+        # for d, q in self.up_coming:
+        #     self.te_upcomming.append(
+        #         "{} > {} ~ {}".format(datetime.strftime(d, "%d/%m/%y"), q, q * self.estimate_per_plant))
+
+    def get_future(self):
+        self.te_future.clear()
+        up_coming = self.up_coming.copy()
+        txt = '<table cellpadding = "5"  border = "1" cellspacing = "0" >'
+        day = datetime.now()
+        wd = day - timedelta(days=(day.weekday() - 4) % 7, weeks=-1)  # Get next friday
+        days = (wd - datetime.now()).days
+        rt = self.stock_total
+        for week in range(1, int(self.le_weeks.text()) + 1):
+            rt -= self.weekly_total
+            if rt > self.weekly_total:
+                c = "color: Black; background: Green;"
+                # if len(up_coming) > 0 and self.ck_inlude_upcomming.isChecked():
+                if len(up_coming) > 0:
+                    if wd.date() > up_coming[0][0].date():
+                        if getattr(self, "ck_upcoming_{}".format(up_coming[0][2])).isChecked():
+                            c = "color: White; background: DarkGreen;"
+                            # if up_coming[0][1] > 0:
+                            rt += string_to_float(getattr(self, "le_upcoming_total_{}".format(up_coming[0][2])).text())
+                            up_coming.pop(0)
+                            # up_coming[0][1] = 0
+            else:
+                c = "color: White; background: Red;"
+                if len(up_coming) > 0:
+                    if wd.date() > up_coming[0][0].date():
+                        if getattr(self, "ck_upcoming_{}".format(up_coming[0][2])).isChecked():
+                            c = "color: Black; background: Orange;"
+                            # if up_coming[0][1] > 0:
+                            rt += string_to_float(getattr(self, "le_upcoming_total_{}".format(up_coming[0][2])).text())
+                            up_coming.pop(0)
+            txt += '<tr style="{}"><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>'. \
+                format(c, week, days + (week - 1) * 7, datetime.strftime(wd, "%d/%m/%y"), self.weekly_total, round(rt))
+            wd = wd + timedelta(days=7)
+        txt += '</table>'
+        self.te_future.setHtml(txt)
+
+    def load_available(self):
+        self.lw_available.blockSignals(True)
+        self.lw_available.clear()
+        for item in self.stock:
+            if item != 0:
+                strain = self.db.execute_one_row('SELECT name, id FROM {} WHERE id = {}'.format(DB_STRAINS, item))
+                print(item)
+                lw_item = QListWidgetItem(strain[0])
+                v_item = QVariant(strain[1])
+                lw_item.setData(Qt.UserRole, v_item)
+                self.lw_available.addItem(lw_item)
+        self.lw_available.blockSignals(False)
+
+    def display_strain(self):
+        sid = self.lw_available.currentItem().data(Qt.UserRole)
+        if sid is None:
+            return
+        strain = self.db.execute_one_row("SELECT * FROM {} WHERE id = {}".format(DB_STRAINS, sid))
+        if strain is None:
+            return
+        jars = self.db.execute('SELECT jar FROM {} WHERE strain = {}'.format(DB_JARS, sid))
+        if jars is None:
+            return
+        lbl = ""
+        for jar in jars:
+            lbl += "({})  ".format(jar[0])
+        txt = '<table>'
+        txt += '<tr><td> {}</td></tr>'.format(lbl)
+        txt += '<tr><td><b>{}</b> by {}</td></tr>'.format(strain[2], strain[1])
+        txt += '<tr><td>Sativa {}   Indica {}</td></tr>'.format(strain[6], strain[7])
+        txt += '<tr><td>THC {}   CBD {}</td></tr>'.format(strain[19], strain[20])
+        txt += '<tr><td><b>Genetics {}</b></td></tr>'.format(strain[18])
+        if strain[9] != "":
+            txt += '<tr><td><b>Flavour</b><br>{}</td></tr>'.format(strain[9])
+        if strain[10] != "":
+            txt += '<tr><td><b>Effect</b><br>{}</td></tr>'.format(strain[10])
+        if strain[12] != "":
+            txt += '<tr><td><b>Info</b><br>{}</td></tr>'.format(strain[12])
+        self.te_stock_summary.setHtml(txt)
 
 
 class DialogFeedMix(QWidget, Ui_DialogFeedMix):
@@ -1865,19 +2483,44 @@ class DialogFan(QDialog, Ui_DialogFan):
         self.db = self.my_parent.db
         self.id = fan
         self.fan = self.my_parent.area_controller.fans[fan]
-        if self.fan.mode == 0:
-            self.dl_fan.setValue(0)
-            self.pb_mode.setText("Manual")
-        elif self.fan.mode == 2:
-            self.dl_fan.setValue(self.fan.speed)
-            self.pb_mode.setText("Auto")
-        else:
-            self.pb_mode.setText("Off")
         self.dl_fan.valueChanged.connect(self.change_speed)
         self.pb_close.clicked.connect(lambda: self.sub.close())
-        self.pb_mode.clicked.connect(self.change_mode)
-
+        self.pb_mode_off.clicked.connect(lambda: self.change_mode(0))
+        self.pb_mode_manual.clicked.connect(lambda: self.change_mode(1))
+        self.pb_mode_a.clicked.connect(lambda: self.change_mode(2))
+        self.pb_master.clicked.connect(self.power)
         self.my_parent.coms_interface.update_fan_speed.connect(self.update_speed)
+        self.check_mode()
+
+    def power(self):
+        if self.fan.master == 1:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("Confirm you wish to shut down the fan controller's power supply")
+            msg.setWindowTitle("Confirm Shut Down")
+            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+            msg.setDefaultButton(QMessageBox.Cancel)
+            if msg.exec_() == QMessageBox.Cancel:
+                return
+            self.fan.master = 0
+        else:
+            self.fan.master = 1
+
+    def check_mode(self):
+        if self.fan.master == 0:
+            self.lbl_mode.setText("DOWN")
+            return
+        if self.fan.mode == 0:
+            # self.dl_fan.setValue(0)
+            self.lbl_mode.setText("Off")
+            self.dl_fan.setEnabled(False)
+        elif self.fan.mode == 2:
+            self.dl_fan.setValue(self.fan.speed)
+            self.lbl_mode.setText("Auto")
+            self.dl_fan.setEnabled(False)
+        else:
+            self.lbl_mode.setText("Manual")
+            self.dl_fan.setEnabled(True)
 
     def change_speed(self, speed):
         """
@@ -1885,27 +2528,25 @@ class DialogFan(QDialog, Ui_DialogFan):
         @param speed:
         @type speed: int
         """
-        if speed > 0:
-            self.fan.mode = 1
-            self.fan.speed = speed
-        if speed == 0:
-            self.fan.stop()
+        self.fan.speed = speed
 
-    def change_mode(self):
-        if self.fan.mode == 0:
-            self.fan.mode = 1
-            self.pb_mode.setText("Manual")
+    def change_mode(self, mode):
+        if mode == 0:
+            self.fan.stop()
+            self.dl_fan.setEnabled(False)
+        if mode == 1:
+            self.fan.start_manual()
+            self.dl_fan.setEnabled(True)
             self.dl_fan.setValue(5)
-        elif self.fan.mode == 1:
-            self.fan.mode = 2
-            self.pb_mode.setText("Auto")
+        if mode == 2:
             self.fan.start_auto()
-        elif self.fan.mode == 2:
-            self.fan.mode = 0
-            self.pb_mode.setText("Off")
-            self.dl_fan.setValue(0)
+            self.dl_fan.setEnabled(False)
+        # self.fan.mode = mode
+        self.check_mode()
 
     @pyqtSlot(int, int, name="updateFanSpeed")
     def update_speed(self, fan, speed):
         if fan == self.id and self.fan.mode == 2:
+            self.dl_fan.blockSignals(True)
             self.dl_fan.setValue(speed)
+            self.dl_fan.blockSignals(False)

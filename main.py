@@ -13,7 +13,7 @@ from controller_feeding import FeedControl
 from controller_windows import WindowsController
 from dbController import MysqlDB
 from dialogs import DialogEngineerCommandSender, DialogEngineerIo, DialogDispatchInternal, DialogDispatchCounter, \
-    DialogDispatchReports, DialogStrainFinder
+    DialogDispatchReports, DialogStrainFinder, DialogDispatchStorage, DialogDispatchOverview
 from functions import multi_status_bar, get_last_friday
 from functions_colors import get_css_colours
 from status_codes import *
@@ -79,6 +79,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionCounter.triggered.connect(lambda: self.wc.show(DialogDispatchCounter(self.main_panel)))
         self.actionInternal.triggered.connect(lambda: self.wc.show(DialogDispatchInternal(self.main_panel)))
         self.actionReport.triggered.connect(lambda: self.wc.show(DialogDispatchReports(self.main_panel)))
+        self.actionStorage.triggered.connect(lambda: self.wc.show(DialogDispatchStorage(self.main_panel)))
+        self.actionOverview.triggered.connect(lambda: self.wc.show(DialogDispatchOverview(self.main_panel)))
 
         # Materials
         self.actionFinder.triggered.connect(lambda: self.wc.show(DialogStrainFinder(self.main_panel)))

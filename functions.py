@@ -37,6 +37,17 @@ def find_it(key, my_list):
     return None
 
 
+def auto_capital(line_edit_object):
+    """
+    Pass a line edit to this and it will change contents to upper case
+    :param line_edit_object:
+    :type line_edit_object:
+    """
+    edit = line_edit_object
+    text = edit.text()
+    edit.setText(text.upper())
+
+
 def get_last_friday(current_time=None):
     """
     Return the date of the friday before the date passed in. If no date is passed in it will use the current date

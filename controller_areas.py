@@ -5,6 +5,7 @@ from PyQt5.QtCore import QObject
 from PyQt5.QtGui import QPixmap
 
 from class_fan import FanController
+from class_outputs import OutputClass
 from class_sensor import SensorClass
 from class_soil_sensors import SoilSensorClass
 from defines import *
@@ -21,24 +22,19 @@ class AreaController(QObject):
         self.my_parent = parent
         self.db = self.my_parent.db
         self.main_panel = parent.main_panel
-        self.sensors = collections.defaultdict(SensorClass)
         self.areas_pid = collections.defaultdict(int)                         # The PID in the area
         self.areas_items = collections.defaultdict(list)     # The items in the area
         self.areas_processes = collections.defaultdict(ProcessClass)
         self.area_manual = collections.defaultdict(int)      # Area is in manual mode
 
-        self.load_areas()
-        self.load_processes()
-        self.load_sensors(1)
-        self.load_sensors(2)
-        self.load_sensors(3)
+        self.sensors = collections.defaultdict(SensorClass)
+        self.outputs = collections.defaultdict(OutputClass)
         self.soil_sensors = SoilSensorClass(self)
-
         self.fans = collections.defaultdict(FanController)
-        self.fans[1] = FanController(self, 1)
-        self.fans[2] = FanController(self, 2)
 
         self.main_panel.timer.start()
+
+        self.load_areas()
 
     def load_areas(self):
         """ Load the PID's and items for all the areas"""
@@ -62,7 +58,7 @@ class AreaController(QObject):
                     getattr(self.main_panel, "le_stage_{}".
                             format(area)).setPixmap(QPixmap(":/normal/manual_feed.png"))
                     if area > 2:
-                        return
+                        continue
                     # Check to see if light should be on or off
                     if self.area_is_manual(area) == 2:
                         self.my_parent.coms_interface.send_switch(OUT_LIGHT_1 - 1 + area, 1, MODULE_IO)
@@ -76,6 +72,17 @@ class AreaController(QObject):
                     if area < 3:
                         # Light should be off
                         self.my_parent.coms_interface.send_switch(OUT_LIGHT_1 - 1 + area, 0, MODULE_IO)
+
+        self.load_processes()
+
+        self.load_sensors(1)
+        self.load_sensors(2)
+        self.load_sensors(3)
+
+        self.fans[1] = FanController(self, 1)
+        self.sensors[self.fans[1].sensor].is_fan = True
+        self.fans[2] = FanController(self, 2)
+        self.sensors[self.fans[2].sensor].is_fan = True
 
     def load_processes(self):
         for area in self.areas_pid:
@@ -171,5 +178,5 @@ class AreaController(QObject):
         try:
             return self.areas_processes[area]
         except Exception as e:
-            print(e)
+            print("get_area_process", e)
             return 0

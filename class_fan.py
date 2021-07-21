@@ -1,6 +1,4 @@
 import time
-from threading import Timer
-from typing import Type
 
 from PyQt5.QtCore import QThread, pyqtSignal, QTimer
 # from simple_pid import PID
@@ -14,7 +12,7 @@ class FanController(QThread):
     def __init__(self, parent, _id):
         """ :type parent: MainWindow """
         QThread.__init__(self, parent)
-        self.my_parent = parent                         # This's parent which is water control
+        self.my_parent = parent                         # This's parent which is Area Controller
         self.db = self.my_parent.db
         self.id = _id
         self.pid = PID.PID(0, 0, 0)
@@ -28,6 +26,7 @@ class FanController(QThread):
         self._set_point = 0
         self._logging = False    # if True will log sensor temperature and fan speed
         self._mode = 0
+        self._master_power = 0
         self.fan_spin_up = int(self.db.get_config(CFT_FANS, "spin up"))
         self.startup_timer = QTimer()
         self.startup_timer.timeout.connect(self.spin_up_finished)
@@ -42,10 +41,12 @@ class FanController(QThread):
                      row[4] if row[4] is not None else 0)
         self._load_set_point()
         self._load_sensor_calibration()
-        if self.my_parent.area_has_process(self.id):
-            self.start_auto()
-        elif self.my_parent.area_is_manual(self.id):
-            self.start_manual()
+        self.master = int(self.db.get_config(CFT_FANS, "master", 1))
+        # Below is handled by master (power)
+        # if self.my_parent.area_has_process(self.id):
+        #     self.start_auto()
+        # elif self.my_parent.area_is_manual(self.id):
+        #     self.start_manual()
 
     def _load_sensor_calibration(self):
         self.input_calibration = self.db.execute_single(
@@ -58,6 +59,26 @@ class FanController(QThread):
         @rtype: object
         """
         return self.pid.tunings
+
+    @property
+    def master(self):
+        return self._master_power
+
+    @master.setter
+    def master(self, p):
+        self._master_power = p
+        self.my_parent.my_parent.coms_interface.send_switch(37, p)
+        self.db.set_config(CFT_FANS, "master", p)
+        if p == 0:
+            self.stop()
+        else:
+            if self.my_parent.area_has_process(self.id):
+                self.start_auto()
+            else:
+                if self.area_is_manual(self.id) == 2:
+                    self.start_manual()
+                else:
+                    self.mode = 0
 
     @property
     def mode(self):
@@ -81,7 +102,7 @@ class FanController(QThread):
         @param mode: Fan operation mode
         @type mode: int
         """
-        # self.my_parent.update_fan_mode(self.id, mode)
+        self.my_parent.my_parent.main_panel.update_fan_mode(self.id, mode)
         if mode == self._mode:
             return
         self._mode = mode
@@ -163,9 +184,11 @@ class FanController(QThread):
         self.pid.clear()
 
     def stop(self):
-        self.switch(0)
         self.mode = 0
         self.terminate()     # Stop thread
+        # self.thread_udp_client.quit()
+        # self.thread_udp_client.wait()
+        self.switch(0)
 
     def start_auto(self):
         self.start_manual()
@@ -175,9 +198,10 @@ class FanController(QThread):
 
     def start_manual(self):
         self.my_parent.my_parent.msg_sys.add("Fan {} starting".format(self.id), MSG_FAN_START + self.id, INFO)
-        self.switch(5)
-        self.spin_up = True
-        self.startup_timer.start()
+        if self.mode == 0:
+            self.switch(5)
+            self.spin_up = True
+            self.startup_timer.start()
         self.mode = 1
 
     def run(self) -> None:

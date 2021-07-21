@@ -5,16 +5,16 @@ from datetime import timedelta, datetime
 from PyQt5.QtGui import QIcon, QPixmap
 
 from defines import *
-import winsound
+from winsound import Beep
 
 
 def play_sound(sound):
-    winsound.Beep(sound[0], sound[1])
+    Beep(sound[0], sound[1])
     if len(sound) > 2:
-        winsound.Beep(sound[2], sound[3])
+        Beep(sound[2], sound[3])
 
 
-class Output(QObject):
+class OutputClass(QObject):
     output_update = pyqtSignal(int, int, str)   # id, state, tooltip
 
     def __init__(self, parent, o_id):
@@ -91,7 +91,7 @@ class Output(QObject):
         self.output_pin = row[5]
         self.short_name = row[6]
         self.has_process = False
-        if self.area < 4 and self.my_parent.areas[self.area] is not None:
+        if self.area < 4 and self.my_parent.areas_controller.has_process(self.area):
             self.has_process = True
         self.tooltip = row[0] + "<br>Type:" + str(row[2]) + " Sensor:" + str(row[3])
         if self.mode == 0:
@@ -258,21 +258,18 @@ class Output(QObject):
             self.switch(None, True)
             # self.my_parent.coms_interface.relay_send(NWC_OUTPUT, self.id, int(not self.status))
 
-    def switch(self, state=None, override_master=False):
+    def switch(self, state=None):
         """
         Both the master and slave will call this with override_master False, (auto mode, software controlled)
         but only master will send command unless the the override_master is True (Manual operation)
         @param state: On or Off
         @type state: int
-        @param override_master: When True slave switch Will send the commands
-        @type override_master: bool
         """
         if state is None:
             state = int(not self.status)
         if state != self.out_status_last:
-            if self.my_parent.mode == MASTER or override_master:    # This filters out any auto switches from slave
+            if self.my_parent.mode == MASTER:    # This filters out any auto switches from slave
                 self.my_parent.coms_interface.send_switch(self.output_pin, state)
-                self.my_parent.coms_interface.relay_send(NWC_OUTPUT, self.id, state)
             # @Todo Add to event log
             if state == OFF:
                 if self.type < 5:   # Not water heater

@@ -140,6 +140,7 @@ class CommunicationInterface(QObject):
 
     def udp_client_finished(self):
         # self.thread_udp_client.quit()
+        # self.thread_udp_client.wait()
         self.thread_udp_client.terminate()
 
     def udp_slave_finished(self):
