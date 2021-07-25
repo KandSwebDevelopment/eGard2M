@@ -8,6 +8,7 @@ from class_fan import FanController
 from class_outputs import OutputClass
 from class_sensor import SensorClass
 from class_soil_sensors import SoilSensorClass
+from controller_outputs import OutputController
 from defines import *
 from class_process import ProcessClass
 
@@ -19,16 +20,16 @@ class AreaController(QObject):
         :type parent: _main
         """
         super(AreaController, self).__init__()
-        self.my_parent = parent
-        self.db = self.my_parent.db
+        self.main_window = parent
+        self.db = self.main_window.db
         self.main_panel = parent.main_panel
         self.areas_pid = collections.defaultdict(int)                         # The PID in the area
         self.areas_items = collections.defaultdict(list)     # The items in the area
         self.areas_processes = collections.defaultdict(ProcessClass)
         self.area_manual = collections.defaultdict(int)      # Area is in manual mode
+        self.output_controller = OutputController(self)
 
         self.sensors = collections.defaultdict(SensorClass)
-        self.outputs = collections.defaultdict(OutputClass)
         self.soil_sensors = SoilSensorClass(self)
         self.fans = collections.defaultdict(FanController)
 
@@ -61,9 +62,9 @@ class AreaController(QObject):
                         continue
                     # Check to see if light should be on or off
                     if self.area_is_manual(area) == 2:
-                        self.my_parent.coms_interface.send_switch(OUT_LIGHT_1 - 1 + area, 1, MODULE_IO)
+                        self.main_window.coms_interface.send_switch(OUT_LIGHT_1 - 1 + area, 1, MODULE_IO)
                     else:
-                        self.my_parent.coms_interface.send_switch(OUT_LIGHT_1 - 1 + area, 0, MODULE_IO)
+                        self.main_window.coms_interface.send_switch(OUT_LIGHT_1 - 1 + area, 0, MODULE_IO)
 
                 else:
                     # Not in manual and no process
@@ -71,13 +72,16 @@ class AreaController(QObject):
                             format(area)).setPixmap(QtGui.QPixmap(":/normal/none.png"))
                     if area < 3:
                         # Light should be off
-                        self.my_parent.coms_interface.send_switch(OUT_LIGHT_1 - 1 + area, 0, MODULE_IO)
+                        self.main_window.coms_interface.send_switch(OUT_LIGHT_1 - 1 + area, 0, MODULE_IO)
 
         self.load_processes()
 
         self.load_sensors(1)
         self.load_sensors(2)
         self.load_sensors(3)
+        self.load_sensors(4)
+
+        self.output_controller.load_all_areas()
 
         self.fans[1] = FanController(self, 1)
         self.sensors[self.fans[1].sensor].is_fan = True
@@ -87,7 +91,7 @@ class AreaController(QObject):
     def load_processes(self):
         for area in self.areas_pid:
             if self.areas_pid[area] > 0:
-                self.areas_processes[area] = ProcessClass(self.areas_pid[area], self.my_parent)
+                self.areas_processes[area] = ProcessClass(self.areas_pid[area], self.main_window)
                 # Put process id in area status bar
                 ctrl = getattr(self.main_panel, "lbl_sp_%i_4" % area)
                 ctrl.setText(str(self.areas_processes[area].id))
@@ -152,11 +156,16 @@ class AreaController(QObject):
         return self.areas_pid[area]
 
     def area_has_process(self, area):
+        """ Returns True if there is a process in the area """
         if self.areas_pid[area] == 0:
             return False
         return True
 
     def area_is_manual(self, area):
+        """ Returns the manual mode of the area
+            0 - Off or Auto
+            1 - Manual, fan off
+            2 - Manual, fan on """
         self.area_manual[area] = int(self.db.get_config(CFT_AREA, "mode {}".format(area), 0))
         return self.area_manual[area]
 

@@ -22,6 +22,7 @@ from ui.dialogFan import Ui_DialogFan
 from ui.dialogFeedMix import Ui_DialogFeedMix
 from ui.area_manual import Ui_frm_area_manual
 from ui.dialogJournal import Ui_DialogJournal
+from ui.dialogOutputSettings import Ui_DialogOutputSetting
 from ui.dialogProcessInfo import Ui_DialogProcessInfo
 from ui.dialogStrainFinder import Ui_DialogStrainFinder
 
@@ -2550,3 +2551,83 @@ class DialogFan(QDialog, Ui_DialogFan):
             self.dl_fan.blockSignals(True)
             self.dl_fan.setValue(speed)
             self.dl_fan.blockSignals(False)
+
+
+class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
+    def __init__(self, parent, area, item):
+        """ :type parent: MainWindow """
+        super(DialogOutputSettings, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.main_panel = parent
+        self.output_controller = self.main_panel.area_controller.output_controller
+        self.db = parent.db
+        self.sub = None
+        self.area = area
+        self.item = item
+        self.font_i = QtGui.QFont()
+        self.font_i.setItalic(True)
+        self.font_n = QtGui.QFont()
+        self.font_n.setItalic(False)
+
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        sql = 'SELECT `id`, `name`, `area`, `type`, `input`, `range`, `pin`, `short_name` FROM {} WHERE ' \
+              '`area` = {} AND `item` = {}'. format(DB_OUTPUTS, self.area, self.item)
+        row = self.db.execute_one_row(sql)
+        self.mode = row[3]
+        self.pin_id = row[6]
+        self.sensor = row[4]
+        t = row[5].split(',')
+        self.offset_on = string_to_float(t[0])
+        self.offset_off = string_to_float(t[1])
+        self.lbl_name.setText("{} in area {}".format(row[1], self.area))
+        self.cb_out_mode_1_1.addItem("Off", 0)
+        self.cb_out_mode_1_1.addItem("Manual On", 1)
+        self.cb_out_mode_1_1.addItem("Sensor", 2)
+        self.cb_out_mode_1_1.addItem("Timer", 3)
+        self.cb_out_mode_1_1.addItem("Both", 4)
+        self.cb_out_mode_1_1.addItem("All Day", 5)
+        self.cb_out_mode_1_1.addItem("All Night", 6)
+        self.cb_out_mode_1_1.setCurrentIndex(self.cb_out_mode_1_1.findData(row[3]))
+        self.mode_change()
+        self.cb_out_mode_1_1.currentIndexChanged.connect(self.mode_change)
+
+        sql = 'SELECT name, id FROM {} WHERE area = {}'.format(DB_SENSORS_CONFIG, self.area)
+        rows = self.db.execute(sql)
+        for r in rows:
+            self.cb_sensor_out_1_1.addItem(r[0], r[1])
+        self.cb_sensor_out_1_1.setCurrentIndex(self.cb_sensor_out_1_1.findData(row[4]))
+        self.cb_sensor_out_1_1.currentIndexChanged.connect(self.sensor_change)
+        self.le_range_on_1_1.editingFinished.connect(self.range_change)
+        self.le_range_off_1_1.editingFinished.connect(self.range_change)
+
+        self.on, self.off = self.output_controller.get_set_temperatures(self.pin_id)
+
+        self.le_range_on_1_1.setText(str(self.on + self.offset_on))
+        self.le_range_off_1_1.setText(str(self.off + self.offset_off))
+        self.lbl_set_on_1_1.setText(str(self.on))
+        self.lbl_set_off_1_1.setText(str(self.off))
+
+    def mode_change(self):
+        self.frm_sensor.setEnabled(False)
+        self.frm_timer.setEnabled(False)
+        self.mode = self.cb_out_mode_1_1.currentData()
+        if self.mode == 2 or self.mode == 4:  # Sensor or both
+            self.frm_sensor.setEnabled(True)
+        if self.mode == 3 or self.mode == 4:  # Timer or both
+            self.frm_timer.setEnabled(True)
+        self.output_controller.change_mode(self.pin_id, self.mode)
+
+    def sensor_change(self):
+        self.sensor = self.cb_sensor_out_1_1.currentData()
+        self.output_controller.change_sensor(self.pin_id, self.sensor)
+
+    def range_change(self):
+        if self.sender().hasFocus():
+            return
+        on = string_to_float(self.le_range_on_1_1.text())
+        off = string_to_float(self.le_range_off_1_1.text())
+
+        on = on - self.on
+        off = off - self.off
+        self.output_controller.change_range(self.pin_id, on, off)

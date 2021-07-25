@@ -8,6 +8,7 @@ from defines import *
 
 class FanController(QThread):
     update_fan_speed = pyqtSignal(int, int)     # Fan id, speed
+    update_fan_mode = pyqtSignal(int, int)      # Fan id, mode
 
     def __init__(self, parent, _id):
         """ :type parent: MainWindow """
@@ -67,7 +68,7 @@ class FanController(QThread):
     @master.setter
     def master(self, p):
         self._master_power = p
-        self.my_parent.my_parent.coms_interface.send_switch(37, p)
+        self.my_parent.main_window.coms_interface.send_switch(37, p)
         self.db.set_config(CFT_FANS, "master", p)
         if p == 0:
             self.stop()
@@ -102,7 +103,7 @@ class FanController(QThread):
         @param mode: Fan operation mode
         @type mode: int
         """
-        self.my_parent.my_parent.main_panel.update_fan_mode(self.id, mode)
+        self.my_parent.main_window.main_panel.update_fan_mode(self.id, mode)
         if mode == self._mode:
             return
         self._mode = mode
@@ -168,17 +169,11 @@ class FanController(QThread):
     def set_kd(self, kd):
         self.pid.Kd = kd
 
-    # def set_mode(self, mode):
-    #     if mode == 0:
-    #         self.pid.set_auto_mode(False)
-    #     else:
-    #         self.pid.set_auto_mode(True, self.last_input)
-    #
     def update_input_value(self, value):
         self.input = value + self.input_calibration
         # print("Fan input ", value)
         if self._logging:
-            self.my_parent.my_parent.logger.save_fan_log(self.id, "{},{},{}".format(self.input, self._speed, self._set_point))
+            self.my_parent.main_window.logger.save_fan_log(self.id, "{},{},{}".format(self.input, self._speed, self._set_point))
 
     def reset(self):
         self.pid.clear()
@@ -197,7 +192,7 @@ class FanController(QThread):
             self.start()
 
     def start_manual(self):
-        self.my_parent.my_parent.msg_sys.add("Fan {} starting".format(self.id), MSG_FAN_START + self.id, INFO)
+        self.my_parent.main_window.msg_sys.add("Fan {} starting".format(self.id), MSG_FAN_START + self.id, INFO)
         if self.mode == 0:
             self.switch(5)
             self.spin_up = True
@@ -205,7 +200,7 @@ class FanController(QThread):
         self.mode = 1
 
     def run(self) -> None:
-        if self.my_parent.my_parent.mode == SLAVE:
+        if self.my_parent.main_window.mode == SLAVE:
             return
         while self.mode == 2:
             self.pid.update(self.input)
@@ -227,7 +222,7 @@ class FanController(QThread):
             self.spin_up = False
             self.switch(2)
             self.startup_timer.stop()
-            self.my_parent.my_parent.msg_sys.remove(MSG_FAN_START + self.id)
+            self.my_parent.main_window.msg_sys.remove(MSG_FAN_START + self.id)
             return
         self.startup_counter += 1
         self.update_fan_speed.emit(self.id, self.startup_counter - self.fan_spin_up)
@@ -240,7 +235,7 @@ class FanController(QThread):
         # self.update_fan_speed.emit(self.id, speed)
         self._speed = speed
         print("Fan {} switched to speed {} at temperature {}".format(self.id, self._speed, self.input))
-        self.my_parent.my_parent.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, self.id, speed)
+        self.my_parent.main_window.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, self.id, speed)
         self.last_speed = self._speed
 
     def _load_set_point(self):

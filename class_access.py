@@ -66,8 +66,9 @@ class Access(QObject):
         elif sw == SW_DOOR_LOCK:
             if state == ON_RELAY:
                 self.add_status(ACS_DOOR_LOCKED)
-                if self.has_status(ACM_CLOSING):
+                if self.has_status(ACS_AUTO_ARMED):
                     self.my_parent.coms_interface.send_switch(SW_COVER_CLOSE, ON_RELAY, MODULE_DE)
+                    self.remove_status(ACS_AUTO_ARMED)
             else:
                 self.remove_status(ACS_DOOR_LOCKED)
 
@@ -128,8 +129,7 @@ class Access(QObject):
                 self.add_status(ACS_DOOR_CLOSED)
                 if self.has_status(ACS_AUTO_ARMED):
                     self.timer_close.stop()
-                    self.remove_status(ACS_AUTO_ARMED)
-                    self.add_status(ACS_CLOSING)
+                    # self.remove_status(ACS_AUTO_ARMED)
                     self.my_parent.coms_interface.send_switch(SW_DOOR_LOCK, ON_RELAY, MODULE_DE)
             # self.status_door = _value
             # if self.auto_close == 1 and self.status_door == 0:  # Auto close is set and door has been opened, so Arm auto close

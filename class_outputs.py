@@ -7,27 +7,24 @@ from PyQt5.QtGui import QIcon, QPixmap
 from defines import *
 from winsound import Beep
 
-
-def play_sound(sound):
-    Beep(sound[0], sound[1])
-    if len(sound) > 2:
-        Beep(sound[2], sound[3])
+from functions import play_sound
 
 
 class OutputClass(QObject):
-    output_update = pyqtSignal(int, int, str)   # id, state, tooltip
+    # output_update = pyqtSignal(int, int, str)   # id, state, tooltip
 
     def __init__(self, parent, o_id):
         super().__init__()
         """ :type parent: MainWindow """
-        self.my_parent = parent
-        self.db = self.my_parent.db
+        self.output_controller = parent
+        self.db = self.output_controller.db
         self.id = o_id
         self.detection = DET_FALL  # How it is triggered
         self.output_pin = None  # The output number/pin number to switch
         self.name = ""
         self.area = None
         self.status = -1  # The output current status
+        self.status_last = None
         self.mode = 0   # 0=Off, 1=Manual, 2=Sensor, 3=Timer, 4=Both, 5=Day only, 6=Night only,
         #                 11=Advance on till off, 12 advance off till on
         #                 99 = Not a mode, indicates
@@ -44,7 +41,6 @@ class OutputClass(QObject):
         self.is_active = False  # If False then it is off and will not do anything
         self.duration = 0  # Time on max duration
         self.off_time = datetime.now()
-        self.out_status_last = None
         self.status_ctrl = None  # The control used to indicate output status
         self.info_ctrl = None   # The control which shows the on off settings
         self.remaining = 0  # The minuets remaining for on
@@ -60,23 +56,20 @@ class OutputClass(QObject):
         self.timer.setInterval(1000)
         self.timer.timeout.connect(self.timer_event)
 
-        # if self.id < 14:
-        # self.lbl = getattr(self.my_parent, "pb_output_status_%i" % self.id)
-        getattr(self.my_parent, "pb_output_status_%i" % self.id).clicked.connect(self.switch_by_button)
-        if self.id == 7:
-            getattr(self.my_parent, "pb_output_mode_%i" % self.id).\
-                clicked.connect(lambda: self.my_parent.show_drying_area())
-        elif self.id == 8:
-            getattr(self.my_parent, "pb_output_mode_%i" % self.id).\
-                clicked.connect(lambda: self.my_parent.show_workshop())
-        elif self.id < 11:
-            a = self.db.execute_single('SELECT `area` FROM {}'
-                                       ' WHERE id = {}'.format(DB_OUTPUTS, self.id))
-            getattr(self.my_parent, "pb_output_mode_%i" % self.id).\
-                clicked.connect(lambda: self.my_parent.show_outputs(a))
-        else:
-            getattr(self.my_parent, "pb_output_mode_%i" % self.id).\
-                clicked.connect(lambda: self.my_parent.show_water_heaters())
+        # if self.id == 7:
+        #     getattr(self.output_controller.main_panel, "pb_output_mode_%i" % self.id).\
+        #         # clicked.connect(lambda: self.output_controller.show_drying_area())
+        # elif self.id == 8:
+        #     getattr(self.output_controller, "pb_output_mode_%i" % self.id).\
+        #         clicked.connect(lambda: self.output_controller.show_workshop())
+        # elif self.id < 11:
+        #     a = self.db.execute_single('SELECT `area` FROM {}'
+        #                                ' WHERE id = {}'.format(DB_OUTPUTS, self.id))
+        #     getattr(self.output_controller, "pb_output_mode_%i" % self.id).\
+        #         clicked.connect(lambda: self.output_controller.show_outputs(a))
+        # else:
+        #     getattr(self.output_controller, "pb_output_mode_%i" % self.id).\
+        #         clicked.connect(lambda: self.output_controller.show_water_heaters())
 
     def load_profile(self):
         row = self.db.execute_one_row('SELECT `name`, `area`, `type`, `input`, `range`, `pin`, `short_name` FROM {}'
@@ -91,26 +84,36 @@ class OutputClass(QObject):
         self.output_pin = row[5]
         self.short_name = row[6]
         self.has_process = False
-        if self.area < 4 and self.my_parent.areas_controller.has_process(self.area):
+        if self.area < 4 and self.output_controller.areas_controller.area_has_process(self.area):
             self.has_process = True
         self.tooltip = row[0] + "<br>Type:" + str(row[2]) + " Sensor:" + str(row[3])
-        if self.mode == 0:
-            self.switch(OFF)
-        elif self.mode == 2 or self.mode == 3 or self.mode == 5 or self.mode == 6 or self.mode == 0:
-            self.update_info()
+        self._check()
+        # if self.mode == 0:
+        #     self.switch(OFF)
+        # elif self.mode == 2 or self.mode == 3 or self.mode == 5 or self.mode == 6 or self.mode == 0:
+        #     self.update_info()
         # if self.id > 10:
         #     return
         self.calculate_limits()
         self.update_control(self.status)
 
-    def save_mode(self, mode):
-        """ Updates and saves the outputs mode and saves it to the db and updates the outputs info control """
+    def set_mode(self, mode):
+        """ Updates the outputs mode and saves it to the db and updates the outputs info control """
         self.mode = mode
         self.db.execute_write('UPDATE {} SET type = {} WHERE id = {} LIMIT 1'.format(DB_OUTPUTS, mode, self.id))
         self._check()
         self.update_info()
         # Don't send this from here as is causes a loop
-        # self.my_parent.coms_interface.relay_send(NWC_OUTPUT_MODE, self.id, self.mode)
+        # self.output_controller.coms_interface.relay_send(NWC_OUTPUT_MODE, self.id, self.mode)
+
+    def set_mode_by_state(self, state=None):
+        """ This will only be triggered as a result of a user clicking on/off """
+        if state is None:
+            state = int(not self.status)
+        if state == 1:
+            self.set_mode(1)  # Manual = On
+        elif state == 0:
+            self.set_mode(0)    # Off
 
     def update_mode(self, mode):
         """ Updates the outputs mode does not save it to the db but updates the outputs info control"""
@@ -134,7 +137,7 @@ class OutputClass(QObject):
         """ Updates the input sensor and saves it to the db and reloads all outputs for the area.
             This ensures the sensor classes handler list has any old inputs removed"""
         self.db.execute_write('UPDATE {} SET input = {} WHERE id = {} LIMIT 1'.format(DB_OUTPUTS, sensor_id, self.id))
-        self.my_parent.load_outputs(self.area)
+        self.output_controller.load_outputs(self.area)
 
     def set_detection(self, detection):  # See defines DET_ detection types
         self.detection = detection
@@ -201,17 +204,17 @@ class OutputClass(QObject):
             return
         if self.mode == 5:  # Day
             if self.area == 1 and self.has_process:
-                self.switch(self.my_parent.process_from_location(1).get_light_status())
+                self.switch(self.output_controller.areas_controller.get_area_process(1).get_light_status())
                 return
             if self.area == 2 and self.has_process:
-                self.switch(self.my_parent.process_from_location(2).get_light_status())
+                self.switch(self.output_controller.areas_controller.get_area_process(2).get_light_status())
                 return
         if self.mode == 6:  # Night
             if self.area == 1 and self.has_process:
-                self.switch(1 - self.my_parent.process_from_location(1).get_light_status())
+                self.switch(1 - self.output_controller.areas_controller.get_area_process(1).get_light_status())
                 return
             if self.area == 2 and self.has_process:
-                self.switch(1 - self.my_parent.process_from_location(2).get_light_status())
+                self.switch(1 - self.output_controller.areas_controller.get_area_process(2).get_light_status())
                 return
 
     def check(self, value):
@@ -241,23 +244,23 @@ class OutputClass(QObject):
             print("Output ERROR ", e.args)
         return
 
-    def switch_by_button(self):
-        if self.mode == 1:
-            self.switch(OFF, True)
-            self.save_mode(0)
-            # self.my_parent.coms_interface.send_switch(self.output_pin, 0)
-            self.my_parent.coms_interface.relay_send(NWC_OUTPUT_MODE, self.id, self.mode)
-            # self.my_parent.coms_interface.relay_send(NWC_OUTPUT, self.id, OFF)
-        elif self.mode == 0:
-            self.switch(ON, True)
-            self.save_mode(1)
-            # self.my_parent.coms_interface.send_switch(self.output_pin, 1)
-            self.my_parent.coms_interface.relay_send(NWC_OUTPUT_MODE, self.id, self.mode)
-            # self.my_parent.coms_interface.relay_send(NWC_OUTPUT, self.id, ON)
-        else:
-            self.switch(None, True)
-            # self.my_parent.coms_interface.relay_send(NWC_OUTPUT, self.id, int(not self.status))
-
+    # def switch_by_button(self):
+    #     if self.mode == 1:
+    #         # self.switch(OFF, True)
+    #         self.save_mode(0)
+    #         # self.output_controller.coms_interface.send_switch(self.output_pin, 0)
+    #         self.output_controller.coms_interface.relay_send(NWC_OUTPUT_MODE, self.id, self.mode)
+    #         # self.output_controller.coms_interface.relay_send(NWC_OUTPUT, self.id, OFF)
+    #     elif self.mode == 0:
+    #         # self.switch(ON, True)
+    #         self.save_mode(1)
+    #         # self.output_controller.coms_interface.send_switch(self.output_pin, 1)
+    #         self.output_controller.coms_interface.relay_send(NWC_OUTPUT_MODE, self.id, self.mode)
+    #         # self.output_controller.coms_interface.relay_send(NWC_OUTPUT, self.id, ON)
+    #     # else:
+    #         # self.switch(None, True)
+    #         # self.output_controller.coms_interface.relay_send(NWC_OUTPUT, self.id, int(not self.status))
+    #
     def switch(self, state=None):
         """
         Both the master and slave will call this with override_master False, (auto mode, software controlled)
@@ -267,43 +270,48 @@ class OutputClass(QObject):
         """
         if state is None:
             state = int(not self.status)
-        if state != self.out_status_last:
-            if self.my_parent.mode == MASTER:    # This filters out any auto switches from slave
-                self.my_parent.coms_interface.send_switch(self.output_pin, state)
+        if state != self.status_last:
+            self.output_controller.areas_controller.main_window.coms_interface.send_switch(self.output_pin, state)
             # @Todo Add to event log
-            if state == OFF:
-                if self.type < 5:   # Not water heater
-                    self.off_time = None
-                if self.detection & DET_TIMER == DET_TIMER:
-                    self.is_active = False
-                    self.timer.stop()
-                    self.my_parent.lbl_workshop_timer.setText("")
-                if self.out_status_last is not None:
-                    play_sound(SND_OFF)
-            else:   # Water heater
-                if self.out_status_last is not None:
-                    play_sound(SND_ON)
-                if self.detection & DET_TIMER == DET_TIMER and self.type != 5:
-                    if self.duration > 0:
-                        self.off_time = (datetime.now() + timedelta(minutes=self.duration))
-                        self.remaining = self.duration
-                        self.timer.start()
-                    else:
-                        self.off_time = None
-                        self.remaining = 0
-            self.update_control(state)
-            self.out_status_last = state
-            self.status = state
-        return
+        #     if state == OFF:
+        #         if self.type < 5:   # Not water heater
+        #             self.off_time = None
+        #         if self.detection & DET_TIMER == DET_TIMER:
+        #             self.is_active = False
+        #             self.timer.stop()
+        #             self.output_controller.lbl_workshop_timer.setText("")
+        #         if self.out_status_last is not None:
+        #             play_sound(SND_OFF)
+        #     else:   # Water heater
+        #         if self.out_status_last is not None:
+        #             play_sound(SND_ON)
+        #         if self.detection & DET_TIMER == DET_TIMER and self.type != 5:
+        #             if self.duration > 0:
+        #                 self.off_time = (datetime.now() + timedelta(minutes=self.duration))
+        #                 self.remaining = self.duration
+        #                 self.timer.start()
+        #             else:
+        #                 self.off_time = None
+        #                 self.remaining = 0
+        # return
+
+    def switch_update(self, state):
+        self.update_control(state)
+        self.status_last = state
+        self.status = state
+        if state == 1:
+            play_sound(SND_ON)
+        else:
+            play_sound(SND_OFF)
 
     def soft_switch(self, state):
         """ This is only used by the relay command, it only updates it's output state and display, it does
             not do any switching"""
         self.update_control(state)
-        self.out_status_last = state
+        self.status_last = state
         self.status = state
         if state == ON:
-            if self.out_status_last is not None:
+            if self.status_last is not None:
                 play_sound(SND_ON)
             if self.detection & DET_TIMER == DET_TIMER and self.type != 5:
                 if self.duration > 0:
@@ -314,8 +322,8 @@ class OutputClass(QObject):
             if self.detection & DET_TIMER == DET_TIMER:
                 self.is_active = False
                 self.timer.stop()
-                self.my_parent.lbl_workshop_timer.setText("")
-            if self.out_status_last is not None:
+                self.output_controller.lbl_workshop_timer.setText("")
+            if self.status_last is not None:
                 play_sound(SND_OFF)
 
     def timer_event(self):
@@ -323,7 +331,7 @@ class OutputClass(QObject):
         if self.remaining < 1:
             self.timer.stop()
             self.switch()
-            self.my_parent.lbl_workshop_timer.setText("")
+            self.output_controller.lbl_workshop_timer.setText("")
             return
         m, s = divmod(self.remaining, 60)
         h, m = divmod(m, 60)
@@ -331,11 +339,11 @@ class OutputClass(QObject):
             s = '{:d}:{:02d}'.format(h, m)
         else:
             s = '{:02d}:{:02d}'.format(m, s)
-        self.my_parent.lbl_workshop_timer.setText(s)
+        self.output_controller.lbl_workshop_timer.setText(s)
 
     def update_control(self, state):
-        self.output_update.emit(self.id, self.status, self.tooltip)
-        ctrl = getattr(self.my_parent, "pb_output_status_%i" % self.id)
+        # self.output_update.emit(self.id, self.status, self.tooltip)
+        ctrl = getattr(self.output_controller.main_panel, "pb_output_status_%i" % self.id)
 
         if state == ON:
             ctrl.setIcon(QIcon(":/normal/output_on.png"))
@@ -343,8 +351,8 @@ class OutputClass(QObject):
             ctrl.setIcon(QIcon(":/normal/output_off.png"))
 
     def update_info(self):
-        getattr(self.my_parent, "lbl_output_number_%i" % self.id).setText(self.short_name[1:])
-        ctrl = getattr(self.my_parent, "lbl_output_%i" % self.id)
+        getattr(self.output_controller.main_panel, "lbl_output_number_%i" % self.id).setText(self.short_name[1:])
+        ctrl = getattr(self.output_controller.main_panel, "lbl_output_%i" % self.id)
         if self.short_name[:1] == "H":
             ctrl.setPixmap(QPixmap(":/normal/output_heater.png"))
         if self.short_name[:1] == "A":
@@ -352,9 +360,9 @@ class OutputClass(QObject):
         if self.short_name[:1] == "S":
             ctrl.setPixmap(QPixmap(":/normal/output_socket.png"))
 
-        if self.has_process or self.area > 3 or self.my_parent.area_manual[self.area] == 1:
-            getattr(self.my_parent, "frm_output_%i" % self.id).setEnabled(True)
-            ctrl = getattr(self.my_parent, "pb_output_mode_%i" % self.id)
+        if self.has_process or self.area > 3:
+            getattr(self.output_controller.main_panel, "frm_output_%i" % self.id).setEnabled(True)
+            ctrl = getattr(self.output_controller.main_panel, "pb_output_mode_%i" % self.id)
             if self.mode == 0:
                 ctrl.setIcon(QIcon(":/normal/output_off_1.png"))
                 ctrl.setToolTip("Mode: Off")
@@ -379,38 +387,38 @@ class OutputClass(QObject):
                 ctrl.setIcon(QIcon(":/normal/output_night.png"))
                 ctrl.setToolTip("Mode: All Night")
 
-            ctrl = getattr(self.my_parent, "lbl_output_sensor_%i" % self.id)
+            ctrl = getattr(self.output_controller.main_panel, "lbl_output_sensor_%i" % self.id)
             if self.mode == 1:
                 ctrl.setPixmap(QtGui.QPixmap())
             else:
                 if self.input < 0:
                     ctrl.setPixmap(QtGui.QPixmap(":/normal/none.png"))
                 else:
-                    if self.my_parent.sensors[self.input].short_name.find("Hum") == 0:
+                    if self.output_controller.areas_controller.sensors[self.input].short_name.find("Hum") == 0:
                         ctrl.setPixmap(QtGui.QPixmap(":/normal/065-humidity.png"))
-                    elif self.my_parent.sensors[self.input].short_name.find("Roo") == 0:
+                    elif self.output_controller.areas_controller.sensors[self.input].short_name.find("Roo") == 0:
                         ctrl.setPixmap(QtGui.QPixmap(":/normal/061-care.png"))
-                    elif self.my_parent.sensors[self.input].short_name.find("Pro") == 0:
+                    elif self.output_controller.areas_controller.sensors[self.input].short_name.find("Pro") == 0:
                         ctrl.setPixmap(QtGui.QPixmap(":/normal/067-leaf.png"))
-                    elif self.my_parent.sensors[self.input].short_name.find("Cor") == 0:
+                    elif self.output_controller.areas_controller.sensors[self.input].short_name.find("Cor") == 0:
                         ctrl.setPixmap(QtGui.QPixmap(":/normal/062-plant.png"))
 
             if self.mode == 2 or self.mode == 4:
-                getattr(self.my_parent, "lbl_output_set_off_%i" % self.id).setText(str(self.temp_off_adjusted))
-                getattr(self.my_parent, "lbl_output_set_on_%i" % self.id).setText(str(self.temp_on_adjusted))
+                getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.id).setText(str(self.temp_off_adjusted))
+                getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.id).setText(str(self.temp_on_adjusted))
                 if self.temp_on != self.temp_on_adjusted:
-                    getattr(self.my_parent, "lbl_output_set_on_%i" % self.id).setFont(self.font_i)
+                    getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.id).setFont(self.font_i)
                 else:
-                    getattr(self.my_parent, "lbl_output_set_on_%i" % self.id).setFont(self.font_n)
+                    getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.id).setFont(self.font_n)
                 if self.temp_off != self.temp_off_adjusted:
-                    getattr(self.my_parent, "lbl_output_set_off_%i" % self.id).setFont(self.font_i)
+                    getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.id).setFont(self.font_i)
                 else:
-                    getattr(self.my_parent, "lbl_output_set_off_%i" % self.id).setFont(self.font_n)
+                    getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.id).setFont(self.font_n)
             else:
-                getattr(self.my_parent, "lbl_output_set_off_%i" % self.id).clear()
-                getattr(self.my_parent, "lbl_output_set_on_%i" % self.id).clear()
+                getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.id).clear()
+                getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.id).clear()
                 # t += "<br>F: {}<br>N: {}".format(self.temp_off_adjusted, self.temp_on_adjusted)
             # self.info_ctrl.setText(t)
         else:
-            getattr(self.my_parent, "frm_output_%i" % self.id).setEnabled(False)
+            getattr(self.output_controller.main_panel, "frm_output_%i" % self.id).setEnabled(False)
             pass

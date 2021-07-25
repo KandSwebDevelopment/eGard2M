@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QWidget, QMdiSubWindow
 from class_fan import FanController
 from class_soil_sensors import SoilSensorClass
 from defines import *
-from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan
+from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan, DialogOutputSettings
 from scales_com import ScalesComs
 from ui.main import Ui_Form
 
@@ -175,6 +175,34 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.pbinfo_2.clicked.connect(lambda: self.wc.show_process_info(2))
         self.pbinfo_3.clicked.connect(lambda: self.wc.show_process_info(3))
 
+        # Area 1
+        self.pb_output_status_1.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_11))
+        self.pb_output_status_2.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_12))
+        self.pb_output_status_3.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_AREA_1))
+        self.pb_output_status_9.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_SPARE_1))
+        self.pb_output_mode_1.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 1)))
+        self.pb_output_mode_2.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 2)))
+        self.pb_output_mode_3.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 3)))
+        self.pb_output_mode_9.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 4)))
+        # Area 2
+        self.pb_output_status_4.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_21))
+        self.pb_output_status_5.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_22))
+        self.pb_output_status_6.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_AREA_2))
+        self.pb_output_status_10.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_SPARE_2))
+        self.pb_output_mode_4.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 2, 1)))
+        self.pb_output_mode_5.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 2, 2)))
+        self.pb_output_mode_6.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 2, 3)))
+        self.pb_output_mode_10.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 2, 4)))
+        # Area 3
+        self.pb_output_status_7.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_31))
+        self.pb_output_mode_7.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 3, 1)))
+        # Workshop
+        self.pb_output_status_8.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_ROOM))
+        self.pb_output_mode_8.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 4, 1)))
+        # Water
+        self.pb_output_status_11.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_WATER_HEATER_1))
+        self.pb_output_status_12.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_WATER_HEATER_2))
+
         self.coms_interface.update_sensors.connect(self.update_sensors)
         self.coms_interface.update_switch.connect(self.update_switch)
         self.access.update_access.connect(self.update_access)
@@ -183,6 +211,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.coms_interface.update_other_readings.connect(self.update_others)
         self.area_controller.soil_sensors.update_soil_reading.connect(self.update_soil_display)
         self.coms_interface.update_fan_speed.connect(self.update_fans)
+        self.coms_interface.update_float_switch.connect(self.update_float)
 
     def test(self):
         print(self.my_parent.mdiArea.subWindowList())
@@ -580,6 +609,16 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         elif fan == 2:
             self.lefanspeed_2.setText(str(speed))
 
+    @pyqtSlot(int, int, name="updateFloat")
+    def update_float(self, tank, pos):
+        ctrl = getattr(self, "lbl_float_{}".format(tank))
+        if pos == FLOAT_UP:
+            ctrl.setPixmap(QPixmap(":/normal/006-flood.png"))
+            ctrl.setStyleSheet("background-color: None;")
+        else:
+            ctrl.setPixmap(QPixmap(":/normal/007-tide.png"))
+            ctrl.setStyleSheet("background-color: Yellow; border-radius: 6px;")
+
     def update_fan_mode(self, fan, mode):
         if fan == 1:
             ctrl = self.lbl_fan_mode_1
@@ -633,9 +672,9 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         try:
             self.lelightlevel_1.setText(str(round((100 / 1024) * int(data[0]), 1)))
             self.lelightlevel_2.setText(str(round((100 / 1024) * int(data[1]), 1)))
-            # self.outputs[OP_W_HEATER_1].float_update(1, int(data[2]))
+            self.update_float(1, int(data[2]))
             # self.outputs[OP_W_HEATER_1].float_update(int(data[2]), int(data[3]))
-            # self.update_float(int(data[2]), int(data[3]))
+            self.update_float(2, int(data[3]))
         except Exception as e:
             print("UPDATE OTHERS ERROR ", e.args)
 

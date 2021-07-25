@@ -19,8 +19,12 @@ class MysqlDB:
         self.my_parent = parent
         self.settings = QSettings(FN_SETTINGS, QSettings.IniFormat)
         self.mode = int(self.settings.value("mode"))  # 1=Master  2=Slave
-        self.is_master = True
-        self.config_col = "value_m"
+        if self.mode == MASTER:
+            self.is_master = True
+            self.config_col = "value_m"
+        else:
+            self.config_col = "value_s"
+            self.is_master = False
         self.host = self.settings.value("Database/host")
         self.user = self.settings.value("Database/user")
         self.password = self.settings.value("Database/password")

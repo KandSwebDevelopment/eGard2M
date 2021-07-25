@@ -43,9 +43,7 @@ class CommunicationInterface(QObject):
         This is a wrapper for network communication. It creates threads and command stacks for each connection.
         All communication requests are sent to this and is puts the requests into the appropriate stack and starts
         the thread.
-        Threads are instances of UdpClient and TcpClient, these have a 'communicate' function which does the actual
-        network requesting and receiving and will loop so long as there is something in any of its stacks. It is this
-        function which is run in the thread
+        Threads are instances of UdpClient,
         @type parent: MainWindow
         """
         QObject.__init__(self, parent)
@@ -106,7 +104,7 @@ class CommunicationInterface(QObject):
             self.de_address = (self.de_ip, self.de_port)
             self.fu_address = (self.fu_ip, self.fu_port)
             self.slave_address = (self.slave_ip, self.slave_port)
-        self.slave_address = (self.slave_ip, self.slave_port)
+        # self.slave_address = (self.slave_ip, self.slave_port)
 
         self.udp_client = UdpClient(self, 1)
         self.udp_relay = UdpClient(self, 2)
