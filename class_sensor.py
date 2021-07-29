@@ -52,13 +52,6 @@ class SensorClass(object):
         self.area = row[3]
         self.area_range = row[4]
         self.short_name = row[5]
-        # Check to see if process is running in the area for this sensor
-        # if self.my_parent.process_is_at_location(self.area):
-        #     # if self.area < 4 and self.my_parent.areas[self.area] is not None:
-        #     # There is so load the range appropriate range for the process
-        #     r = self.my_parent.process_from_location(self.area).temperature_ranges_active
-        #     self.process_id = self.my_parent.process_from_location(self.area).id
-        #     # self.set_range(r)
 
     @property
     def is_fan(self):
@@ -119,6 +112,12 @@ class SensorClass(object):
     def get_set(self):
         return self.set
 
+    def get_set_temperatures(self):
+        return self.set, self.high, self.low
+
+    def get_org_temperatures(self):
+        return self.set_org, self.high_org, self.low_org
+
     def update_handler(self, handler):
         handler.set_limits(self.low, self.set)
         if handler.short_name not in self.handler_info:
@@ -128,35 +127,36 @@ class SensorClass(object):
     def update_status_ctrl(self):
         if self.status_ctrl is None:
             return
-        ht = ""
-        for h in self.handler_info.keys():
-            ht += h + "<br>"
+        # ht = ""
+        # for h in self.handler_info.keys():
+        #     ht += h + "<br>"
         t = "<table>"
+        #  Low value
+        if self.low_org != 999 and self.low != self.low_org:
+            tv = "<i>{}</i>".format(self.low)
+        else:
+            tv = self.low
+        t += "<tr><td style='font-size:10px; padding:2px 0px 0px 0px;'>{}</td>".format(tv)
+
+        #  set value
         if self.set_org != 999 and self.set != self.set_org:
             tv = "<i>{}</i>".format(self.set)
         else:
             tv = self.set
         if self._is_fan:
-            t += "<tr>" \
-                 "<td style='padding:0 15px 0 px;' rowspan='2' style='text-align:center; vertical-align:middle;" \
+            t += "<td style='padding:0px 12px 0px 12px;' rowspan='2' style='text-align:center; vertical-align:middle;" \
                  " color:blue'>{}</td>".format(tv)
         else:
-            t += "<tr>" \
-                 "<td style='padding:0 15px 0 px;' rowspan='2' style='text-align:center; vertical-align:middle'>{}</td>". \
+            t += "<td style='padding:0px 12px 0px 12px;' style='text-align:center; vertical-align:middle'>{}</td>". \
                 format(tv)
+
+        #      high value
         if self.high_org != 999 and self.high != self.high_org:
             tv = "<i>{}</i>".format(self.high)
         else:
             tv = self.high
-        t += "<td style='padding:0 15px 0 px;' style='font-size:11px;'>{}</td>".format(tv)
-        t += "<td rowspan='2' style='font-size:10px;'>{}</td></tr>".format(ht)
-        if self.low_org != 999 and self.low != self.low_org:
-            tv = "<i>{}</i>".format(self.low)
-        else:
-            tv = self.low
-        t += "<tr><td style='font-size:11px;'>{}</td></tr>".format(tv)
-        t += "</table>"
-        # print(t)
+        t += "<td style='padding:2px 0px 0px 0px;' style='font-size:10px;'>{}</td>".format(tv)
+        t += "</tr></table>"
         self.status_ctrl.setText(t)
 
     def off(self):

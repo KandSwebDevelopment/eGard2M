@@ -66,9 +66,9 @@ class Access(QObject):
         elif sw == SW_DOOR_LOCK:
             if state == ON_RELAY:
                 self.add_status(ACS_DOOR_LOCKED)
-                if self.has_status(ACS_AUTO_ARMED):
+                if self.has_status(ACS_CLOSING):
                     self.my_parent.coms_interface.send_switch(SW_COVER_CLOSE, ON_RELAY, MODULE_DE)
-                    self.remove_status(ACS_AUTO_ARMED)
+                self.remove_status(ACS_AUTO_ARMED)
             else:
                 self.remove_status(ACS_DOOR_LOCKED)
 

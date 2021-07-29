@@ -72,7 +72,7 @@ class OutputClass(QObject):
         #         clicked.connect(lambda: self.output_controller.show_water_heaters())
 
     def load_profile(self):
-        row = self.db.execute_one_row('SELECT `name`, `area`, `type`, `input`, `range`, `pin`, `short_name` FROM {}'
+        row = self.db.execute_one_row('SELECT `name`, `area`, `type`, `input`, `range`, `pin`, `short_name`, `trigger` FROM {}'
                                       ' WHERE id = {}'. format(DB_OUTPUTS, self.id))
         if len(row) == 0:
             return
@@ -80,6 +80,7 @@ class OutputClass(QObject):
         self.area = row[1]
         self.mode = row[2]
         self.input = row[3]
+        self.detection = row[7]
         self.range = (row[4]).split(",")
         self.output_pin = row[5]
         self.short_name = row[6]
@@ -141,6 +142,7 @@ class OutputClass(QObject):
 
     def set_detection(self, detection):  # See defines DET_ detection types
         self.detection = detection
+        self.db.execute_write('UPDATE `trigger` FROM {} WHERE id = {} LIMIT 1'. format(DB_OUTPUTS, self.id))
 
     def set_duration(self, duration):   # Only for timer
         """ Set timer duration
@@ -231,7 +233,7 @@ class OutputClass(QObject):
                     elif value <= self.temp_on_adjusted:
                         self.switch(ON)
                 elif self.detection & DET_FALL == DET_FALL:
-                    if value <= self.temp_on_adjusted:
+                    if value <= self.temp_on_adjusted and value <= self.temp_off_adjusted:
                         self.switch(ON)
                     elif value >= self.temp_off_adjusted:
                         self.switch(OFF)

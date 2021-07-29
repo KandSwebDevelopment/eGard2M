@@ -79,7 +79,8 @@ class AreaController(QObject):
         self.load_sensors(1)
         self.load_sensors(2)
         self.load_sensors(3)
-        self.load_sensors(4)
+        self.load_sensors(4)    # Workshop
+        self.load_sensors(5)    # Outside
 
         self.output_controller.load_all_areas()
 
@@ -189,3 +190,14 @@ class AreaController(QObject):
         except Exception as e:
             print("get_area_process", e)
             return 0
+
+    def get_light_status(self, area):
+        if self.area_has_process(area):
+            return self.get_area_process(area).get_light_status()
+
+    def pet_process_active_temperature_ranges(self, area):
+        if self.area_has_process(area):
+            return self.get_area_process(area).temperature_ranges_active
+
+    def sensors_set_as_fan(self, s_id, state):
+        self.sensors[s_id].is_fan(state)

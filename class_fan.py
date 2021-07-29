@@ -131,6 +131,18 @@ class FanController(QThread):
         self.my_parent.sensors[self._sensor].is_fan = True
         self.my_parent.update_fans_sensor()
 
+    def reload_sensor(self):
+        """ reload sensor when relay command indicates a sensor change"""
+        if self._sensor > 0:
+            self.my_parent.sensors[self._sensor].is_fan = False
+        row = self.db.execute_single("SELECT sensor FROM {} WHERE id = {}".format(DB_FANS, self.id))
+        self._sensor = row if row is not None else 0
+        self._load_set_point()
+        self._load_sensor_calibration()
+        self.pid.clear()
+        self.my_parent.sensors[self._sensor].is_fan = True
+        self.my_parent.update_fans_sensor()
+
     @property
     def speed(self):
         return self._speed

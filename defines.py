@@ -300,6 +300,7 @@ NWC_OUTPUT = "output"                       # An output has operated, which outp
 NWC_OUTPUT_MODE = "output mode"             # An output mode has changed, send output id, mode
 NWC_OUTPUT_SENSOR = "output sensor"         # An output sensor has changed, send area
 NWC_OUTPUT_RANGE = "output range"           # An output range has changed, send output id
+NWC_OUTPUT_TRIGGER = "output trigger"       # An output trigger (rise/fall etc) has changed
 NWC_PROCESS_FEED_MODE = "feed mode"         # A feed mode has been changed, send location
 NWC_PROCESS_FEED_DATE = "feed date"         # A feed has been changed, send location
 NWC_PROCESS_MIX_CHANGE = "mix change"       # A feed mix has been changed, send location

@@ -33,7 +33,7 @@ class CommunicationInterface(QObject):
     update_float_switch = pyqtSignal(int, int, name="updateFloat")  # Float sw number, position
     update_mix_tank_status = pyqtSignal(str, int, name="update_mix_tank")
     update_mix_weight = pyqtSignal(float, name="update_mix_weight")
-    update_for_helper = pyqtSignal(str, list, name="updateForHelper")
+    update_from_relay = pyqtSignal(str, list, name="updateForHelper")
     update_switch = pyqtSignal(int, int, int, name="updateSwitch")   # Sw No, State, From Module
     update_fan_speed = pyqtSignal(int, int, name="updateFanSpeed")     # Fan no, speed
 
@@ -338,7 +338,7 @@ class CommunicationInterface(QObject):
                 command == NWC_MESSAGE or \
                 command == NWC_ACCESS_BOOST or \
                 command == NWC_SOIL_LOAD:
-            self.update_for_helper.emit(command, [])
+            self.update_from_relay.emit(command, [])
 
         elif command == NWC_PROCESS_FEED_DATE or \
                 command == NWC_PROCESS_MIX_CHANGE or \
@@ -349,16 +349,16 @@ class CommunicationInterface(QObject):
                 command == NWC_ACCESS_OPERATE or \
                 command == NWC_FEED or \
                 command == NWC_OUTPUT_SENSOR:
-            self.update_for_helper.emit(command, [int(prams[0])])
+            self.update_from_relay.emit(command, [int(prams[0])])
 
         elif command == NWC_OUTPUT or \
                 command == NWC_OUTPUT_MODE or \
                 command == NWC_FAN_SENSOR or \
                 command == NWC_FAN_UPDATE:
-            self.update_for_helper.emit(command, [int(prams[0]), int(prams[1])])
+            self.update_from_relay.emit(command, [int(prams[0]), int(prams[1])])
 
         elif command == NWC_WATER_LEVELS:
-            self.update_for_helper.emit(command, [float(prams[0]), float(prams[1])])
+            self.update_from_relay.emit(command, [float(prams[0]), float(prams[1])])
 
     # Sending functions communication
     def get_next_udp_communication(self, who) -> (str, tuple):

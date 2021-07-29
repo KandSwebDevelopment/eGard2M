@@ -7,6 +7,7 @@ from PyQt5 import QtCore
 from PyQt5.QtWidgets import *
 
 
+
 def m_box(title, text, style):
     # Button styles:
     # 0 : OK
@@ -28,6 +29,10 @@ def m_box(title, text, style):
 def play_sound(sound):
     for s in range(0, len(sound), 2):  # read in pairs, freq and duration
         winsound.Beep(sound[s], sound[s + 1])
+
+
+def sound_click():
+    winsound.PlaySound("C:\\Windows\\Media\\Windows Ding.wav", winsound.SND_FILENAME)
 
 
 def find_it(key, my_list):

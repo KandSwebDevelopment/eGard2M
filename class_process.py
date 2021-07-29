@@ -191,27 +191,7 @@ class ProcessClass(QObject):
         self.load_lighting_schedule()
         self.get_light_status()
         self.load_temperature_schedule()
-        # self.load_feed_schedule()
         self.load_active_temperature_ranges()
-        # self.load_feed_date()
-
-    # def load_feed_date(self):
-    #     if self.location > 2:
-    #         return
-    #     # Feed date does no apply to area 3
-    #     sql = "SELECT dt FROM {} WHERE item = 'feed date' and id = {}".format(DB_PROCESS_ADJUSTMENTS, self.location)
-    #     self.last_feed_date = self.db.execute_single(sql)
-    #     # if value is not None:
-    #     if self.last_feed_date is not None:
-    #         if self.last_feed_date < datetime.now() + timedelta(days=-self.feed_frequency - 2):
-    #             self.my_parent.msg_sys.add("Check feed date for area " + str(self.location), MSG_FEED_DATE +
-    #                                        self.location, WARNING)
-    #     else:
-    #         self.my_parent.msg_sys.add("Check feed date for area " + str(self.location), MSG_FEED_DATE + self.location,
-    #                                    WARNING)
-    #     # print("New Process Class id = " + str(self.id))
-    #     if self.last_feed_date is not None:
-    #         self.get_future_feeds()
 
     def process_load_stage_info(self):
         # load the the stages for the process
@@ -894,7 +874,12 @@ class ProcessClass(QObject):
         for row in rows:
             if row[0] > 0:
                 if row[1] in self.temperature_ranges_active:
-                    self.temperature_ranges_active[row[1]][row[2]] = row[0]
+                    if row[0] == 0:
+                        # No adjustment so set it to original value
+                        self.temperature_ranges_active[row[1]][row[2]] = row[0]
+                        pass
+                    else:
+                        self.temperature_ranges_active[row[1]][row[2]] = row[0]
         sql = 'SELECT value, item, setting FROM {} WHERE `area` = {} and `day` = {}'.\
             format(DB_PROCESS_TEMPERATURE, self.location, int(not self.light_status))
         rows = self.db.execute(sql)
@@ -908,9 +893,9 @@ class ProcessClass(QObject):
         produces two arrays of temperature settings, one for day and one for night based,
         process.active_temperature_ranges for current light state
         process.inactive_temperature_ranges for the alt light state
-        These will be altered by load_temperature_adjustments to any user setting
+        These will be altered by load_temperature_adjustments to add any user setting
         It also creates two arrays of the original default values which can be compared with to detect user changes
-        DO NOT USE this to get the temp range use the variable process.active_temperature_ranges
+        DO NOT USE this to get the temp range use the variable process.temperature_ranges_active
         @return: Will only have a return list if current is False
         @rtype: list
         """

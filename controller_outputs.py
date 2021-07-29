@@ -1,10 +1,11 @@
 import collections
+import winsound
 
 from PyQt5.QtCore import QObject, pyqtSlot
 
 from class_outputs import OutputClass
-from defines import DB_OUTPUTS, OUT_HEATER_11, SND_CLICK, NWC_OUTPUT_MODE, NWC_OUTPUT_SENSOR, NWC_OUTPUT_RANGE
-from functions import play_sound
+from defines import *
+from functions import play_sound, sound_click
 
 
 class OutputController(QObject):
@@ -60,11 +61,18 @@ class OutputController(QObject):
         self.outputs[op_id].set_range(on, off)
         self.main_panel.coms_interface.relay_send(NWC_OUTPUT_RANGE, op_id)
 
+    def change_trigger(self, op_id, mode):
+        self.outputs[op_id].set_detection(mode)
+        self.main_panel.coms_interface.relay_send(NWC_OUTPUT_TRIGGER, op_id)
+
     def switch_output(self, op_id, state=None):
-        # Instead of calling switch this calls set_mode_by_state as user has clicked on/off so output will go into
-        # manual off or manual on, and this set_mode_by_state calls the switch
-        self.outputs[op_id].set_mode_by_state(state)
-        play_sound(SND_CLICK)
+        if self.outputs[op_id].mode >= 2:    # Auto modes
+            self.outputs[op_id].switch()
+        else:   # Manual off or on
+            # Instead of calling switch this calls set_mode_by_state as user has clicked on/off so output will go into
+            # manual off or manual on, and this set_mode_by_state calls the switch
+            self.outputs[op_id].set_mode_by_state(state)
+        sound_click()
 
     @pyqtSlot(int, int, int, name="updateSwitch")
     def switch_update(self, sw, state, module):

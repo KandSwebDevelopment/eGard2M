@@ -11,7 +11,8 @@ from PyQt5.QtWidgets import QWidget, QMdiSubWindow
 from class_fan import FanController
 from class_soil_sensors import SoilSensorClass
 from defines import *
-from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan, DialogOutputSettings
+from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan, DialogOutputSettings, \
+    DialogSensorSettings
 from scales_com import ScalesComs
 from ui.main import Ui_Form
 
@@ -38,6 +39,20 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.lbl_access_2.installEventFilter(self)
         self.lbl_fan_1.installEventFilter(self)
         self.lbl_fan_2.installEventFilter(self)
+
+        self.tesstatus_2.viewport().installEventFilter(self)
+        self.tesstatus_3.viewport().installEventFilter(self)
+        self.tesstatus_4.viewport().installEventFilter(self)
+        self.tesstatus_5.viewport().installEventFilter(self)
+        self.tesstatus_6.viewport().installEventFilter(self)
+        self.tesstatus_7.viewport().installEventFilter(self)
+        self.tesstatus_8.viewport().installEventFilter(self)
+        self.tesstatus_9.viewport().installEventFilter(self)
+        self.tesstatus_10.viewport().installEventFilter(self)
+        self.tesstatus_11.viewport().installEventFilter(self)
+        self.tesstatus_12.viewport().installEventFilter(self)
+        for x in range(0, 13):
+            getattr(self, "tesstatus_%i" % x).viewport().setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
 
         self.today = datetime.now().day  # Holds today's date. Used to detect when day changes
 
@@ -73,19 +88,46 @@ class MainPanel(QMdiSubWindow, Ui_Form):
 
     def eventFilter(self, source, event):
         # Remember to install event filter for control first
+        # print("Event ", event.type())
         if event.type() == QtCore.QEvent.MouseButtonPress:
             if source is self.le_stage_1:
                 self.wc.show(DialogAreaManual(self, 1))
-            if source is self.le_stage_2:
+            elif source is self.le_stage_2:
                 self.wc.show(DialogAreaManual(self, 2))
-            if source is self.le_stage_3:
+            elif source is self.le_stage_3:
                 self.wc.show(DialogAreaManual(self, 3))
-            if source is self.lbl_access_2:
+            elif source is self.lbl_access_2:
                 self.wc.show(DialogAccessModule(self))
-            if source is self.lbl_fan_1:
+            elif source is self.lbl_fan_1:
                 self.wc.show(DialogFan(self, 1))
-            if source is self.lbl_fan_2:
+            elif source is self.lbl_fan_2:
                 self.wc.show(DialogFan(self, 2))
+            # Area 1
+            elif source is self.tesstatus_2.viewport():
+                self.wc.show(DialogSensorSettings(self, 1, 3))
+            elif source is self.tesstatus_3.viewport():
+                self.wc.show(DialogSensorSettings(self, 1, 4))
+            elif source is self.tesstatus_4.viewport():
+                self.wc.show(DialogSensorSettings(self, 1, 10))
+            elif source is self.tesstatus_5.viewport():
+                self.wc.show(DialogSensorSettings(self, 1, 11))
+            # Area 2
+            elif source is self.tesstatus_6.viewport():
+                self.wc.show(DialogSensorSettings(self, 2, 5))
+            elif source is self.tesstatus_7.viewport():
+                self.wc.show(DialogSensorSettings(self, 2, 6))
+            elif source is self.tesstatus_8.viewport():
+                self.wc.show(DialogSensorSettings(self, 2, 12))
+            elif source is self.tesstatus_9.viewport():
+                self.wc.show(DialogSensorSettings(self, 2, 13))
+            # Area 3
+            elif source is self.tesstatus_11.viewport():
+                self.wc.show(DialogSensorSettings(self, 3, 1))
+            elif source is self.tesstatus_12.viewport():
+                self.wc.show(DialogSensorSettings(self, 3, 2))
+            # Area 3
+            elif source is self.tesstatus_10.viewport():
+                self.wc.show(DialogSensorSettings(self, 4, 1))
 
         return QWidget.eventFilter(self, source, event)
 
@@ -212,6 +254,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.area_controller.soil_sensors.update_soil_reading.connect(self.update_soil_display)
         self.coms_interface.update_fan_speed.connect(self.update_fans)
         self.coms_interface.update_float_switch.connect(self.update_float)
+        self.coms_interface.update_from_relay.connect(self.process_relay_command)
 
     def test(self):
         print(self.my_parent.mdiArea.subWindowList())
@@ -411,14 +454,12 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             if status >= 0:
                 if self.mode == MASTER:
                     self.coms_interface.send_switch(SW_LIGHT_1, status)
-            self.area_controller.load_sensors(1)
 
         if self.area_controller.area_has_process(2):
             status = self.area_controller.get_area_process(2).check_light()
             if status >= 0:
                 if self.mode == MASTER:
                     self.coms_interface.send_switch(SW_LIGHT_2, status)
-            self.area_controller.load_sensors(2)
 
     @pyqtSlot(int)
     def update_access(self, status_code):
@@ -700,3 +741,14 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         # # Reset feeder for new day
         # self.water_control.new_day()
         # self.water_control.start()
+
+    @pyqtSlot(str, list, name="updateForHelper")
+    def process_relay_command(self, cmd, data):
+        if cmd == NWC_SENSOR_RELOAD:
+            if self.area_controller.area_has_process(data[0]):
+                self.area_controller.get_area_process(data[0]).load_active_temperature_ranges()
+            else:
+                # No process, load defaults
+                pass
+        elif cmd == NWC_FAN_SENSOR:
+            self.area_controller.fans[data[0]].reload_sensor(data[1])

@@ -24,6 +24,7 @@ from ui.area_manual import Ui_frm_area_manual
 from ui.dialogJournal import Ui_DialogJournal
 from ui.dialogOutputSettings import Ui_DialogOutputSetting
 from ui.dialogProcessInfo import Ui_DialogProcessInfo
+from ui.dialogSensorSettings import Ui_DialogSensorSettings
 from ui.dialogStrainFinder import Ui_DialogStrainFinder
 
 
@@ -2553,6 +2554,242 @@ class DialogFan(QDialog, Ui_DialogFan):
             self.dl_fan.blockSignals(False)
 
 
+class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
+    def __init__(self, parent, area, s_id):
+        """ :type parent: MainWindow """
+        super(DialogSensorSettings, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.main_panel = parent
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.db = parent.db
+        self.sub = None
+
+        self.area = area
+        self.s_id = s_id
+
+        self.process = self.main_panel.area_controller.get_area_process(self.area)
+        self.sensors = self.main_panel.area_controller.sensors
+        self.font_i = QtGui.QFont()
+        self.font_i.setItalic(True)
+        self.font_n = QtGui.QFont()
+        self.font_n.setItalic(False)
+
+        self.set = self.high = self.low = 0
+        self.temperatures_active = []
+        self.temperatures_inactive = []
+        self.temperatures_active_org = []
+        self.temperatures_inactive_org = []
+        self.low_org = 0
+        self.set_org = 0
+        self.high_org = 0
+        self.inverted = False   # True means you are working on inactive values
+
+        # Load sensor config from db
+        self.config = self.db.execute_one_row('SELECT id, name, maps_to, calibration, step, area, area_range, '
+                                              'short_name FROM {} WHERE id = {}'.format(DB_SENSORS_CONFIG, self.s_id))
+        self.item = self.config[6]
+        self.lbl_name.setText(self.config[1])
+
+        # get day or night
+        self.on_day = self.main_panel.area_controller.get_light_status(self.area)
+        self.day_night = self.on_day    # Holds the day night value. Will be same as on_day unless inverted
+
+        # Is sensor used by fan
+        self.fan_sensor_current = self.db.execute_single('SELECT sensor FROM {} WHERE id = {}'.format(DB_FANS, self.area))
+        if self.fan_sensor_current == self.s_id:
+            # This sensor is fan sensor
+            self.fan_sensor = True
+            txt = "Fan Sensor<br>"
+        else:
+            self.fan_sensor = False
+            txt = ""
+
+        # Is sensor controlling any outputs
+        rows = self.db.execute('SELECT name FROM {} WHERE input = {}'.format(DB_OUTPUTS, self.s_id))
+        if len(rows) == 0:
+            if txt == "":
+                txt = "None"
+        else:
+            txt += "Outputs<br>"
+            for row in rows:
+                txt += row[0] + ", "
+            txt = txt[:-2]
+        self.lbl_connections.setText(txt)
+
+        self.load_ranges()
+
+        self.pb_set_fan.clicked.connect(self.set_as_fan)
+        self.le_set.editingFinished.connect(self.change_set)
+        self.le_high.editingFinished.connect(self.change_high)
+        self.le_low.editingFinished.connect(self.change_low)
+        self.pb_reset.clicked.connect(self.reset_values)
+        self.pb_switch.clicked.connect(self.invert)
+
+    # def focusOutEvent(self):
+    #     print("BYE BYE BYE BYE BYE BYE BYE BYE ")
+
+    def eventFilter(self, source, event):
+        # Remember to install event filter for control first
+        print("Event ", event.type())
+        if event.type() == QtCore.QEvent.FocusOut:
+            if source == self:
+                print("BYE BYE BYE BYE BYE BYE BYE BYE ")
+
+        return QWidget.eventFilter(self, source, event)
+
+    def load_ranges(self, inverted=False):
+        """ From process loads the active and inactive temperature ranges used by the sensor
+            inverted= True will reverse active and inactive,
+                used when switched to day or night on currently active"""
+        if self.process != 0:
+            if inverted:
+                self.temperatures_active = self.process.temperature_ranges_inactive[self.item]
+                self.temperatures_inactive = self.process.temperature_ranges_active[self.item]
+                self.temperatures_active_org = self.process.temperature_ranges_inactive_org[self.item]
+                self.temperatures_inactive_org = self.process.temperature_ranges_active_org[self.item]
+            else:
+                self.temperatures_active = self.process.temperature_ranges_active[self.item]
+                self.temperatures_inactive = self.process.temperature_ranges_inactive[self.item]
+                self.temperatures_active_org = self.process.temperature_ranges_active_org[self.item]
+                self.temperatures_inactive_org = self.process.temperature_ranges_inactive_org[self.item]
+            self.low = self.temperatures_active['low']
+            self.set = self.temperatures_active['set']
+            self.high = self.temperatures_active['high']
+            self.low_org = self.temperatures_active_org['low']
+            self.set_org = self.temperatures_active_org['set']
+            self.high_org = self.temperatures_active_org['high']
+        else:
+            # No process so use default values
+            pass    # Still to be done
+        self.update_display()
+
+    def update_display(self):
+        # self.set, self.high, self.low = self.sensors[self.s_id].get_set_temperatures()
+        self.le_set.setText(str(self.set))
+        self.le_high.setText(str(self.high))
+        self.le_low.setText(str(self.low))
+        self.lbl_set.setText(str(self.set_org))
+        self.lbl_high.setText(str(self.high_org))
+        self.lbl_low.setText(str(self.low_org))
+        if self.inverted:
+            self.lbl_area.setText("Area {} ({})".format(self.area, "Night" if self.on_day else "Day"))
+            self.pb_switch.setText("Day" if self.on_day else "Night")
+            stylesheet = "Color: White; background-color: red"
+        else:
+            self.lbl_area.setText("Area {} ({})".format(self.area, "Day" if self.on_day else "Night"))
+            self.pb_switch.setText("Night" if self.on_day else "Day")
+            stylesheet = ""
+        self.le_set.setStyleSheet(stylesheet)
+        self.le_high.setStyleSheet(stylesheet)
+        self.le_low.setStyleSheet(stylesheet)
+
+    def invert(self):
+        self.inverted = not self.inverted
+        self.day_night = int(not self.day_night)
+        self.load_ranges(self.inverted)
+
+    def reset_values(self):
+        self.set = self.set_org
+        self.high = self.high_org
+        self.low = self.low_org
+        self.le_high.setText(str(self.high))
+        self.le_set.setText(str(self.set))
+        self.le_low.setText(str(self.low))
+        self.db.execute_write('UPDATE {} SET value = 0 WHERE area= {} AND day = {} AND item = {} '
+                              'LIMIT 3'.format(DB_PROCESS_TEMPERATURE, self.area, self.day_night, self.item))
+        self.process.load_active_temperature_ranges()
+        self.main_panel.coms_interface.relay_send(NWC_SENSOR_RELOAD, self.area)
+
+    def change_set(self):
+        if self.sender().hasFocus():
+            return
+        nv = string_to_float(self.le_set.text())
+        if nv == self.set:
+            return
+        self.db.execute_write('UPDATE {} SET value = {} WHERE area= {} AND day = {} AND item = {} AND setting = '
+                              '"set" LIMIT 1'.format(DB_PROCESS_TEMPERATURE, nv, self.area, self.day_night, self.item))
+        self.set = nv
+        #  Check high value
+        self._check_high(nv)
+        # Check low value
+        self._check_low(nv)
+        self.process.load_active_temperature_ranges()
+
+    def change_high(self):
+        if self.sender().hasFocus():
+            return
+        nv = string_to_float(self.le_high.text())
+        if nv == self.high:
+            return
+        self.db.execute_write('UPDATE {} SET value = {} WHERE area= {} AND day = {} AND item = {} AND setting = '
+                              '"high" LIMIT 1'.format(DB_PROCESS_TEMPERATURE, nv, self.area, self.day_night, self.item))
+        self.high = nv
+        self._check_set_high(nv)
+        self._check_low(self.set)
+        self.process.load_active_temperature_ranges()
+
+    def change_low(self):
+        if self.sender().hasFocus():
+            return
+        nv = string_to_float(self.le_low.text())
+        if nv == self.low:
+            return
+        self.db.execute_write('UPDATE {} SET value = {} WHERE area= {} AND day = {} AND item = {} AND setting = '
+                              '"low" LIMIT 1'.format(DB_PROCESS_TEMPERATURE, nv, self.area, self.day_night, self.item))
+        self.low = nv
+        self._check_set_low(nv)
+        self._check_high(self.set)
+        self.process.load_active_temperature_ranges()
+
+    def _check_high(self, nv):
+        if self.high < nv + 0.5:
+            self.le_high.setText(str(nv + 0.5))
+            self.db.execute_write('UPDATE {} SET value = {} WHERE area= {} AND day = {} AND item = {} AND setting = '
+                                  '"high" LIMIT 1'.format(DB_PROCESS_TEMPERATURE, nv, self.area, self.day_night,
+                                                          self.item))
+            self.high = nv + 0.5
+
+    def _check_low(self, nv):
+        if self.low > nv - 0.5:
+            self.le_low.setText(str(nv - 0.5))
+            self.db.execute_write('UPDATE {} SET value = {} WHERE area= {} AND day = {} AND item = {} AND setting = '
+                                  '"low" LIMIT 1'.format(DB_PROCESS_TEMPERATURE, nv, self.area, self.day_night, self.item))
+            self.low = nv - 0.5
+
+    def _check_set_high(self, nv):
+        # checks set value from high
+        if self.set > nv - 0.5:
+            self.le_set.setText(str(nv - 0.5))
+            self.db.execute_write('UPDATE {} SET value = {} WHERE area= {} AND day = {} AND item = {} AND setting = '
+                                  '"set" LIMIT 1'.format(DB_PROCESS_TEMPERATURE, nv, self.area, self.day_night, self.item))
+            self.set = nv - 0.5
+
+    def _check_set_low(self, nv):
+        # checks set value from low
+        if self.set < nv + 0.5:
+            self.le_set.setText(str(nv + 0.5))
+            self.db.execute_write('UPDATE {} SET value = {} WHERE area= {} AND day = {} AND item = {} AND setting = '
+                                  '"set" LIMIT 1'.format(DB_PROCESS_TEMPERATURE, nv, self.area, self.day_night, self.item))
+            self.set = nv + 0.5
+
+    def set_as_fan(self):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Question)
+        msg.setText("Confirm you wish to set this sensor as input for the fan")
+        msg.setWindowTitle("Confirm Fan Setting")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        msg.setDefaultButton(QMessageBox.Cancel)
+        if msg.exec_() == QMessageBox.Cancel:
+            return
+        self.sensors[self.fan_sensor_current].is_fan = False
+        self.sensors[self.s_id].is_fan = True
+        sql = 'UPDATE {} SET sensor = {} WHERE id = {}'.format(DB_FANS, self.s_id, self.area)
+        self.db.execute_write(sql)
+        self.main_panel.coms_interface.send_data(CMD_SET_FAN_SENSOR, True, MODULE_IO, self.area, self.s_id)
+        self.main_panel.coms_interface.relay_send(NWC_FAN_SENSOR, self.area, self.s_id)
+
+
 class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
     def __init__(self, parent, area, item):
         """ :type parent: MainWindow """
@@ -2560,9 +2797,11 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setupUi(self)
         self.main_panel = parent
-        self.output_controller = self.main_panel.area_controller.output_controller
+        self.pb_close.clicked.connect(lambda: self.sub.close())
         self.db = parent.db
         self.sub = None
+
+        self.output_controller = self.main_panel.area_controller.output_controller
         self.area = area
         self.item = item
         self.font_i = QtGui.QFont()
@@ -2570,16 +2809,17 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         self.font_n = QtGui.QFont()
         self.font_n.setItalic(False)
 
-        self.pb_close.clicked.connect(lambda: self.sub.close())
         sql = 'SELECT `id`, `name`, `area`, `type`, `input`, `range`, `pin`, `short_name` FROM {} WHERE ' \
               '`area` = {} AND `item` = {}'. format(DB_OUTPUTS, self.area, self.item)
         row = self.db.execute_one_row(sql)
         self.mode = row[3]
-        self.pin_id = row[6]
+        self.pin_id = row[6]       # Use as index for the Outputs[] dictionary
         self.sensor = row[4]
         t = row[5].split(',')
         self.offset_on = string_to_float(t[0])
         self.offset_off = string_to_float(t[1])
+        self.detection_mode = self.output_controller.outputs[self.pin_id].detection
+        self.lbl_detection.setText("<" if self.detection_mode == DET_FALL else ">")
         self.lbl_name.setText("{} in area {}".format(row[1], self.area))
         self.cb_out_mode_1_1.addItem("Off", 0)
         self.cb_out_mode_1_1.addItem("Manual On", 1)
@@ -2600,6 +2840,7 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         self.cb_sensor_out_1_1.currentIndexChanged.connect(self.sensor_change)
         self.le_range_on_1_1.editingFinished.connect(self.range_change)
         self.le_range_off_1_1.editingFinished.connect(self.range_change)
+        self.pb_reset.clicked.connect(self.reset)
 
         self.on, self.off = self.output_controller.get_set_temperatures(self.pin_id)
 
@@ -2607,6 +2848,19 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         self.le_range_off_1_1.setText(str(self.off + self.offset_off))
         self.lbl_set_on_1_1.setText(str(self.on))
         self.lbl_set_off_1_1.setText(str(self.off))
+        self.cb_trigger.addItem("Falling", DET_FALL)
+        self.cb_trigger.addItem("Rising", DET_RISE)
+        self.cb_trigger.setCurrentIndex(self.cb_trigger.findData(self.change_detection_mode))
+
+    def change_detection_mode(self):
+        self.detection_mode = self.cb_trigger.currentData()
+        self.output_controller.change_trigger(self.pin_id, self.detection_mode)
+        self.lbl_detection.setText("<" if self.detection_mode == DET_FALL else ">")
+
+    def reset(self):
+        self.le_range_on_1_1.setText(str(self.on))
+        self.le_range_off_1_1.setText(str(self.off))
+        self.range_change()
 
     def mode_change(self):
         self.frm_sensor.setEnabled(False)
@@ -2623,11 +2877,21 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         self.output_controller.change_sensor(self.pin_id, self.sensor)
 
     def range_change(self):
-        if self.sender().hasFocus():
-            return
+        # if self.sender().hasFocus():
+        #     return
         on = string_to_float(self.le_range_on_1_1.text())
         off = string_to_float(self.le_range_off_1_1.text())
 
+        if self.detection_mode == DET_FALL:
+            if on + 1 > off:
+                off = on + 1
+                self.le_range_off_1_1.setText(str(off))
+        elif self.detection_mode == DET_RISE:
+            if on - 1 < off:
+                off = on - 1
+                self.le_range_off_1_1.setText(str(off))
         on = on - self.on
         off = off - self.off
         self.output_controller.change_range(self.pin_id, on, off)
+        self.main_panel.coms_interface.relay_send(NWC_OUTPUT_RANGE, self.pin_id)
+

@@ -74,6 +74,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # System
         self.actionI_O_Data.triggered.connect(lambda: self.wc.show(DialogEngineerIo(self)))
         self.actionSend_Command.triggered.connect(lambda: self.wc.show(DialogEngineerCommandSender(self)))
+        self.actionReconnect.triggered.connect(self.reconnect)
 
         # Dispatch
         self.actionCounter.triggered.connect(lambda: self.wc.show(DialogDispatchCounter(self.main_panel)))
@@ -90,25 +91,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Scales
         self.main_panel.scales.update_status.connect(self.update_scales_status)
 
-    # def load_sensors(self, area):
-    #     sql = 'SELECT * FROM {} WHERE area = {}'.format(DB_SENSORS_CONFIG, area)
-    #     rows = self.db.execute(sql)
-    #     p = self.area_controller.get_area_process(area)
-    #     for row in rows:
-    #         sid = row[0]
-    #         if sid not in self.sensors.keys():
-    #             self.sensors[sid] = SensorClass(self, sid)
-    #         else:
-    #             self.sensors[sid].load_profile()
-    #         if self.sensors[sid].area < 3:  # Only load process temperature ranges for areas 1 & 2
-    #             if p != 0:
-    #                 r = p.temperature_ranges_active
-    #                 if r is not None:
-    #                     r = r[self.sensors[sid].area_range]
-    #                     self.sensors[sid].set_range(r)
-    #                     if area == 1 or area == 2:
-    #                         ro = p.temperature_ranges_active_org[self.sensors[sid].area_range]
-    #                         self.sensors[sid].set_range_org(ro)
+    def reconnect(self):
+        self.db.reconnect()
+        self.coms_interface.reconnect()
 
     @pyqtSlot(int, int, int, name="updateQueStatus")
     def update_que(self, pri, norm, lock_status):
