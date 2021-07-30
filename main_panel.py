@@ -459,12 +459,16 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             if self.area_controller.light_relay_1 != status:
                 if self.master_mode == MASTER:
                     self.coms_interface.send_switch(SW_LIGHT_1, status)
+                else:
+                    self.coms_interface.send_data(NWC_SWITCH_REQUEST, SW_LIGHT_1)
 
         if self.area_controller.area_has_process(2):
             status = self.area_controller.get_area_process(2).check_light()
             if self.area_controller.light_relay_2 != status:
                 if self.master_mode == MASTER:
                     self.coms_interface.send_switch(SW_LIGHT_2, status)
+                else:
+                    self.coms_interface.send_data(NWC_SWITCH_REQUEST, SW_LIGHT_2)
 
     def stage_advance(self, area):
         # Advances the the process to the next stage
@@ -790,4 +794,10 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.check_stage(1)
             self.check_stage(2)
         elif cmd == NWC_SWITCH_REQUEST:
-            self.coms_interface.relay_send(NWC_SWITCH, self.area_controller.output_controller.get_actual_position(data[0]))
+            self.get_switch_position(data[0])
+
+    def get_switch_position(self, sw):
+        if sw < 2:
+            self.coms_interface.relay_send(NWC_SWITCH, sw)
+        else:
+            self.coms_interface.relay_send(NWC_SWITCH, self.area_controller.output_controller.get_actual_position(sw))

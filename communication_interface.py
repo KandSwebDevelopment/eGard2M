@@ -257,6 +257,7 @@ class CommunicationInterface(QObject):
             return
         if command == CMD_SWITCH:
             self.update_switch.emit(int(prams[0]), int(prams[1]), module)
+            self.relay_command(relay_command)
         elif command == COM_SENSOR_READ:
             self.update_sensors.emit(prams)
             self.relay_command(relay_command)
