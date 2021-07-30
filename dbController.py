@@ -18,8 +18,8 @@ class MysqlDB:
         super(MysqlDB, self).__init__()
         self.my_parent = parent
         self.settings = QSettings(FN_SETTINGS, QSettings.IniFormat)
-        self.mode = int(self.settings.value("mode"))  # 1=Master  2=Slave
-        if self.mode == MASTER:
+        self.master_mode = int(self.settings.value("mode"))  # 1=Master  2=Slave
+        if self.master_mode == MASTER:
             self.is_master = True
             self.config_col = "value_m"
         else:
@@ -234,7 +234,7 @@ class MysqlDB:
         return value
 
     def get_config_alt(self, title, key, default=None) -> str:
-        if self.mode == MASTER:
+        if self.master_mode == MASTER:
             config_col = "value_s"
         else:
             config_col = "value_m"
@@ -250,7 +250,7 @@ class MysqlDB:
         self.execute_write(sql)
 
     def set_config_alt(self, title, key, value):
-        if self.mode == MASTER:
+        if self.master_mode == MASTER:
             config_col = "value_s"
         else:
             config_col = "value_m"

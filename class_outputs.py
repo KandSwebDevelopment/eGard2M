@@ -37,7 +37,7 @@ class OutputClass(QObject):
         self.temp_off_adjusted = 18      # The outputs value = sensor value - range adjustment
         self.temp_off = 18               # The sensors set value
         self.temp_on = 15                # The sensors set value
-        # self.temp_set = 20
+        self.relay_position = OFF        # The actual position of the output, this should only be changed by switch_update
         self.is_active = False  # If False then it is off and will not do anything
         self.duration = 0  # Time on max duration
         self.off_time = datetime.now()
@@ -55,21 +55,6 @@ class OutputClass(QObject):
         self.timer = QTimer()
         self.timer.setInterval(1000)
         self.timer.timeout.connect(self.timer_event)
-
-        # if self.id == 7:
-        #     getattr(self.output_controller.main_panel, "pb_output_mode_%i" % self.id).\
-        #         # clicked.connect(lambda: self.output_controller.show_drying_area())
-        # elif self.id == 8:
-        #     getattr(self.output_controller, "pb_output_mode_%i" % self.id).\
-        #         clicked.connect(lambda: self.output_controller.show_workshop())
-        # elif self.id < 11:
-        #     a = self.db.execute_single('SELECT `area` FROM {}'
-        #                                ' WHERE id = {}'.format(DB_OUTPUTS, self.id))
-        #     getattr(self.output_controller, "pb_output_mode_%i" % self.id).\
-        #         clicked.connect(lambda: self.output_controller.show_outputs(a))
-        # else:
-        #     getattr(self.output_controller, "pb_output_mode_%i" % self.id).\
-        #         clicked.connect(lambda: self.output_controller.show_water_heaters())
 
     def load_profile(self):
         row = self.db.execute_one_row('SELECT `name`, `area`, `type`, `input`, `range`, `pin`, `short_name`, `trigger` FROM {}'
@@ -264,15 +249,13 @@ class OutputClass(QObject):
     #         # self.output_controller.coms_interface.relay_send(NWC_OUTPUT, self.id, int(not self.status))
     #
     def switch(self, state=None):
-        """
-        Both the master and slave will call this with override_master False, (auto mode, software controlled)
-        but only master will send command unless the the override_master is True (Manual operation)
+        """ This will only send switch if it is the master, use for software switching requests
         @param state: On or Off
         @type state: int
         """
         if state is None:
             state = int(not self.status)
-        if state != self.status_last:
+        if state != self.status_last and self.output_controller.master_mode == MASTER:
             self.output_controller.areas_controller.main_window.coms_interface.send_switch(self.output_pin, state)
             # @Todo Add to event log
         #     if state == OFF:
@@ -297,10 +280,22 @@ class OutputClass(QObject):
         #                 self.remaining = 0
         # return
 
+    def switch_hard(self, state=None):
+        """ This will send switch if it is the master or slave, use for user switching requests
+        @param state: On or Off
+        @type state: int
+        """
+        if state is None:
+            state = int(not self.status)
+        # if state != self.status_last and self.output_controller.master_mode == MASTER:
+        self.output_controller.areas_controller.main_window.coms_interface.send_switch(self.output_pin, state)
+        # @Todo Add to event log
+
     def switch_update(self, state):
         self.update_control(state)
         self.status_last = state
         self.status = state
+        self.relay_position = state
         if state == 1:
             play_sound(SND_ON)
         else:

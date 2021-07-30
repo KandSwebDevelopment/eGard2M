@@ -12,13 +12,13 @@ class UdpServer(QObject):
     def __init__(self, parent):
         super(UdpServer, self).__init__()
         self.my_parent = parent
-        self.mode = parent.mode
+        self.master_mode = parent.master_mode
         self.remote_ip = parent.this_ip
         self.remote_port = parent.this_server_port
         self.id = None
         self.mySocket = None
         self.is_connected = False
-        if self.mode == MASTER:
+        if self.master_mode == MASTER:
             self.name = "UPD_server"
         else:
             self.name = "UDP_slave"

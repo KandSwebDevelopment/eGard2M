@@ -25,7 +25,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.db = args[0].db
         self.sub = self.my_parent.mdiArea.addSubWindow(self)
         self.wc = self.my_parent.wc
-        self.mode = self.my_parent.mode
+        self.master_mode = self.my_parent.master_mode
         # self.sub.setMinimumSize(1600, 1200)
         self.sub.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint | QtCore.Qt.FramelessWindowHint)
         # sub.setFixedSize(sub.width(), sub.height())
@@ -62,10 +62,12 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.access = None
         self.logger = None
         self.soil_sensors = None
+        self.msg_sys = None
         self.ck_auto_boost.setChecked(int(self.db.get_config(CFT_ACCESS, "auto boost", 1)))
         self.stage_change_warning_days = int(self.db.get_config(CFT_PROCESS, "stage change days", 7))
         self.unit_price = float(self.db.get_config(CFT_ACCESS, "unit price", 20)) / 100
 
+        self.slave_counter = 0
         self.access_open_time = 0  # Timestamp when cover was opened
         self.timer_counter = 0
         self.timer = QTimer()
@@ -157,23 +159,23 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.le_date.setText(strftime("%a" + " " + "%d" + " " + "%b"))
 
     def loop_2(self):  # 2 sec
-        if self.mode == MASTER:
+        if self.master_mode == MASTER:
             self.coms_interface.send_command(NWC_SENSOR_READ)
         self.check_light()
-        # if self.mode == MASTER:
+        # if self.master_mode == MASTER:
         #     if self.process_is_at_location(1):
         #         if not self.fans[1].isRunning():
         #             self.lefanspeed_1.setStyleSheet("background-color: red; color: yellow")
         #     if self.process_is_at_location(2):
         #         if not self.fans[2].isRunning():
         #             self.lefanspeed_2.setStyleSheet("background-color: red; color: yellow")
-        # if self.mode == SLAVE:
+        # if self.master_mode == SLAVE:
         #     self.slave_counter += 1
-        #     if self.slave_counter > 3:
+        #     if self.slave_counter > 6:
         #         self.msg_sys.add("Master/Slave Data link lost", MSG_DATA_LINK, CRITICAL, persistent=1)
 
     def loop_3(self):  # 10 sec
-        if self.mode == MASTER:
+        if self.master_mode == MASTER:
             self.coms_interface.send_command(NWC_SOIL_READ)
             self.coms_interface.send_command(COM_OTHER_READINGS)
             self.coms_interface.send_data(COM_WATTS, False, MODULE_DE)
@@ -196,6 +198,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.coms_interface = self.my_parent.coms_interface
         self.logger = self.my_parent.logger
         self.access = self.my_parent.access
+        self.msg_sys = self.my_parent.msg_sys
         self.connect_signals()
 
         if self.has_scales:     # These have to be here to allow signals to connect
@@ -203,21 +206,17 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.update_info_texts()
 
     def connect_signals(self):
-        self.pbjournal_1.clicked.connect(lambda: self.wc.show_journal(1))
-        self.pbjournal_2.clicked.connect(lambda: self.wc.show_journal(2))
-        self.pbjournal_3.clicked.connect(lambda: self.wc.show_journal(3))
-        self.pb_man_feed_1.clicked.connect(lambda: self.feed_manual(1))
-        self.pb_man_feed_2.clicked.connect(lambda: self.feed_manual(2))
-        self.pb_feed_mix_1.clicked.connect(lambda: self.wc.show(DialogFeedMix(self, 1)))
-        self.pb_feed_mix_2.clicked.connect(lambda: self.wc.show(DialogFeedMix(self, 2)))
         self.pb_cover.clicked.connect(lambda: self.access.open())
         self.pb_cover_close.clicked.connect(lambda: self.access.close_cover())
         self.b1.clicked.connect(self.test)
-        self.pbinfo_1.clicked.connect(lambda: self.wc.show_process_info(1))
-        self.pbinfo_2.clicked.connect(lambda: self.wc.show_process_info(2))
-        self.pbinfo_3.clicked.connect(lambda: self.wc.show_process_info(3))
 
         # Area 1
+        self.pbjournal_1.clicked.connect(lambda: self.wc.show_journal(1))
+        self.pb_man_feed_1.clicked.connect(lambda: self.feed_manual(1))
+        self.pb_feed_mix_1.clicked.connect(lambda: self.wc.show(DialogFeedMix(self, 1)))
+        self.pbinfo_1.clicked.connect(lambda: self.wc.show_process_info(1))
+        self.pb_advance_1.clicked.connect(lambda: self.stage_adjust(1, -1))
+        self.pb_hold_1.clicked.connect(lambda: self.stage_adjust(1, 1))
         self.pb_output_status_1.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_11))
         self.pb_output_status_2.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_12))
         self.pb_output_status_3.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_AREA_1))
@@ -227,6 +226,10 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.pb_output_mode_3.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 3)))
         self.pb_output_mode_9.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 4)))
         # Area 2
+        self.pbjournal_2.clicked.connect(lambda: self.wc.show_journal(2))
+        self.pb_man_feed_2.clicked.connect(lambda: self.feed_manual(2))
+        self.pb_feed_mix_2.clicked.connect(lambda: self.wc.show(DialogFeedMix(self, 2)))
+        self.pbinfo_2.clicked.connect(lambda: self.wc.show_process_info(2))
         self.pb_output_status_4.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_21))
         self.pb_output_status_5.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_22))
         self.pb_output_status_6.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_AREA_2))
@@ -236,6 +239,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.pb_output_mode_6.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 2, 3)))
         self.pb_output_mode_10.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 2, 4)))
         # Area 3
+        self.pbjournal_3.clicked.connect(lambda: self.wc.show_journal(3))
+        self.pbinfo_3.clicked.connect(lambda: self.wc.show_process_info(3))
         self.pb_output_status_7.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_31))
         self.pb_output_mode_7.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 3, 1)))
         # Workshop
@@ -451,15 +456,36 @@ class MainPanel(QMdiSubWindow, Ui_Form):
     def check_light(self):
         if self.area_controller.area_has_process(1):
             status = self.area_controller.get_area_process(1).check_light()
-            if status >= 0:
-                if self.mode == MASTER:
+            if self.area_controller.light_relay_1 != status:
+                if self.master_mode == MASTER:
                     self.coms_interface.send_switch(SW_LIGHT_1, status)
 
         if self.area_controller.area_has_process(2):
             status = self.area_controller.get_area_process(2).check_light()
-            if status >= 0:
-                if self.mode == MASTER:
+            if self.area_controller.light_relay_2 != status:
+                if self.master_mode == MASTER:
                     self.coms_interface.send_switch(SW_LIGHT_2, status)
+
+    def stage_advance(self, area):
+        # Advances the the process to the next stage
+        if self.area_controller.area_has_process(area):
+            self.area_controller.get_area_process(area).advance_stage()
+            self.update_info_texts()
+            self.check_stage(area)
+            self.coms_interface.relay_send(NWC_RELOAD_PROCESSES)
+
+    def stage_adjust(self, area, val):
+        # Adjusts the current stage by val days for process in location
+        if not self.area_controller.area_has_process(area):
+            return
+        p = self.area_controller.get_area_process(area)
+        current_stage = p.current_stage
+        p.adjust_stage_days(val)
+        if p.current_stage is not current_stage:
+            self.area_controller.display_stage_icon(area)
+        # self.area_controller.display_stage_icon(area)
+        self.update_info_texts()
+        self.check_stage(area)
 
     @pyqtSlot(int)
     def update_access(self, status_code):
@@ -621,15 +647,19 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             if sw == OUT_LIGHT_1:
                 if state == 0:
                     self.lbl_light_status_1.setPixmap(QtGui.QPixmap(":/normal/light_off.png"))
+                    self.area_controller.light_relay_1 = state
                 else:
                     self.lbl_light_status_1.setPixmap(QtGui.QPixmap(":/normal/light_on.png"))
+                    self.area_controller.light_relay_1 = state
                 if self.area_controller.area_is_manual(1):
                     self.db.set_config(CFT_AREA, "mode {}".format(1), state + 1)
             if sw == OUT_LIGHT_2:
                 if state == 0:
                     self.lbl_light_status_2.setPixmap(QtGui.QPixmap(":/normal/light_off.png"))
+                    self.area_controller.light_relay_2 = state
                 else:
                     self.lbl_light_status_2.setPixmap(QtGui.QPixmap(":/normal/light_on.png"))
+                    self.area_controller.light_relay_2 = state
                 if self.area_controller.area_is_manual(2):
                     self.db.set_config(CFT_AREA, "mode {}".format(2), state + 1)
 
@@ -722,7 +752,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
     def new_day(self):
         print("*********** New day ***********")
         self.today = datetime.now().day
-        # if self.mode == MASTER:
+        # if self.master_mode == MASTER:
         #     self.logger.new_day()
         # self.outputs[OP_W_HEATER_1].new_day()
         # self.outputs[OP_W_HEATER_2].new_day()
@@ -752,3 +782,12 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 pass
         elif cmd == NWC_FAN_SENSOR:
             self.area_controller.fans[data[0]].reload_sensor(data[1])
+        elif cmd == NWC_OUTPUT_RANGE:
+            self.area_controller.output_controller.outputs[data[0]].load_profile()
+        elif cmd == NWC_RELOAD_PROCESSES:
+            self.area_controller.load_processes()
+            self.update_info_texts()
+            self.check_stage(1)
+            self.check_stage(2)
+        elif cmd == NWC_SWITCH_REQUEST:
+            self.coms_interface.relay_send(NWC_SWITCH, self.area_controller.output_controller.get_actual_position(data[0]))

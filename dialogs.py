@@ -1879,7 +1879,7 @@ class DialogEngineerCommandSender(QDialog, Ui_DialogEngineerCommandSender):
         self.cb_command.addItem("Switch", CMD_SWITCH)
         self.cb_command.addItem("Valve", CMD_VALVE)
         self.cb_command.addItem("Valve Cluster", CMD_VALVE_CLUSTER)
-        if self.my_parent.mode == MASTER:
+        if self.my_parent.master_mode == MASTER:
             self.cb_to.addItem("Slave", MODULE_SL)
         else:
             self.cb_to.addItem("Master", MODULE_SL)
@@ -2150,7 +2150,7 @@ class DialogAccessModule(QDialog, Ui_DialogDEmodule):
 
         self.my_parent.coms_interface.send_data(COM_SEND_FREQ, True, MODULE_DE)
         self.my_parent.coms_interface.send_data(COM_KWH_DIF, True, MODULE_DE)
-        self.my_parent.coms_interface.send_data(COM_KWH, True, MODULE_DE)
+        self.my_parent.coms_interface.send_data(COM_READ_KWH, True, MODULE_DE)
         self.my_parent.coms_interface.send_data(COM_PULSES, True, MODULE_DE)
 
     @pyqtSlot(str, float)

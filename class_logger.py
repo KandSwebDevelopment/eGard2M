@@ -21,7 +21,7 @@ class Logger(QObject):
         self.available = True       # Set False if unable to connect to file system
         doc_folder = self.db.get_config(CFT_LOGGER, "doc path")
         try:
-            if self.my_parent.mode == MASTER:
+            if self.my_parent.master_mode == MASTER:
                 # self.doc_folder = shell.SHGetFolderPath(0, shellcon.CSIDL_PERSONAL, None, 0) + doc_folder
                 self.doc_folder = os.path.expanduser("~\\Documents") + doc_folder
             else:
@@ -54,7 +54,7 @@ class Logger(QObject):
             print(e)
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Warning)
-            if self.my_parent.mode == MASTER:
+            if self.my_parent.master_mode == MASTER:
                 msg.setText("Unable to connect to the file system. <br><b>All logging will be disabled</b>"
                             "Check the logging settings")
                 msg.setInformativeText("Check the logging settings")

@@ -212,7 +212,7 @@ class FanController(QThread):
         self.mode = 1
 
     def run(self) -> None:
-        if self.my_parent.main_window.mode == SLAVE:
+        if self.my_parent.main_window.master_mode == SLAVE:
             return
         while self.mode == 2:
             self.pid.update(self.input)

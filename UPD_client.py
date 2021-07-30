@@ -62,7 +62,7 @@ class UdpClient(QObject):
             cmd = ""
             while cmd == "":
                 cmd, to = self.my_parent.get_next_udp_communication(self.id)
-                time.sleep(1)
+                time.sleep(0.8)
             # if cmd == '':
             #     break
         # print("UDP exit")

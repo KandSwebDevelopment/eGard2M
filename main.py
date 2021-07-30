@@ -1,13 +1,11 @@
 import sys
 from datetime import timedelta
-from time import strftime
 
 from PyQt5.QtCore import QSettings, QTimer, pyqtSlot
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox
 
 from class_access import Access
 from class_logger import Logger
-from class_sensor import SensorClass
 from communication_interface import CommunicationInterface
 from controller_feeding import FeedControl
 from controller_windows import WindowsController
@@ -21,6 +19,9 @@ from ui.main_window import Ui_MainWindow
 from controller_areas import AreaController
 from message_system import MessageSystem
 from main_panel import MainPanel
+
+# Git access key
+# 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
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -42,11 +43,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.wc = WindowsController(self)
         self.settings = QSettings(FN_SETTINGS, QSettings.IniFormat)
-        self.mode = int(self.settings.value("mode"))  # 1=Master, arduino and server  2=Slave, client only
+        self.master_mode = int(self.settings.value("mode"))  # 1=Master, arduino and server  2=Slave, client only
 
         self.main_panel = MainPanel(self)
 
-        if self.mode == MASTER:
+        if self.master_mode == MASTER:
             self.update_status_bar(SBP_MODE, "Master", OK)
         else:
             self.update_status_bar(SBP_MODE, "Slave", OK)

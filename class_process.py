@@ -985,12 +985,6 @@ class ProcessClass(QObject):
                         sql = "UPDATE {} SET dt = {} WHERE item = '{}' and id = {} LIMIT 1".format(
                             DB_PROCESS_ADJUSTMENTS, None, PA_FEED_DATE, self.stage_location)
                         self.db.execute_write(sql)
-                        # # Reset any stage day advance should only be done at end
-                        # if self.stage_day_adjust != 0:
-                        #     self.stages_len_adjustment[self.current_stage] -= self.stage_day_adjust
-                        #     sql = "UPDATE {} SET itemid = 0, offset = 0 WHERE item = {} id = {} LIMIT 1".format(
-                        #         DB_PROCESS_ADJUSTMENTS, PA_STAGE_DAY_ADJUST, self.id)
-                        #     self.db.execute_write(sql)
                         # Feed liters
                         # if self.location < 3:
                         #     sql = "UPDATE {} SET itemid = 0, offset = 0 WHERE item = {} id = {} LIMIT 1".format(
@@ -1008,19 +1002,12 @@ class ProcessClass(QObject):
                 # Add journal entry
                 self.journal_write("<b>Stage Change</b> to {} after {} days {}"
                                    .format(next_stage_name, self.stage_days_elapsed, self.stage_name))
-                # Reset any stage day advance - This should not be done here but it stage end
-                # if self.stage_day_adjust != 0:
-                #     self.stages_len_adjustment[self.current_stage] -= self.stage_day_adjust
-                #     sql = "UPDATE {} SET itemid = 0, offset = 0 WHERE item = {} AND id = {} LIMIT 1".format(
-                #         DB_PROCESS_ADJUSTMENTS, PA_STAGE_DAY_ADJUST, self.id)
-                #     self.db.execute_write(sql)
                 self.current_stage += 1
                 # Update the processes current stage
                 self.db.execute_write(
                     "UPDATE " + DB_PROCESS + " SET stage = " + str(self.current_stage) + ", location = " + str(
                         self.stage_next_location) + " WHERE id = " + str(self.id))
             self.process_load_stage_info()
-            # self.my_parent.coms_interface.send_command(NWC_RELOAD_PROCESSES)
 
     def change_location(self, from_loc, new_loc):
         self.db.execute_write(
@@ -1093,7 +1080,7 @@ class ProcessClass(QObject):
             else:
                 return 0
                 # print("light off")
-        return -1
+        return self.light_status
 
     def day_advance(self):
         # Advances one day

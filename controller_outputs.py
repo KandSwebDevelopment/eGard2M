@@ -18,6 +18,7 @@ class OutputController(QObject):
         self.areas_controller = parent     # Areas controller
         self.db = self.areas_controller.db
         self.main_panel = parent.main_panel
+        self.master_mode = self.main_panel.master_mode
         self.outputs = collections.defaultdict(OutputClass)
 
         self.areas_controller.main_window.coms_interface.update_switch.connect(self.switch_update)
@@ -30,7 +31,7 @@ class OutputController(QObject):
             if self.areas_controller.area_has_process(a):
                 # Area has process so load outputs
                 self.load_outputs(a)
-        self.load_outputs(3)    # Drying
+        # self.load_outputs(3)    # Drying
         self.load_outputs(4)    # Workshop
         self.load_outputs(7)    # Water heaters
 
@@ -48,6 +49,9 @@ class OutputController(QObject):
 
     def get_set_temperatures(self, op_id):
         return self.outputs[op_id].get_set_temperatures()
+
+    def get_actual_position(self, op_id):
+        return self.outputs[op_id].relay_position
 
     def change_mode(self, op_id, mode):
         self.outputs[op_id].set_mode(mode)

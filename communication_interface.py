@@ -47,8 +47,8 @@ class CommunicationInterface(QObject):
         @type parent: MainWindow
         """
         QObject.__init__(self, parent)
-        self.my_parent = parent
-        self.mode = parent.mode
+        self.main_window = parent
+        self.mode = parent.master_mode
         # Receiving
         self.command = ""
 
@@ -72,24 +72,24 @@ class CommunicationInterface(QObject):
         self.lock_repeat_count = 0
         self.lock_repeat_max = 25
 
-        self.mode = parent.mode
+        self.master_mode = parent.master_mode
         self.io_errors = 0
         self.de_errors = 0
         # The following master/slave values will be picked by the database
-        self.de_ip = self.my_parent.db.get_config(CFT_DE_UNIT, "ip")
-        self.de_port = int(self.my_parent.db.get_config(CFT_DE_UNIT, "port"))
-        self.io_ip = self.my_parent.db.get_config(CFT_IO_UNIT, "ip")
-        self.io_port = int(self.my_parent.db.get_config(CFT_IO_UNIT, "port"))
-        self.fu_ip = self.my_parent.db.get_config(CFT_FEEDER, "ip")
-        self.fu_port = int(self.my_parent.db.get_config(CFT_FEEDER, "port"))
-        self.slave_ip = self.my_parent.db.get_config(CFT_NETWORK, "pc ip")     # Other PC
-        self.slave_port = int(self.my_parent.db.get_config(CFT_NETWORK, "pc port"))
-        self.ip_broadcast = self.my_parent.db.get_config(CFT_NETWORK, "broadcast ip")
-        # self.this_ip = self.my_parent.db.get_config(CFT_NETWORK, "ip")      # This PC
-        self.this_port = int(self.my_parent.db.get_config(CFT_NETWORK, "client port"))
-        self.this_server_port = int(self.my_parent.db.get_config(CFT_NETWORK, "port"))
-        self.this_relay_port = int(self.my_parent.db.get_config(CFT_NETWORK, "relay port"))
-        self.pc_relay_port = int(self.my_parent.db.get_config_alt(CFT_NETWORK, "relay port"))   # Note use of _alt to get other value
+        self.de_ip = self.main_window.db.get_config(CFT_DE_UNIT, "ip")
+        self.de_port = int(self.main_window.db.get_config(CFT_DE_UNIT, "port"))
+        self.io_ip = self.main_window.db.get_config(CFT_IO_UNIT, "ip")
+        self.io_port = int(self.main_window.db.get_config(CFT_IO_UNIT, "port"))
+        self.fu_ip = self.main_window.db.get_config(CFT_FEEDER, "ip")
+        self.fu_port = int(self.main_window.db.get_config(CFT_FEEDER, "port"))
+        self.slave_ip = self.main_window.db.get_config(CFT_NETWORK, "pc ip")     # Other PC
+        self.slave_port = int(self.main_window.db.get_config(CFT_NETWORK, "pc port"))
+        self.ip_broadcast = self.main_window.db.get_config(CFT_NETWORK, "broadcast ip")
+        # self.this_ip = self.main_window.db.get_config(CFT_NETWORK, "ip")      # This PC
+        self.this_port = int(self.main_window.db.get_config(CFT_NETWORK, "client port"))
+        self.this_server_port = int(self.main_window.db.get_config(CFT_NETWORK, "port"))
+        self.this_relay_port = int(self.main_window.db.get_config(CFT_NETWORK, "relay port"))
+        self.pc_relay_port = int(self.main_window.db.get_config_alt(CFT_NETWORK, "relay port"))   # Note use of _alt to get other value
         self.this_pc_name = socket.gethostname()
         self.this_ip = self.this_ip_str = socket.gethostbyname(self.this_pc_name)
         self.this_ip2 = QHostAddress(self.this_ip_str)
@@ -181,9 +181,9 @@ class CommunicationInterface(QObject):
         self.update_received.emit(received, sender)
         # print("sender ", sender)
         if sender[0] == self.slave_ip:
-            if self.my_parent.slave_counter > 3:
-                self.my_parent.msg_sys.remove(MSG_DATA_LINK)
-            self.my_parent.slave_counter = 0
+            # if self.main_window.main_panel.slave_counter == 0:
+            #     self.main_window.msg_sys.remove(MSG_DATA_LINK)
+            self.main_window.slave_counter = 0
         if source == "UPD_server":
             if "\r\n" in received:  # This will be IO & DE broadcasts and slave will receive here from master
                 data_list = received.split("\r\n")
@@ -215,7 +215,7 @@ class CommunicationInterface(QObject):
             if len(data_list) > 0:
                 data_list.pop()  # Remove blank line
                 data_list.pop()  # Remove goodbye
-        if self.mode == MASTER and (sender[1] == self.pc_relay_port or sender[1] == self.slave_port):
+        if self.master_mode == MASTER and (sender[1] == self.pc_relay_port or sender[1] == self.slave_port):
             relay_command = ""
         elif self.mode == SLAVE:
             relay_command = ""
@@ -249,11 +249,11 @@ class CommunicationInterface(QObject):
         """
         # Inputs
         if command == COM_FANS:
-            if self.my_parent.mode == MASTER:
+            if self.main_window.master_mode == MASTER:
                 if len(prams) > 0:
-                    self.my_parent.area_controller.fans[1].update_input_value(string_to_float(prams[0]))
+                    self.main_window.area_controller.fans[1].update_input_value(string_to_float(prams[0]))
                     if len(prams) > 1:
-                        self.my_parent.area_controller.fans[2].update_input_value(string_to_float(prams[1]))
+                        self.main_window.area_controller.fans[2].update_input_value(string_to_float(prams[1]))
             return
         if command == CMD_SWITCH:
             self.update_switch.emit(int(prams[0]), int(prams[1]), module)
@@ -278,7 +278,7 @@ class CommunicationInterface(QObject):
             self.relay_command(relay_command)
         #  General
         elif command == COM_IO_REBOOT:
-            self.my_parent.io_reboot()
+            self.main_window.io_reboot()
         # DE Unit
         elif command == COM_DOOR_POSITION:
             self.update_access.emit(AUD_DOOR, int(prams[0]))
@@ -307,7 +307,7 @@ class CommunicationInterface(QObject):
 
         # Feeder
         elif command == NWC_FEEDER_STATUS:
-            self.my_parent.status_update_feeder(int(prams[0]) + FC_FR_OFF_LINE)
+            self.main_window.status_update_feeder(int(prams[0]) + FC_FR_OFF_LINE)
             self.relay_command(relay_command)
 
         # Mix tank
@@ -348,6 +348,7 @@ class CommunicationInterface(QObject):
                 command == NWC_OUTPUT_RANGE or \
                 command == NWC_ACCESS_OPERATE or \
                 command == NWC_FEED or \
+                command == NWC_SWITCH_REQUEST or \
                 command == NWC_OUTPUT_SENSOR:
             self.update_from_relay.emit(command, [int(prams[0])])
 

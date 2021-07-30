@@ -23,11 +23,14 @@ class AreaController(QObject):
         self.main_window = parent
         self.db = self.main_window.db
         self.main_panel = parent.main_panel
+        self.master_mode = self.main_panel.master_mode
         self.areas_pid = collections.defaultdict(int)                         # The PID in the area
         self.areas_items = collections.defaultdict(list)     # The items in the area
         self.areas_processes = collections.defaultdict(ProcessClass)
         self.area_manual = collections.defaultdict(int)      # Area is in manual mode
         self.output_controller = OutputController(self)
+        self.light_relay_1 = UNSET        # Hold the actual position of the relay, this is only changed by switch updates
+        self.light_relay_2 = UNSET
 
         self.sensors = collections.defaultdict(SensorClass)
         self.soil_sensors = SoilSensorClass(self)
@@ -89,22 +92,71 @@ class AreaController(QObject):
         self.fans[2] = FanController(self, 2)
         self.sensors[self.fans[2].sensor].is_fan = True
 
+    def reload_area(self, area):
+        """ Load the PID's and items for all the area"""
+        sql = "SELECT process_id, item FROM {} WHERE area = {}".format(DB_AREAS, area)
+        rows = self.db.execute(sql)
+        if len(rows) > 0:
+            # Has process
+            self.areas_pid[area] = rows[0][0]
+            items = []
+            for row in rows:
+                items.append(row[1])
+            self.areas_items[area] = items
+
+        else:
+            # No process
+            self.areas_pid[area] = 0
+            self.areas_items[area] = []
+            # Check if in manual mode
+            if self.area_is_manual(area) > 0:
+                getattr(self.main_panel, "le_stage_{}".
+                        format(area)).setPixmap(QPixmap(":/normal/manual_feed.png"))
+                if area > 2:
+                    pass
+                # Check to see if light should be on or off
+                if self.area_is_manual(area) == 2:
+                    self.main_window.coms_interface.send_switch(OUT_LIGHT_1 - 1 + area, 1, MODULE_IO)
+                else:
+                    self.main_window.coms_interface.send_switch(OUT_LIGHT_1 - 1 + area, 0, MODULE_IO)
+
+            else:
+                # Not in manual and no process
+                getattr(self.main_panel, "le_stage_{}".
+                        format(area)).setPixmap(QtGui.QPixmap(":/normal/none.png"))
+                if area < 3:
+                    # Light should be off
+                    self.main_window.coms_interface.send_switch(OUT_LIGHT_1 - 1 + area, 0, MODULE_IO)
+
+        self.load_processes()
+
+        self.load_sensors(area)
+
+        self.output_controller.load_areas(area)
+
     def load_processes(self):
+        self.areas_processes.clear()
         for area in self.areas_pid:
-            if self.areas_pid[area] > 0:
-                self.areas_processes[area] = ProcessClass(self.areas_pid[area], self.main_window)
-                # Put process id in area status bar
-                ctrl = getattr(self.main_panel, "lbl_sp_%i_4" % area)
-                ctrl.setText(str(self.areas_processes[area].id))
-                # Display stage icon
-                ctrl = getattr(self.main_panel, "le_stage_%i" % area)
-                stage = self.areas_processes[area].current_stage
-                if stage == 1:
-                    ctrl.setPixmap(QtGui.QPixmap(":/normal/gremination.png"))
-                if stage == 2:
-                    ctrl.setPixmap(QtGui.QPixmap(":/normal/veg.png"))
-                if stage == 3:
-                    ctrl.setPixmap(QtGui.QPixmap(":/normal/flowering.png"))
+            self.reload_process(area)
+
+    def reload_process(self, area):
+        if self.areas_pid[area] > 0:
+            self.areas_processes[area] = ProcessClass(self.areas_pid[area], self.main_window)
+            # Put process id in area status bar
+            ctrl = getattr(self.main_panel, "lbl_sp_%i_4" % area)
+            ctrl.setText(str(self.areas_processes[area].id))
+            self.display_stage_icon(area)
+
+    def display_stage_icon(self, area):
+        # Display stage icon
+        ctrl = getattr(self.main_panel, "le_stage_%i" % area)
+        stage = self.areas_processes[area].current_stage
+        if stage == 1:
+            ctrl.setPixmap(QtGui.QPixmap(":/normal/gremination.png"))
+        if stage == 2:
+            ctrl.setPixmap(QtGui.QPixmap(":/normal/veg.png"))
+        if stage == 3:
+            ctrl.setPixmap(QtGui.QPixmap(":/normal/flowering.png"))
 
     def load_sensors(self, area):
         sql = 'SELECT * FROM {} WHERE area = {}'.format(DB_SENSORS_CONFIG, area)

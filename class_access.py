@@ -131,37 +131,13 @@ class Access(QObject):
                     self.timer_close.stop()
                     # self.remove_status(ACS_AUTO_ARMED)
                     self.my_parent.coms_interface.send_switch(SW_DOOR_LOCK, ON_RELAY, MODULE_DE)
-            # self.status_door = _value
-            # if self.auto_close == 1 and self.status_door == 0:  # Auto close is set and door has been opened, so Arm auto close
-            #     self.auto_close = 2
-            #     self.status &= ~ACS_AUTO_SET
-            #     self.status |= ACS_AUTO_ARMED
-            #     self.timer_auto_close.stop()
-            #     self.timer_close.setInterval(self.auto_close_duration)
-            #     self.timer_close.start()
-            #     self.update_access.emit(self.status)
-            # elif self.auto_close == 2 and self.door_pos == 1:   # Auto close is Armed and door has been shut
-            #     self.timer_close.stop()
-            #     self.auto_close = 3
-            #     self.status &= ~ACS_AUTO_SET
-            #     self.status &= ~ACS_AUTO_ARMED
-            #     self.operate()
-            # else:
-            #     if self.door_pos == 1:      # Closed
-            #         self.status &= ~ACS_DOOR_OPEN
-            #     # else:
-            #     #     self.status |= ACS_DOOR_OPEN
-            #     self.update_access.emit(self.status)
-            # # elif self.auto_close == 3 and self.door_pos == 0:   # Auto close the door has been reopened
-            # #     self.timer_close.stop()
-            # #     self.status &= ~ACS_AUTO_ARMED
-            # #     self.auto_close = 0
         elif _input == AUD_COVER_OPEN:
             if _value == 1:     # Cover at open position
                 self.add_status(ACS_COVER_OPEN)
                 self.remove_status(ACS_COVER_CLOSED)
             else:
                 self.remove_status(ACS_COVER_OPEN)
+                self.add_status(ACS_COVER_CLOSED)
 
         if _input == AUD_AUTO_SET and _value == 1:    # Auto close has been pressed and released
             if self.door_pos != 1 or not self.has_status(ACS_COVER_OPEN):   # Only proceed if cover is open

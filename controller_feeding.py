@@ -221,7 +221,7 @@ class FeedControl(QThread):
         if self.get_feed_mode(area) == 1:  # Manual
             self.deduct_fed_feed(area)
         else:  # Semi auto and auto
-            if self.my_parent.mode == MASTER:
+            if self.my_parent.master_mode == MASTER:
                 pass
         # save feed details to the log
         self.log_txt += "\r\n"
