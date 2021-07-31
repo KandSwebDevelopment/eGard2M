@@ -460,7 +460,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 if self.master_mode == MASTER:
                     self.coms_interface.send_switch(SW_LIGHT_1, status)
                 else:
-                    self.coms_interface.send_data(NWC_SWITCH_REQUEST, True, MODULE_SL, SW_LIGHT_1)
+                    self.coms_interface.relay_send(NWC_SWITCH_REQUEST, SW_LIGHT_1)
 
         if self.area_controller.area_has_process(2):
             status = self.area_controller.get_area_process(2).check_light()
@@ -468,7 +468,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 if self.master_mode == MASTER:
                     self.coms_interface.send_switch(SW_LIGHT_2, status)
                 else:
-                    self.coms_interface.send_data(NWC_SWITCH_REQUEST, True, MODULE_SL, SW_LIGHT_2)
+                    self.coms_interface.relay_send(NWC_SWITCH_REQUEST, SW_LIGHT_2)
 
     def stage_advance(self, area):
         # Advances the the process to the next stage
@@ -784,6 +784,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             else:
                 # No process, load defaults
                 pass
+        elif cmd == NWC_OUTPUT_MODE:
+            self.area_controller.output_controller.change_mode(data[0], data[1])
         elif cmd == NWC_FAN_SENSOR:
             self.area_controller.fans[data[0]].reload_sensor(data[1])
         elif cmd == NWC_OUTPUT_RANGE:

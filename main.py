@@ -62,6 +62,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.connect_signals()
 
         self.main_panel.connect_to_main_window()
+        self.wc.show(DialogEngineerIo(self))
 
         self.main_panel.update_next_feeds()
         self.main_panel.check_stage(1)

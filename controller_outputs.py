@@ -46,6 +46,8 @@ class OutputController(QObject):
             self.outputs[oid].load_profile()
             if self.outputs[oid].input > 0:
                 self.areas_controller.sensors[self.outputs[oid].input].set_action_handler(self.outputs[oid])  # Link sensor to output
+        if self.master_mode == SLAVE:
+            self.areas_controller.main_window.coms_interface.relay_send(NWC_SWITCH_REQUEST, oid)
 
     def get_set_temperatures(self, op_id):
         return self.outputs[op_id].get_set_temperatures()
@@ -71,7 +73,7 @@ class OutputController(QObject):
 
     def switch_output(self, op_id, state=None):
         if self.outputs[op_id].mode >= 2:    # Auto modes
-            self.outputs[op_id].switch()
+            self.outputs[op_id].switch_hard(state)
         else:   # Manual off or on
             # Instead of calling switch this calls set_mode_by_state as user has clicked on/off so output will go into
             # manual off or manual on, and this set_mode_by_state calls the switch
