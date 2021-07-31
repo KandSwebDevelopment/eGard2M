@@ -460,7 +460,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 if self.master_mode == MASTER:
                     self.coms_interface.send_switch(SW_LIGHT_1, status)
                 else:
-                    self.coms_interface.send_data(NWC_SWITCH_REQUEST, SW_LIGHT_1)
+                    self.coms_interface.send_data(NWC_SWITCH_REQUEST, True, MODULE_SL, SW_LIGHT_1)
 
         if self.area_controller.area_has_process(2):
             status = self.area_controller.get_area_process(2).check_light()
@@ -468,7 +468,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 if self.master_mode == MASTER:
                     self.coms_interface.send_switch(SW_LIGHT_2, status)
                 else:
-                    self.coms_interface.send_data(NWC_SWITCH_REQUEST, SW_LIGHT_2)
+                    self.coms_interface.send_data(NWC_SWITCH_REQUEST, True, MODULE_SL, SW_LIGHT_2)
 
     def stage_advance(self, area):
         # Advances the the process to the next stage
@@ -647,7 +647,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
 
     @pyqtSlot(int, int, int, name="updateSwitch")
     def update_switch(self, sw, state, module):
-        if module == MODULE_IO:
+        if module == MODULE_IO or module == MODULE_SL:
             if sw == OUT_LIGHT_1:
                 if state == 0:
                     self.lbl_light_status_1.setPixmap(QtGui.QPixmap(":/normal/light_off.png"))
@@ -797,7 +797,9 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.get_switch_position(data[0])
 
     def get_switch_position(self, sw):
-        if sw < 2:
-            self.coms_interface.relay_send(NWC_SWITCH, sw)
+        if sw == 0:
+            self.coms_interface.relay_send(NWC_SWITCH, sw, self.area_controller.light_relay_1)
+        elif sw == 1:
+            self.coms_interface.relay_send(NWC_SWITCH, sw, self.area_controller.light_relay_2)
         else:
-            self.coms_interface.relay_send(NWC_SWITCH, self.area_controller.output_controller.get_actual_position(sw))
+            self.coms_interface.relay_send(NWC_SWITCH, sw, self.area_controller.output_controller.get_actual_position(sw))

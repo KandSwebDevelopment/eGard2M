@@ -225,8 +225,8 @@ class CommunicationInterface(QObject):
             module = MODULE_IO
         elif sender[1] == self.de_port:
             module = MODULE_DE
-        else:
-            module = 50
+        elif sender[1] == self.pc_relay_port:
+            module = MODULE_SL
         self.process_command(command, data_list, relay_command, module)
 
         # if CMD_SWITCH in self.last_communication and self.last_communication != "":
