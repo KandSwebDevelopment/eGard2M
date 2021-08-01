@@ -203,7 +203,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
 
         if self.has_scales:     # These have to be here to allow signals to connect
             self.scales.connect()
-        self.update_info_texts()
+        self.update_duration_texts()
 
     def connect_signals(self):
         self.pb_cover.clicked.connect(lambda: self.access.open())
@@ -474,7 +474,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         # Advances the the process to the next stage
         if self.area_controller.area_has_process(area):
             self.area_controller.get_area_process(area).advance_stage()
-            self.update_info_texts()
+            self.update_duration_texts()
             self.check_stage(area)
             self.coms_interface.relay_send(NWC_RELOAD_PROCESSES)
 
@@ -488,8 +488,9 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         if p.current_stage is not current_stage:
             self.area_controller.display_stage_icon(area)
         # self.area_controller.display_stage_icon(area)
-        self.update_info_texts()
+        self.update_duration_texts()
         self.check_stage(area)
+        self.coms_interface.relay_send(NWC_STAGE_ADJUST)
 
     @pyqtSlot(int)
     def update_access(self, status_code):
@@ -709,7 +710,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             ctrl.setPixmap(QtGui.QPixmap(":/normal/output_auto.png"))
             ctrl.setStyleSheet("")
 
-    def update_info_texts(self):
+    def update_duration_texts(self):
         """ Update the days elapsed and remaining for areas 1 and 2"""
         for a in range(1, 3):
             if self.area_controller.area_has_process(a):
@@ -771,7 +772,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.feed_controller.new_day()
         # Update next feed dates
         self.update_next_feeds()
-        self.update_info_texts()
+        self.update_duration_texts()
         # # Reset feeder for new day
         # self.water_control.new_day()
         # self.water_control.start()
@@ -784,15 +785,17 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             else:
                 # No process, load defaults
                 pass
+        elif cmd == NWC_STAGE_ADJUST:
+
         elif cmd == NWC_OUTPUT_MODE:
-            self.area_controller.output_controller.change_mode(data[0], data[1])
+            self.area_controller.output_controller.outputs[data[0]].set_mode(data[1])
         elif cmd == NWC_FAN_SENSOR:
             self.area_controller.fans[data[0]].reload_sensor(data[1])
         elif cmd == NWC_OUTPUT_RANGE:
             self.area_controller.output_controller.outputs[data[0]].load_profile()
         elif cmd == NWC_RELOAD_PROCESSES:
             self.area_controller.load_processes()
-            self.update_info_texts()
+            self.update_duration_texts()
             self.check_stage(1)
             self.check_stage(2)
         elif cmd == NWC_SWITCH_REQUEST:

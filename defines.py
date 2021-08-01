@@ -309,6 +309,7 @@ NWC_QUE_STATUS = "que_status"               # The que status
 NWC_RELOAD_PROCESSES = "process reload"     # A change has been made in other unit the requires the processes to be reloaded
 NWC_SENSOR_RELOAD = "sensor reload"         # A process temperature setting has been changed, send location
 NWC_SLAVE_START = "slave start"             # Slave has started, send all prams
+NWC_STAGE_ADJUST = "stage adjust"           # The number of stage days has been changed
 NWC_SWITCH = "switch"                     # switch number, on or off
 NWC_SWITCH_REQUEST = "request switch"       # Request the actual position of the switch, pin number
 NWC_SOIL_LOAD = "soil_load"                 # Reload soil sensors

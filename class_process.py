@@ -747,7 +747,7 @@ class ProcessClass(QObject):
                 # print("Running")
             else:
                 # print("Stopped 1")
-                self.change_due = True
+                self.running = False
         else:
             self.running = False
 
@@ -805,7 +805,8 @@ class ProcessClass(QObject):
         self.end = val
 
     def adjust_stage_days(self, adjustment, other=0):
-        # Advances or delays a stage end
+        """ Advances or delays a stage end by number of days
+            It store the adjustment in the processs_adjustments table """
         if not self.running:
             return
         if adjustment != 0:
@@ -820,8 +821,6 @@ class ProcessClass(QObject):
                 co = row[3] + adjustment
                 sql = 'UPDATE ' + DB_PROCESS_ADJUSTMENTS + ' SET offset = {} WHERE id = "{}" AND item = "{}" ' \
                                                            'AND itemid = {}'.format(co, self.id, PA_STAGE_DAY_ADJUST, self.current_stage)
-                # self.current_stage_adjustments[self.current_stage][PA_STAGE][adjustment] =
-            # print(sql)
             self.db.execute_write(sql)
 
             # update the end date
@@ -831,13 +830,12 @@ class ProcessClass(QObject):
             # print(sql)
             self.db.execute_write(sql)
 
-            # Check if this has caused stage to change, if so load new stage info
             self.process_load_stage_info()
-            self.get_required_stage()
-            if self.stage_required is not self.current_stage:
-                self.change_due = True
-            else:
-                self.change_due = False
+            # Check if this has caused stage to change, if so load new stage info
+            # if self.stage_required is not self.current_stage:
+            #     self.change_due = True
+            # else:
+            #     self.change_due = False
 
     def load_temperature_schedule(self):
         """

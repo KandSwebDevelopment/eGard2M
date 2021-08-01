@@ -337,6 +337,7 @@ class CommunicationInterface(QObject):
                 command == NWC_MOVE_TO_FINISHING or \
                 command == NWC_SLAVE_START or \
                 command == NWC_MESSAGE or \
+                command == NWC_STAGE_ADJUST or \
                 command == NWC_ACCESS_BOOST or \
                 command == NWC_SOIL_LOAD:
             self.update_from_relay.emit(command, [])
