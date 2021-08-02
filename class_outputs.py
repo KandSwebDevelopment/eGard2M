@@ -205,6 +205,8 @@ class OutputClass(QObject):
                 return
 
     def check(self, value):
+        # if self.output_controller.master_mode == SLAVE:
+
         try:
             self._check()
             # if (0 < self.area < 4) and not self.has_process:
@@ -293,13 +295,14 @@ class OutputClass(QObject):
 
     def switch_update(self, state):
         self.update_control(state)
-        self.status_last = state
         self.status = state
         self.relay_position = state
-        if state == 1:
-            play_sound(SND_ON)
-        else:
-            play_sound(SND_OFF)
+        if state != self.status_last:
+            if state == 1:
+                play_sound(SND_ON)
+            else:
+                play_sound(SND_OFF)
+        self.status_last = state
 
     def soft_switch(self, state):
         """ This is only used by the relay command, it only updates it's output state and display, it does

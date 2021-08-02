@@ -58,7 +58,7 @@ class CommunicationInterface(QObject):
         self.priority_lock_slave = False
         self.priority_io = []
         self.command_io = []
-        self.priority_de = []
+        self.relay_stack = []
         self.command_de = []
         self.priority_slave = []
         self.command_slave = []
@@ -110,7 +110,7 @@ class CommunicationInterface(QObject):
         self.udp_relay = UdpClient(self, 2)
         self.udp_server = UdpServer(self)
         self.thread_udp_client = QThread(self)
-        self.thread_udp_slave = QThread(self)
+        self.thread_udp_relay = QThread(self)
         self.thread_udp_server = QThread(self)
         self.startup()
 
@@ -124,7 +124,10 @@ class CommunicationInterface(QObject):
         self.thread_udp_client.started.connect(self.udp_client.run)
 
         self.udp_relay.connect()
+        self.udp_relay.moveToThread(self.thread_udp_relay)
         self.udp_relay.update_status.connect(self.status_update)
+        self.udp_relay.finished.connect(self.udp_relay_finished)
+        self.thread_udp_relay.started.connect(self.udp_relay.run)
 
         self.udp_server.connect()
         self.udp_server.moveToThread(self.thread_udp_server)
@@ -141,8 +144,8 @@ class CommunicationInterface(QObject):
         # self.thread_udp_client.wait()
         self.thread_udp_client.terminate()
 
-    def udp_slave_finished(self):
-        self.thread_udp_slave.quit()
+    def udp_relay_finished(self):
+        self.thread_udp_relay.quit()
 
     @pyqtSlot(int, int, int, name="updateStatus")
     def status_update(self, sid, status, from_port):
@@ -385,7 +388,7 @@ class CommunicationInterface(QObject):
                 cmd = self.lock_cmd.encode("utf-8", "replace")
                 self.lock_cmd = ""
                 self.lock = 0
-                self.update_que_status.emit(len(self.priority_io) + len(self.priority_de),
+                self.update_que_status.emit(len(self.priority_io) + len(self.relay_stack),
                                             len(self.command_io) + len(self.command_de),
                                             self.lock)
                 return cmd, self.io_address
@@ -417,45 +420,28 @@ class CommunicationInterface(QObject):
                 self.update_cmd_issued.emit(org_cmd[1:len(org_cmd) - 1], to)
 
         if who == 2:
-            if len(self.priority_slave) > 0:
-                self.priority_lock_slave = True
-                org_cmd = self.priority_slave[0]['cmd']
-                cmd = self.priority_slave[0]['cmd'].encode("utf-8", "replace")
-                to = self.priority_slave[0]['address']
-                self.priority_slave.pop(0)
-                # which_que = 1
-                if len(self.priority_slave) == 0:
-                    self.priority_lock_slave = False
-            elif not self.priority_lock_slave:
-                if len(self.command_slave) > 0:
-                    org_cmd = self.command_slave[0]['cmd']
-                    cmd = self.command_slave[0]['cmd'].encode("utf-8", "replace")
-                    to = self.command_slave[0]['address']
-                    self.command_slave.pop(0)
+            if len(self.relay_stack) > 0:
+                org_cmd = self.relay_stack[0]['cmd']
+                cmd = self.relay_stack[0]['cmd'].encode("utf-8", "replace")
+                to = self.relay_stack[0]['address']
+                self.relay_stack.pop(0)
             if org_cmd != "":
                 self.update_cmd_issued.emit(org_cmd[1:len(org_cmd) - 1], to)
 
         self.last_communication = org_cmd
         return cmd, to
 
-    def get_next_tcp_communication(self) -> (str, int):
+    def get_next_relay_communication(self) -> (str, int):
         org_cmd = cmd = ''
         to = -1
-        if len(self.priority_de) > 0:
-            self.priority_lock_de = True
-            org_cmd = self.priority_de[0]['cmd']
-            cmd = self.priority_de[0]['cmd'].encode("utf-8", "replace")
-            to = self.priority_de[0]['address']
-            self.priority_de.pop(0)
-            if len(self.priority_de) == 0:
-                self.priority_lock_de = False
-        elif not self.priority_lock_de:
-            if len(self.command_de) > 0:
-                org_cmd = self.command_de[0]['cmd']
-                cmd = self.command_de[0]['cmd'].encode("utf-8", "replace")
-                to = self.command_de[0]['address']
-                self.command_de.pop(0)
-        self.last_communication = org_cmd
+        if len(self.relay_stack) > 0:
+            org_cmd = self.relay_stack[0]['cmd']
+            cmd = self.relay_stack[0]['cmd'].encode("utf-8", "replace")
+            to = self.relay_stack[0]['address']
+            self.relay_stack.pop(0)
+            # if len(self.relay_stack) == 0:
+            #     self.priority_lock_de = False
+        # self.last_communication = org_cmd
         if cmd != '':
             self.update_cmd_issued.emit(org_cmd[1:len(org_cmd) - 1], to)
         return cmd, to
@@ -467,7 +453,7 @@ class CommunicationInterface(QObject):
             self.stack_io(data, self.de_address, urgent)
             # self.stack_de(data, urgent)
         elif to == MODULE_SL:
-            self.stack_io(data, self.slave_address, urgent)
+            self.stack_relay(data)
         elif to == MODULE_FU:
             self.stack_io(data, self.fu_address, urgent)
         # elif to == MODULE_NWC:
@@ -488,31 +474,23 @@ class CommunicationInterface(QObject):
                 print("Starting UDP thread")
                 self.thread_udp_client.start()
 
-        self.update_que_status.emit(len(self.priority_io) + len(self.priority_de),
+        self.update_que_status.emit(len(self.priority_io) + len(self.relay_stack),
                                     len(self.command_io) + len(self.command_de),
                                     self.lock)
         # self.slave_send(NWC_QUE_STATUS, len(self.priority_io) + len(self.priority_de),
         #                 len(self.command_io) + len(self.command_de),
         #                 self.lock)
 
-    def stack_de(self, data, urgent=False):
-        if urgent:
-            # if not self.is_in_que(data, self.priority_out):
-            if next((item for item in self.priority_de if item["cmd"] == data), None) is None:
-                self.priority_de.append({'address': MODULE_DE, 'cmd': data})
-                self.priority_lock_de = True
-        else:
-            # if not self.priority_lock:
-            if next((item for item in self.command_de if item["cmd"] == data), None) is None:
-                self.command_de.append({'address': MODULE_DE, 'cmd': data})
-
-        self.update_que_status.emit(len(self.priority_io) + len(self.priority_de),
+    def stack_relay(self, data):
+        if next((item for item in self.relay_stack if item["cmd"] == data), None) is None:
+            self.relay_stack.append({'address': self.slave_address,  'cmd': data})
+        self.update_que_status.emit(len(self.priority_io) + len(self.relay_stack),
                                     len(self.command_io) + len(self.command_de),
                                     self.lock)
-        if len(self.command_de) > 0 or len(self.priority_de) > 0:
-            if not self.tcp_client.isRunning():
-                print("Starting NET thread")
-                self.tcp_client.start()
+        if len(self.relay_stack) > 0:
+            if not self.thread_udp_relay.isRunning():
+                print("Starting Relay thread")
+                self.thread_udp_relay.start()
 
     @staticmethod
     def is_in_que(cmd, que):
@@ -574,7 +552,7 @@ class CommunicationInterface(QObject):
         self.lock = lock
         self.lock_cmd = cmd
         if lock == 2 or lock == 1 or lock == 3:
-            self.update_que_status.emit(len(self.priority_io) + len(self.priority_de),
+            self.update_que_status.emit(len(self.priority_io) + len(self.relay_stack),
                                         len(self.command_io) + len(self.command_de),
                                         self.lock)
             if not self.thread_udp_client.isRunning():
@@ -583,8 +561,9 @@ class CommunicationInterface(QObject):
     def relay_command(self, command):
         if command == "":
             return
-        self.update_cmd_issued.emit(command, self.slave_address)
-        self.udp_relay.send_only(command.encode("utf-8"), self.slave_address)
+        self.stack_relay(command)
+        # self.update_cmd_issued.emit(command, self.slave_address)
+        # self.udp_relay.send_only(command.encode("utf-8"), self.slave_address)
         # print("Sending Relay {} to IP {} Port {}".format(command, self.pc_ip, self.pc_port))
 
     def relay_send(self, command, *data):
@@ -592,5 +571,6 @@ class CommunicationInterface(QObject):
         for d in data:
             cmd += "\r\n" + str(d)
         cmd += "\r\n\r\n"
-        self.update_cmd_issued.emit(cmd, self.slave_address)
-        self.udp_relay.send_only(cmd.encode("utf-8"), self.slave_address)
+        self.stack_relay(cmd)
+        # self.update_cmd_issued.emit(cmd, self.slave_address)
+        # self.udp_relay.send_only(cmd.encode("utf-8"), self.slave_address)

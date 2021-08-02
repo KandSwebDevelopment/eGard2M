@@ -72,14 +72,14 @@ class FanController(QThread):
         self.db.set_config(CFT_FANS, "master", p)
         if p == 0:
             self.stop()
-        else:
-            if self.my_parent.area_has_process(self.id):
-                self.start_auto()
-            else:
-                if self.area_is_manual(self.id) == 2:
-                    self.start_manual()
-                else:
-                    self.mode = 0
+        # else:
+        #     if self.my_parent.area_has_process(self.id):
+        #         self.start_auto()
+        #     else:
+        #         if self.area_is_manual(self.id) == 2:
+        #             self.start_manual()
+        #         else:
+        #             self.mode = 0
 
     @property
     def mode(self):

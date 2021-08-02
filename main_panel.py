@@ -71,7 +71,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.access_open_time = 0  # Timestamp when cover was opened
         self.timer_counter = 0
         self.timer = QTimer()
-        self.timer.setInterval(1000)
+        self.timer.setInterval(2000)
         self.timer.timeout.connect(self.recurring_timer)
         self.loop_15_flag = True  # To give every other loop 15
 
@@ -216,6 +216,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.pb_feed_mix_1.clicked.connect(lambda: self.wc.show(DialogFeedMix(self, 1)))
         self.pbinfo_1.clicked.connect(lambda: self.wc.show_process_info(1))
         self.pb_advance_1.clicked.connect(lambda: self.stage_adjust(1, -1))
+        self.pbstageadvance_1.clicked.connect(lambda: self.stage_advance(1))
         self.pb_hold_1.clicked.connect(lambda: self.stage_adjust(1, 1))
         self.pb_output_status_1.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_11))
         self.pb_output_status_2.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_12))
@@ -359,6 +360,14 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 # text = "Full Auto"
             # ctrl.setText(text)
 
+    def stage_advance(self, location):
+        # Advances the the process to the next stage
+        self.area_controller.get_area_process(location).advance_stage()
+        self.area_controller.load_processes()
+        self.update_duration_texts()
+        self.check_stage(location)
+        self.coms_interface.relay_send(NWC_RELOAD_PROCESSES)
+
     def check_stage(self, location):
         if self.area_controller.get_area_process(location) == 0:
             return
@@ -483,11 +492,10 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         if not self.area_controller.area_has_process(area):
             return
         p = self.area_controller.get_area_process(area)
-        current_stage = p.current_stage
+        # current_stage = p.current_stage
         p.adjust_stage_days(val)
-        if p.current_stage is not current_stage:
-            self.area_controller.display_stage_icon(area)
-        # self.area_controller.display_stage_icon(area)
+        # if p.current_stage is not current_stage:
+        self.area_controller.display_stage_icon(area)
         self.update_duration_texts()
         self.check_stage(area)
         self.coms_interface.relay_send(NWC_STAGE_ADJUST)
@@ -786,7 +794,9 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 # No process, load defaults
                 pass
         elif cmd == NWC_STAGE_ADJUST:
-
+            self.area_controller.get_area_process(1).process_load_stage_info()
+            self.update_duration_texts()
+            self.check_stage(1)
         elif cmd == NWC_OUTPUT_MODE:
             self.area_controller.output_controller.outputs[data[0]].set_mode(data[1])
         elif cmd == NWC_FAN_SENSOR:

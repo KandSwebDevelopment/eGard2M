@@ -1622,6 +1622,8 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
             lw_item.setData(Qt.UserRole, v_item)
             self.lw_recipe_1.addItem(lw_item)
         else:
+            if recipe is None:
+                return      # Safety check, need looking into
             for nid in recipe:      # nid = (nid, mls)
                 # ri - 0=nid, 1=ml, 2=L, 3=rid, 4=freq, 5=adj ml, 6=adj remaining
                 rs, diff = self.feed_control.recipe_item_status(self.area, self.mix_number, (nid[0], nid[1]))
@@ -1672,7 +1674,7 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
             if self.feed_control.get_lpp_org(self.area) == lpp:
                 self.te_water_1.setText(
                     "Recommended water " + str(
-                        round(self.feed_control.get_water_total, 2)) + " which is " +
+                        round(self.feed_control.get_water_total(self.area, self.mix_number), 2)) + " which is " +
                     str(lpp) + "L each")
             else:
                 self.te_water_1.setText("Adjusted water {} which is {}L each. ({}L each)".format(

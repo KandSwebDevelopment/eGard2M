@@ -75,9 +75,9 @@ class OutputController(QObject):
         if self.outputs[op_id].mode >= 2:    # Auto modes
             self.outputs[op_id].switch_hard(state)
         else:   # Manual off or on
-            # Instead of calling switch this calls set_mode_by_state as user has clicked on/off so output will go into
-            # manual off or manual on, and this set_mode_by_state calls the switch
-            self.outputs[op_id].set_mode_by_state(state)
+            self.outputs[op_id].set_mode(int(not self.outputs[op_id].mode))
+            self.main_panel.coms_interface.relay_send(NWC_OUTPUT_MODE, op_id, self.outputs[op_id].mode)
+            self.outputs[op_id].switch_hard(state)
         sound_click()
 
     @pyqtSlot(int, int, int, name="updateSwitch")
