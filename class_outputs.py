@@ -119,7 +119,7 @@ class OutputClass(QObject):
 
         self.calculate_limits()
         
-    def save_input_sensor(self, sensor_id):
+    def set_input_sensor(self, sensor_id):
         """ Updates the input sensor and saves it to the db and reloads all outputs for the area.
             This ensures the sensor classes handler list has any old inputs removed"""
         self.db.execute_write('UPDATE {} SET input = {} WHERE id = {} LIMIT 1'.format(DB_OUTPUTS, sensor_id, self.id))

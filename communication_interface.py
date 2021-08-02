@@ -334,6 +334,7 @@ class CommunicationInterface(QObject):
             self.update_network_status.emit(int(prams[0]), int(prams[1]))
         elif command == NWC_QUE_STATUS:
             self.update_que_status.emit(int(prams[0]), int(prams[1]), int(prams[2]))
+        # No prams
         elif command == NWC_WORKSHOP_HEATER or \
                 command == NWC_DRYING_AREA or \
                 command == NWC_WH_DURATION or \
@@ -344,7 +345,7 @@ class CommunicationInterface(QObject):
                 command == NWC_ACCESS_BOOST or \
                 command == NWC_SOIL_LOAD:
             self.update_from_relay.emit(command, [])
-
+        # 1 pram
         elif command == NWC_PROCESS_FEED_DATE or \
                 command == NWC_PROCESS_MIX_CHANGE or \
                 command == NWC_PROCESS_FEED_MODE or \
@@ -352,17 +353,18 @@ class CommunicationInterface(QObject):
                 command == NWC_RELOAD_PROCESSES or \
                 command == NWC_OUTPUT_RANGE or \
                 command == NWC_ACCESS_OPERATE or \
+                command == NWC_OUTPUT_TRIGGER or \
                 command == NWC_FEED or \
-                command == NWC_SWITCH_REQUEST or \
-                command == NWC_OUTPUT_SENSOR:
+                command == NWC_SWITCH_REQUEST:
             self.update_from_relay.emit(command, [int(prams[0])])
-
+        # 2 prams
         elif command == NWC_OUTPUT or \
                 command == NWC_OUTPUT_MODE or \
                 command == NWC_FAN_SENSOR or \
+                command == NWC_OUTPUT_SENSOR or \
                 command == NWC_FAN_UPDATE:
             self.update_from_relay.emit(command, [int(prams[0]), int(prams[1])])
-
+        # 2 float prams
         elif command == NWC_WATER_LEVELS:
             self.update_from_relay.emit(command, [float(prams[0]), float(prams[1])])
 

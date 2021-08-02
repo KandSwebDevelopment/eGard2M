@@ -787,6 +787,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
 
     @pyqtSlot(str, list, name="updateForHelper")
     def process_relay_command(self, cmd, data):
+        """ For outputs use the actual output class and not the controller as it relays the action"""
         if cmd == NWC_SENSOR_RELOAD:
             if self.area_controller.area_has_process(data[0]):
                 self.area_controller.get_area_process(data[0]).load_active_temperature_ranges()
@@ -797,8 +798,12 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.area_controller.get_area_process(1).process_load_stage_info()
             self.update_duration_texts()
             self.check_stage(1)
+        elif cmd == NWC_OUTPUT_SENSOR:
+            self.area_controller.output_controller.outputs[data[0]].set_input_sensor(data[1])
         elif cmd == NWC_OUTPUT_MODE:
             self.area_controller.output_controller.outputs[data[0]].set_mode(data[1])
+        elif cmd == NWC_OUTPUT_TRIGGER:
+            self.area_controller.output_controller.outputs[data[0]].set_detection(data[1])
         elif cmd == NWC_FAN_SENSOR:
             self.area_controller.fans[data[0]].reload_sensor(data[1])
         elif cmd == NWC_OUTPUT_RANGE:

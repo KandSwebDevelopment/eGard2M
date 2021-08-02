@@ -2853,6 +2853,7 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         self.cb_trigger.addItem("Falling", DET_FALL)
         self.cb_trigger.addItem("Rising", DET_RISE)
         self.cb_trigger.setCurrentIndex(self.cb_trigger.findData(self.change_detection_mode))
+        self.cb_trigger.currentIndexChanged.connect(self.change_detection_mode)
 
     def change_detection_mode(self):
         self.detection_mode = self.cb_trigger.currentData()

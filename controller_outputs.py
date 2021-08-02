@@ -60,8 +60,8 @@ class OutputController(QObject):
         self.main_panel.coms_interface.relay_send(NWC_OUTPUT_MODE, op_id, mode)
 
     def change_sensor(self, op_id, sid):
-        self.outputs[op_id].save_input_sensor(sid)
-        self.main_panel.coms_interface.relay_send(NWC_OUTPUT_SENSOR, op_id)
+        self.outputs[op_id].set_input_sensor(sid)
+        self.main_panel.coms_interface.relay_send(NWC_OUTPUT_SENSOR, op_id, sid)
 
     def change_range(self, op_id, on, off):
         self.outputs[op_id].set_range(on, off)
