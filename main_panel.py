@@ -71,7 +71,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.access_open_time = 0  # Timestamp when cover was opened
         self.timer_counter = 0
         self.timer = QTimer()
-        self.timer.setInterval(2000)
+        self.timer.setInterval(1000)
         self.timer.timeout.connect(self.recurring_timer)
         self.loop_15_flag = True  # To give every other loop 15
 
@@ -144,12 +144,12 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.loop_5()
 
         # Every 10
-        if self.timer_counter % 10 == 0:
+        if self.timer_counter % 15 == 0:       # 15 sec
             self.loop_3()
             return
 
         # Only do following every 2nd time
-        if self.timer_counter % 2 == 0:
+        if self.timer_counter % 4 == 0:
             self.loop_2()
             return
 
