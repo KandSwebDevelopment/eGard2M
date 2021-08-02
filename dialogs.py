@@ -23,6 +23,7 @@ from ui.dialogFeedMix import Ui_DialogFeedMix
 from ui.area_manual import Ui_frm_area_manual
 from ui.dialogJournal import Ui_DialogJournal
 from ui.dialogOutputSettings import Ui_DialogOutputSetting
+from ui.dialogProcessAdjustments import Ui_DialogProcessAdjust
 from ui.dialogProcessInfo import Ui_DialogProcessInfo
 from ui.dialogSensorSettings import Ui_DialogSensorSettings
 from ui.dialogStrainFinder import Ui_DialogStrainFinder
@@ -2790,6 +2791,55 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self.db.execute_write(sql)
         self.main_panel.coms_interface.send_data(CMD_SET_FAN_SENSOR, True, MODULE_IO, self.area, self.s_id)
         self.main_panel.coms_interface.relay_send(NWC_FAN_SENSOR, self.area, self.s_id)
+
+
+class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
+    def __init__(self, parent, area):
+        """ :type parent: MainWindow """
+        super(DialogProcessAdjustments, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.main_panel = parent
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.db = parent.db
+        self.sub = None
+
+        self.area = area
+        self.process = self.main_panel.area_controller.get_area_process(self.area)
+        self.cb_feed_mode.addItem("Manual", 1)
+        self.cb_feed_mode.addItem("Semi Auto", 2)
+        self.cb_feed_mode.addItem("Automatic", 3)
+        self.cb_feed_mode.addItem("Full Auto", 4)
+        self.cb_move_to.addItem("", 0)
+        if not self.main_panel.area_controller.area_has_process(1) and self.area != 1:
+            self.cb_move_to.addItem("Area 1", 1)
+            # idx += 1
+        if not self.main_panel.area_controller.area_has_process(2) and self.area != 2:
+            self.cb_move_to.addItem("Area 2", 2)
+
+        self.new_feed_date = self.main_panel.feed_controller.get_last_feed_date(self.area)
+
+        if self.area != 3:
+            self.cb_feed_mode.setCurrentIndex(self.main_panel.feed_controller.get_feed_mode(self.area))
+            self.de_feed_date.setDate(self.new_feed_date)
+        else:
+            self.cb_feed_mode.setEnabled(False)
+            self.de_feed_date.setEnabled(False)
+
+    def delay_feed(self):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Warning)
+        msg.setText("Confirm you wish to delay feeding")
+        msg.setWindowTitle("Confirm Feed Delay")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        msg.setDefaultButton(QMessageBox.Cancel)
+        if msg.exec_() == QMessageBox.Cancel:
+            return
+        self.main_panel.feed_control.set_last_feed_date(
+            self.area, self.feed_data['lfd'] + timedelta(days=1))
+        # self.process.set_last_feed_date(self.process.last_feed_date + timedelta(days=1))
+        self.main_panel.update_next_feeds()
+        self.main_panel.coms_interface.relay_send(NWC_FEED, self.area)  # Just send feed as it is only the feed date that is changed
 
 
 class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):

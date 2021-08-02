@@ -24,8 +24,8 @@ class FeedControl(QThread):
 
     def __init__(self, parent):
         QThread.__init__(self, parent)
-        self.my_parent = parent
-        self.db = self.my_parent.db
+        self.main_window = parent
+        self.db = self.main_window.db
         self.feeds = collections.defaultdict(FeedClass)
         self.nutrients = collections.defaultdict()
         self.feed_mode = int(self.db.get_config(CFT_FEEDER, "mode", 1))  # 1=Manual, 2=Semi auto, 3=Full auto
@@ -41,11 +41,11 @@ class FeedControl(QThread):
 
     def start_up(self):
         for area in range(1, 3):
-            p = self.my_parent.area_controller.get_area_process(area)
+            p = self.main_window.area_controller.get_area_process(area)
             if p != 0:
                 self.feeds[area] = FeedClass(self)
                 self.feeds[area].load(area, p.pattern_id, p.current_stage, p.stage_days_elapsed, p.stages_max,
-                                      self.my_parent.area_controller.get_area_items(area))
+                                      self.main_window.area_controller.get_area_items(area))
                 self.feeds[area].load_mixes()
 
     def days_till_feed(self, area):
@@ -94,6 +94,9 @@ class FeedControl(QThread):
     def get_next_feed_date(self, area):
         return self.feeds[area].nfd
 
+    def get_last_feed_date(self, area):
+        return self.feeds[area].lfd
+
     def get_next_recipe(self, area):
         return self.feeds[area].get_next_feed_recipe()
 
@@ -122,6 +125,9 @@ class FeedControl(QThread):
         for m in mixes:
             t += mixes[m]['water total']
         self.area_data[area]['water total'] = t
+
+    def set_last_feed_date(self, area, feed_date):
+        self.feeds[area].set_last_feed_date(feed_date)
 
     def recipe_item_status(self, area, mix_num, item):
         """ Checks the item (nid, mls) against the original recipe
@@ -153,7 +159,7 @@ class FeedControl(QThread):
             self.feeds[a].new_day()
 
     def feed(self, area, f_date=None):
-        if not self.my_parent.area_controller.area_has_process(area):
+        if not self.main_window.area_controller.area_has_process(area):
             return
         mixes = self.feeds[area].get_mixes()
         date_done = datetime.now()
@@ -221,17 +227,17 @@ class FeedControl(QThread):
         if self.get_feed_mode(area) == 1:  # Manual
             self.deduct_fed_feed(area)
         else:  # Semi auto and auto
-            if self.my_parent.master_mode == MASTER:
+            if self.main_window.master_mode == MASTER:
                 pass
         # save feed details to the log
         self.log_txt += "\r\n"
-        # self.my_parent.logger.save_feed(self.my_parent.area_controller.get_area_pid(), self.log_txt)
+        # self.main_window.logger.save_feed(self.main_window.area_controller.get_area_pid(), self.log_txt)
         self.feeds[area].cycles_reduce()
         self.feeds[area].get_recipe_status()
         # self._check_feed_due_today()
-        # self.my_parent.lbl_water_required.setText(str(self.get_next_water_required()))
-
-        # self.my_parent.process_from_location(area).load_feed_date()
+        # self.main_window.lbl_water_required.setText(str(self.get_next_water_required()))
+        self.main_window.update_next_feeds()
+        # self.main_window.process_from_location(area).load_feed_date()
 
     def deduct_fed_feed(self, area):
         """ Deducts the nutrients used by all the mixes in this feed from stock levels, also builds
@@ -246,7 +252,7 @@ class FeedControl(QThread):
             for item in mixes[mix]['recipe']:
                 if item != WATER_ONLY_IDX:
                     mls = item[1] * mixes[mix]['lpp'] * len(mixes[mix]['items'])
-                    # self.my_parent.feeder.deduct_nutrient(item, mls)
+                    # self.main_window.feeder.deduct_nutrient(item, mls)
                     if item[0] == WATER_ONLY_IDX:
                         nut = WATER_ONLY
                     else:
@@ -255,6 +261,6 @@ class FeedControl(QThread):
                     self.log_txt += "{}: Mix total {}mls   {}mls per plant.\r".format(nut, mls, item[1])
                 else:
                     self.log_txt += "Water only\r"
-        # self.my_parent.feeder.check_pot_levels()
-        # self.my_parent.feeder.check_nutrient_levels()
+        # self.main_window.feeder.check_pot_levels()
+        # self.main_window.feeder.check_nutrient_levels()
 

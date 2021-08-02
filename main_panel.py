@@ -12,7 +12,7 @@ from class_fan import FanController
 from class_soil_sensors import SoilSensorClass
 from defines import *
 from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan, DialogOutputSettings, \
-    DialogSensorSettings
+    DialogSensorSettings, DialogProcessAdjustments
 from scales_com import ScalesComs
 from ui.main import Ui_Form
 
@@ -218,6 +218,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.pb_advance_1.clicked.connect(lambda: self.stage_adjust(1, -1))
         self.pbstageadvance_1.clicked.connect(lambda: self.stage_advance(1))
         self.pb_hold_1.clicked.connect(lambda: self.stage_adjust(1, 1))
+        self.pbadjust_1.clicked.connect(lambda: self.wc.show(DialogProcessAdjustments(self, 1)))
         self.pb_output_status_1.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_11))
         self.pb_output_status_2.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_12))
         self.pb_output_status_3.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_AREA_1))
@@ -231,6 +232,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.pb_man_feed_2.clicked.connect(lambda: self.feed_manual(2))
         self.pb_feed_mix_2.clicked.connect(lambda: self.wc.show(DialogFeedMix(self, 2)))
         self.pbinfo_2.clicked.connect(lambda: self.wc.show_process_info(2))
+        self.pbadjust_2.clicked.connect(lambda: self.wc.show(DialogProcessAdjustments(self, 2)))
         self.pb_output_status_4.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_21))
         self.pb_output_status_5.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_22))
         self.pb_output_status_6.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_AREA_2))
@@ -242,6 +244,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         # Area 3
         self.pbjournal_3.clicked.connect(lambda: self.wc.show_journal(3))
         self.pbinfo_3.clicked.connect(lambda: self.wc.show_process_info(3))
+        self.pbadjust_3.clicked.connect(lambda: self.wc.show(DialogProcessAdjustments(self, 3)))
         self.pb_output_status_7.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_31))
         self.pb_output_mode_7.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 3, 1)))
         # Workshop
@@ -459,8 +462,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
 
     def feed_manual(self, loc):
         self.feed_controller.feed(loc)
-        # self.update_next_feeds()
-        # self.coms_interface.relay_send(NWC_FEED, loc)
+        self.update_next_feeds()
+        self.coms_interface.relay_send(NWC_FEED, loc)
 
     def check_light(self):
         if self.area_controller.area_has_process(1):
@@ -813,6 +816,9 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.update_duration_texts()
             self.check_stage(1)
             self.check_stage(2)
+        elif cmd == NWC_FEED:
+            self.feed_controller.feeds(data[0]).load_feed_date()
+            self.update_next_feeds()
         elif cmd == NWC_SWITCH_REQUEST:
             self.get_switch_position(data[0])
 
