@@ -1,6 +1,5 @@
 import socket
-
-from PyQt5.QtCore import QObject, pyqtSignal, QThread, pyqtSlot
+from PyQt5.QtCore import QObject, QThread, pyqtSlot, pyqtSignal
 from PyQt5.QtNetwork import QHostAddress
 
 from UPD_client import UdpClient
@@ -260,7 +259,8 @@ class CommunicationInterface(QObject):
             return
         if command == CMD_SWITCH:
             self.update_switch.emit(int(prams[0]), int(prams[1]), module)
-            self.relay_command(relay_command)
+            if module != MODULE_SL:
+                self.relay_send(NWC_SWITCH, prams[0], prams[1])
         elif command == COM_SENSOR_READ:
             self.update_sensors.emit(prams)
             self.relay_command(relay_command)
@@ -277,7 +277,6 @@ class CommunicationInterface(QObject):
             self.update_float_switch.emit(int(prams[0]), int(prams[1]))
             self.relay_command(relay_command)
         elif command == NWC_US_READ:
-            # print("Received US reading ", mylist)
             self.update_us_reading.emit(int(prams[0]), int(prams[1]))  # Signal emit - tank, value
             self.relay_command(relay_command)
         #  General

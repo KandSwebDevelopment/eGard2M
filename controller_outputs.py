@@ -46,8 +46,9 @@ class OutputController(QObject):
             self.outputs[oid].load_profile()
             if self.outputs[oid].input > 0:
                 self.areas_controller.sensors[self.outputs[oid].input].set_action_handler(self.outputs[oid])  # Link sensor to output
-        if self.master_mode == SLAVE:
-            self.areas_controller.main_window.coms_interface.relay_send(NWC_SWITCH_REQUEST, oid)
+            if self.master_mode == SLAVE:
+                self.areas_controller.main_window.coms_interface.relay_send(NWC_SWITCH_REQUEST, oid)
+                print("out request ", oid)
 
     def get_set_temperatures(self, op_id):
         return self.outputs[op_id].get_set_temperatures()
