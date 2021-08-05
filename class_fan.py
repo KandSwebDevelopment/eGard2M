@@ -6,15 +6,15 @@ import PID
 from defines import *
 
 
-class FanController(QThread):
+class FanClass(QThread):
     update_fan_speed = pyqtSignal(int, int)     # Fan id, speed
     update_fan_mode = pyqtSignal(int, int)      # Fan id, mode
 
     def __init__(self, parent, _id):
         """ :type parent: MainWindow """
         QThread.__init__(self, parent)
-        self.my_parent = parent                         # This's parent which is Area Controller
-        self.db = self.my_parent.db
+        self.fan_controller = parent                         # This's parent which is Area Controller
+        self.db = self.fan_controller.db
         self.id = _id
         self.pid = PID.PID(0, 0, 0)
         self.pid.sample_time = 1
@@ -22,7 +22,7 @@ class FanController(QThread):
         self.input = 0
         self.input_calibration = 0
         self.last_input = 0
-        self._speed = 5
+        self._speed = 0
         self.last_speed = -1
         self._set_point = 0
         self._logging = False    # if True will log sensor temperature and fan speed
@@ -42,12 +42,6 @@ class FanController(QThread):
                      row[4] if row[4] is not None else 0)
         self._load_set_point()
         self._load_sensor_calibration()
-        self.master = int(self.db.get_config(CFT_FANS, "master", 1))
-        # Below is handled by master (power)
-        # if self.my_parent.area_has_process(self.id):
-        #     self.start_auto()
-        # elif self.my_parent.area_is_manual(self.id):
-        #     self.start_manual()
 
     def _load_sensor_calibration(self):
         self.input_calibration = self.db.execute_single(
@@ -60,26 +54,6 @@ class FanController(QThread):
         @rtype: object
         """
         return self.pid.tunings
-
-    @property
-    def master(self):
-        return self._master_power
-
-    @master.setter
-    def master(self, p):
-        self._master_power = p
-        self.my_parent.main_window.coms_interface.send_switch(37, p)
-        self.db.set_config(CFT_FANS, "master", p)
-        if p == 0:
-            self.stop()
-        # else:
-        #     if self.my_parent.area_has_process(self.id):
-        #         self.start_auto()
-        #     else:
-        #         if self.area_is_manual(self.id) == 2:
-        #             self.start_manual()
-        #         else:
-        #             self.mode = 0
 
     @property
     def mode(self):
@@ -103,7 +77,7 @@ class FanController(QThread):
         @param mode: Fan operation mode
         @type mode: int
         """
-        self.my_parent.main_window.main_panel.update_fan_mode(self.id, mode)
+        # self.fan_controller.main_panel.update_fan_mode(self.id, mode, self.fan_controller.master_power)
         if mode == self._mode:
             return
         self._mode = mode
@@ -121,27 +95,27 @@ class FanController(QThread):
         @type value:
         """
         if self._sensor > 0:
-            self.my_parent.sensors[self._sensor].is_fan = False
+            self.fan_controller.area_controller.sensors[self._sensor].is_fan = False
         self._sensor = value
-        self.my_parent.db.execute_write("UPDATE {} set sensor = {} WHERE id = {}".
+        self.fan_controller.db.execute_write("UPDATE {} set sensor = {} WHERE id = {}".
                                         format(DB_FANS, value, self.id))
         self._load_set_point()
         self._load_sensor_calibration()
         self.pid.clear()
-        self.my_parent.sensors[self._sensor].is_fan = True
-        self.my_parent.update_fans_sensor()
+        self.fan_controller.area_controller.sensors[self._sensor].is_fan = True
+        # self.fan_controller.main_panel.update_fans_sensor()
 
     def reload_sensor(self):
         """ reload sensor when relay command indicates a sensor change"""
         if self._sensor > 0:
-            self.my_parent.sensors[self._sensor].is_fan = False
+            self.fan_controller.area_controller.sensors[self._sensor].is_fan = False
         row = self.db.execute_single("SELECT sensor FROM {} WHERE id = {}".format(DB_FANS, self.id))
         self._sensor = row if row is not None else 0
         self._load_set_point()
         self._load_sensor_calibration()
         self.pid.clear()
-        self.my_parent.sensors[self._sensor].is_fan = True
-        self.my_parent.update_fans_sensor()
+        self.fan_controller.area_controller.sensors[self._sensor].is_fan = True
+        # self.fan_controller.update_fans_sensor()
 
     @property
     def speed(self):
@@ -185,7 +159,8 @@ class FanController(QThread):
         self.input = value + self.input_calibration
         # print("Fan input ", value)
         if self._logging:
-            self.my_parent.main_window.logger.save_fan_log(self.id, "{},{},{}".format(self.input, self._speed, self._set_point))
+            self.fan_controller.area_controller.main_window.logger.save_fan_log\
+                (self.id, "{},{},{}".format(self.input, self._speed, self._set_point))
 
     def reset(self):
         self.pid.clear()
@@ -204,15 +179,17 @@ class FanController(QThread):
             self.start()
 
     def start_manual(self):
-        self.my_parent.main_window.msg_sys.add("Fan {} starting".format(self.id), MSG_FAN_START + self.id, INFO)
-        if self.mode == 0:
-            self.switch(5)
-            self.spin_up = True
-            self.startup_timer.start()
+        if self.speed > 0:
+            return
+        self.fan_controller.area_controller.main_window.msg_sys.add\
+            ("Fan {} starting".format(self.id), MSG_FAN_START + self.id, INFO)
+        self.switch(5)
+        self.spin_up = True
+        self.startup_timer.start()
         self.mode = 1
 
     def run(self) -> None:
-        if self.my_parent.main_window.master_mode == SLAVE:
+        if self.fan_controller.master_mode == SLAVE:
             return
         while self.mode == 2:
             self.pid.update(self.input)
@@ -234,7 +211,7 @@ class FanController(QThread):
             self.spin_up = False
             self.switch(2)
             self.startup_timer.stop()
-            self.my_parent.main_window.msg_sys.remove(MSG_FAN_START + self.id)
+            self.fan_controller.area_controller.main_window.msg_sys.remove(MSG_FAN_START + self.id)
             return
         self.startup_counter += 1
         self.update_fan_speed.emit(self.id, self.startup_counter - self.fan_spin_up)
@@ -247,10 +224,10 @@ class FanController(QThread):
         # self.update_fan_speed.emit(self.id, speed)
         self._speed = speed
         print("Fan {} switched to speed {} at temperature {}".format(self.id, self._speed, self.input))
-        self.my_parent.main_window.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, self.id, speed)
+        self.fan_controller.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, self.id, speed)
         self.last_speed = self._speed
 
     def _load_set_point(self):
         if self._sensor == 0:
             return
-        self.set_point(self.my_parent.sensors[self._sensor].get_set())
+        self.set_point(self.fan_controller.area_controller.sensors[self._sensor].get_set())

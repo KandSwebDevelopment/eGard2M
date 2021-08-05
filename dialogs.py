@@ -27,6 +27,7 @@ from ui.dialogProcessAdjustments import Ui_DialogProcessAdjust
 from ui.dialogProcessInfo import Ui_DialogProcessInfo
 from ui.dialogSensorSettings import Ui_DialogSensorSettings
 from ui.dialogStrainFinder import Ui_DialogStrainFinder
+from ui.dialogWaterHeaterSettings import Ui_DialogWaterHeatertSetting
 
 
 class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
@@ -865,8 +866,6 @@ class DialogDispatchInternal(QDialog, Ui_DialogDispatchInternal):
 
 
 class DialogDispatchStorage(QDialog, Ui_Form):
-    my_parent = ...  # type: MainWindow
-
     def __init__(self, parent):
         """
 
@@ -1399,9 +1398,6 @@ class DialogDispatchOverview(QDialog, Ui_DialogLogistics):
                     # getattr(self, "ck_upcoming_{}".format(loc)).setChecked(True)
                     self.up_coming.append([d, q, loc])
                     # self.up_coming_yield.append(q)
-        # for d, q in self.up_coming:
-        #     self.te_upcomming.append(
-        #         "{} > {} ~ {}".format(datetime.strftime(d, "%d/%m/%y"), q, q * self.estimate_per_plant))
 
     def get_future(self):
         self.te_future.clear()
@@ -1415,7 +1411,6 @@ class DialogDispatchOverview(QDialog, Ui_DialogLogistics):
             rt -= self.weekly_total
             if rt > self.weekly_total:
                 c = "color: Black; background: Green;"
-                # if len(up_coming) > 0 and self.ck_inlude_upcomming.isChecked():
                 if len(up_coming) > 0:
                     if wd.date() > up_coming[0][0].date():
                         if getattr(self, "ck_upcoming_{}".format(up_coming[0][2])).isChecked():
@@ -2487,7 +2482,7 @@ class DialogFan(QDialog, Ui_DialogFan):
         self.my_parent = parent
         self.db = self.my_parent.db
         self.id = fan
-        self.fan = self.my_parent.area_controller.fans[fan]
+        self.fan_controller = self.my_parent.area_controller.fan_controller
         self.dl_fan.valueChanged.connect(self.change_speed)
         self.pb_close.clicked.connect(lambda: self.sub.close())
         self.pb_mode_off.clicked.connect(lambda: self.change_mode(0))
@@ -2498,7 +2493,7 @@ class DialogFan(QDialog, Ui_DialogFan):
         self.check_mode()
 
     def power(self):
-        if self.fan.master == 1:
+        if self.fan_controller.master_power == ON:
             msg = QMessageBox()
             msg.setIcon(QMessageBox.Warning)
             msg.setText("Confirm you wish to shut down the fan controller's power supply")
@@ -2507,19 +2502,19 @@ class DialogFan(QDialog, Ui_DialogFan):
             msg.setDefaultButton(QMessageBox.Cancel)
             if msg.exec_() == QMessageBox.Cancel:
                 return
-            self.fan.master = 0
+            self.fan_controller.set_master_power(OFF)
         else:
-            self.fan.master = 1
+            self.fan_controller.set_master_power(ON)
 
     def check_mode(self):
-        if self.fan.master == 0:
-            self.lbl_mode.setText("DOWN")
+        if self.fan_controller.master_power == OFF:
+            self.lbl_mode.setText("M. Off")
             return
-        if self.fan.mode == 0:
+        if self.fan_controller.get_mode == 0:
             # self.dl_fan.setValue(0)
             self.lbl_mode.setText("Off")
             self.dl_fan.setEnabled(False)
-        elif self.fan.mode == 2:
+        elif self.fan_controller.get_mode == 2:
             self.dl_fan.setValue(self.fan.speed)
             self.lbl_mode.setText("Auto")
             self.dl_fan.setEnabled(False)
@@ -2533,28 +2528,74 @@ class DialogFan(QDialog, Ui_DialogFan):
         @param speed:
         @type speed: int
         """
-        self.fan.speed = speed
+        self.fan_controller.set_speed = speed
 
     def change_mode(self, mode):
         if mode == 0:
-            self.fan.stop()
+            self.fan_controller.stop(self.id)
             self.dl_fan.setEnabled(False)
         if mode == 1:
-            self.fan.start_manual()
+            self.fan_controller.start_manual()
             self.dl_fan.setEnabled(True)
             self.dl_fan.setValue(5)
         if mode == 2:
-            self.fan.start_auto()
+            self.fan_controller.start_fan()
             self.dl_fan.setEnabled(False)
         # self.fan.mode = mode
         self.check_mode()
 
     @pyqtSlot(int, int, name="updateFanSpeed")
     def update_speed(self, fan, speed):
-        if fan == self.id and self.fan.mode == 2:
+        if fan == self.id and self.fan_controller.get_mode == 2:
             self.dl_fan.blockSignals(True)
             self.dl_fan.setValue(speed)
             self.dl_fan.blockSignals(False)
+
+
+class DialogWaterHeaterSettings(QWidget, Ui_DialogWaterHeatertSetting):
+    def __init__(self, parent, tank):
+        """ :type parent: MainWindow """
+        super(DialogWaterHeaterSettings, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.main_panel = parent
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.db = parent.db
+        self.sub = None
+        self.tank = tank
+
+        self.lbl_name.setText("Water Heater {}".format(self.tank))
+        sql = 'SELECT `id`, `name`, `area`, `type`, `input`, `range`, `pin`, `short_name` FROM {} WHERE ' \
+              '`area` = 7 AND `item` = {}'. format(DB_OUTPUTS, self.tank)
+        row = self.db.execute_one_row(sql)
+        self.mode = row[3]
+        self.pin_id = row[6]       # Use as index for the Outputs[] dictionary
+        self.output = self.main_panel.area_controller.output_controller.outputs[self.pin_id]
+        self.output_controller = self.main_panel.area_controller.output_controller
+        self.frequency = int(self.db.get_config(CFT_WATER_HEATER, "frequency {}".format(self.tank), 1))
+        self.use_float = int(self.db.get_config(CFT_WATER_HEATER, "float {}".format(self.tank), 1))
+        self.duration = self.db.get_config(CFT_WATER_HEATER, "heater duration", "03:00")
+        self.off_time = self.db.get_config(CFT_PROCESS, "feed time", "19:00")
+        self.tm_off.setTime(QTime.fromString(self.off_time))
+        self.tm_duration.setTime(QTime.fromString(self.duration))
+        self.ck_use_float.setChecked(self.use_float)
+        self.cb_mode.addItem("Off", 0)
+        self.cb_mode.addItem("Manual On", 1)
+        self.cb_mode.addItem("Auto", 2)
+        self.cb_mode.addItem("Timer", 3)
+        self.cb_mode.setCurrentIndex(self.cb_mode.findData(row[3]))
+        self.cb_frequency.addItem("As Required", 0)
+        self.cb_frequency.addItem("Daily", 1)
+        self.cb_frequency.addItem("2 Days", 2)
+        self.cb_frequency.addItem("3 Days", 3)
+        self.cb_frequency.setCurrentIndex(self.cb_frequency.findData(self.frequency))
+        self.cb_mode.currentIndexChanged.connect(self.mode_change)
+
+    def mode_change(self):
+        mode = self.cb_mode.currentData()
+        if mode != self.mode:
+            self.mode = mode
+            self.output_controller.change_mode(self.pin_id, mode)
 
 
 class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
@@ -2603,6 +2644,7 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         if self.fan_sensor_current == self.s_id:
             # This sensor is fan sensor
             self.fan_sensor = True
+            self.pb_set_fan.setEnabled(False)
             txt = "Fan Sensor<br>"
         else:
             self.fan_sensor = False
@@ -2785,10 +2827,11 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         msg.setDefaultButton(QMessageBox.Cancel)
         if msg.exec_() == QMessageBox.Cancel:
             return
-        self.sensors[self.fan_sensor_current].is_fan = False
-        self.sensors[self.s_id].is_fan = True
+        self.sensors[self.fan_sensor_current].is_fan = False    # Remove current
+        self.sensors[self.s_id].is_fan = True                   # Set new
         sql = 'UPDATE {} SET sensor = {} WHERE id = {}'.format(DB_FANS, self.s_id, self.area)
         self.db.execute_write(sql)
+        self.pb_set_fan.setEnabled(False)
         self.main_panel.coms_interface.send_data(CMD_SET_FAN_SENSOR, True, MODULE_IO, self.area, self.s_id)
         self.main_panel.coms_interface.relay_send(NWC_FAN_SENSOR, self.area, self.s_id)
 
@@ -2816,11 +2859,12 @@ class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
             # idx += 1
         if not self.main_panel.area_controller.area_has_process(2) and self.area != 2:
             self.cb_move_to.addItem("Area 2", 2)
+        self.lbl_info.setText("Process {} in location {}".format(self.process.id, self.area))
 
         self.new_feed_date = self.main_panel.feed_controller.get_last_feed_date(self.area)
 
-        if self.area != 3:
-            self.cb_feed_mode.setCurrentIndex(self.main_panel.feed_controller.get_feed_mode(self.area))
+        if self.area < 3:
+            self.cb_feed_mode.setCurrentIndex(self.cb_feed_mode.findData(self.main_panel.feed_controller.get_feed_mode(self.area)))
             self.de_feed_date.setDate(self.new_feed_date)
         else:
             self.cb_feed_mode.setEnabled(False)
@@ -2947,4 +2991,3 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         off = off - self.off
         self.output_controller.change_range(self.pin_id, on, off)
         self.main_panel.coms_interface.relay_send(NWC_OUTPUT_RANGE, self.pin_id)
-

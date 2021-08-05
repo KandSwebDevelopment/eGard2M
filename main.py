@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox
 from class_access import Access
 from class_logger import Logger
 from communication_interface import CommunicationInterface
+from controller_fans import FansController
 from controller_feeding import FeedControl
 from controller_windows import WindowsController
 from dbController import MysqlDB
@@ -58,6 +59,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.access = Access(self)
         self.area_controller = AreaController(self)
         self.feed_controller = FeedControl(self)
+
+        # This can only be called after the feed_control has initialised, it sets the days_till_feed
+        self.area_controller.output_controller.outputs[OUT_WATER_HEATER_1].new_day()
+        self.area_controller.output_controller.outputs[OUT_WATER_HEATER_2].new_day()
 
         self.connect_signals()
 

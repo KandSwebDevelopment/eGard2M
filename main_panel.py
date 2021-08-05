@@ -8,11 +8,11 @@ from PyQt5.QtCore import pyqtSlot, Qt, QTimer
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QWidget, QMdiSubWindow
 
-from class_fan import FanController
+from class_fan import FanClass
 from class_soil_sensors import SoilSensorClass
 from defines import *
 from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan, DialogOutputSettings, \
-    DialogSensorSettings, DialogProcessAdjustments
+    DialogSensorSettings, DialogProcessAdjustments, DialogWaterHeaterSettings
 from scales_com import ScalesComs
 from ui.main import Ui_Form
 
@@ -59,6 +59,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.area_controller = None
         self.feed_controller = None
         self.coms_interface = None
+        self.fan_controller = None
         self.access = None
         self.logger = None
         self.soil_sensors = None
@@ -68,6 +69,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.unit_price = float(self.db.get_config(CFT_ACCESS, "unit price", 20)) / 100
 
         self.slave_counter = 0
+        self.coms_counter = 0
         self.access_open_time = 0  # Timestamp when cover was opened
         self.timer_counter = 0
         self.timer = QTimer()
@@ -253,6 +255,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         # Water
         self.pb_output_status_11.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_WATER_HEATER_1))
         self.pb_output_status_12.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_WATER_HEATER_2))
+        self.pb_output_mode_11.clicked.connect(lambda: self.wc.show(DialogWaterHeaterSettings(self, 1)))
+        self.pb_output_mode_12.clicked.connect(lambda: self.wc.show(DialogWaterHeaterSettings(self, 2)))
 
         self.coms_interface.update_sensors.connect(self.update_sensors)
         self.coms_interface.update_switch.connect(self.update_switch)
@@ -264,6 +268,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.coms_interface.update_fan_speed.connect(self.update_fans)
         self.coms_interface.update_float_switch.connect(self.update_float)
         self.coms_interface.update_from_relay.connect(self.process_relay_command)
+        self.coms_interface.update_received.connect(self.coms_indicator)
+        self.area_controller.fan_controller.update_fans_mode.connect(self.update_fan_mode)
 
     def test(self):
         print(self.my_parent.mdiArea.subWindowList())
@@ -503,6 +509,12 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.check_stage(area)
         self.coms_interface.relay_send(NWC_STAGE_ADJUST)
 
+    def coms_indicator(self):
+        self.coms_counter += 1
+        if self.coms_counter > 6:
+            self.coms_counter = 1
+        self.lbl_coms_ok.setText('.' * self.coms_counter)
+
     @pyqtSlot(int)
     def update_access(self, status_code):
         print("Access = ", status_code)
@@ -706,20 +718,29 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             ctrl.setPixmap(QPixmap(":/normal/007-tide.png"))
             ctrl.setStyleSheet("background-color: Yellow; border-radius: 6px;")
 
-    def update_fan_mode(self, fan, mode):
-        if fan == 1:
-            ctrl = self.lbl_fan_mode_1
+    @pyqtSlot(int, int, int)
+    def update_fan_mode(self, fan1, fan2, master_power):
+        if master_power == OFF:
+            self.lefanspeed_1.setStyleSheet("background-color: red; color: White")
+            self.lefanspeed_2.setStyleSheet("background-color: red; color: White")
         else:
-            ctrl = self.lbl_fan_mode_2
-        if mode == 0:
-            ctrl.setPixmap(QtGui.QPixmap(":/normal/002-stop.png"))
-            ctrl.setStyleSheet("background-color: red; color: White")
-        elif mode == 1:
-            ctrl.setPixmap(QtGui.QPixmap(":/normal/output_manual_1.png"))
-            ctrl.setStyleSheet("background-color: lightblue; color: White")
-        elif mode == 2:
-            ctrl.setPixmap(QtGui.QPixmap(":/normal/output_auto.png"))
-            ctrl.setStyleSheet("")
+            self.lefanspeed_1.setStyleSheet("")
+            self.lefanspeed_2.setStyleSheet("")
+        for x in range(1, 3):
+            if x == 1:
+                ctrl = getattr(self, "lbl_fan_mode_1")
+                mode = fan1
+            else:
+                ctrl = getattr(self, "lbl_fan_mode_2")
+                mode = fan2
+
+            if mode == 0:
+                ctrl.setPixmap(QtGui.QPixmap(":/normal/002-stop.png"))
+            elif mode == 1:
+                ctrl.setPixmap(QtGui.QPixmap(":/normal/output_manual_1.png"))
+                self.lefanspeed_2.setStyleSheet("background-color: lightblue; color: White")
+            elif mode == 2:
+                ctrl.setPixmap(QtGui.QPixmap(":/normal/output_auto.png"))
 
     def update_duration_texts(self):
         """ Update the days elapsed and remaining for areas 1 and 2"""
@@ -784,6 +805,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         # Update next feed dates
         self.update_next_feeds()
         self.update_duration_texts()
+        self.area_controller.output_controller.outputs[OUT_WATER_HEATER_1].new_day()
+        self.area_controller.output_controller.outputs[OUT_WATER_HEATER_2].new_day()
         # # Reset feeder for new day
         # self.water_control.new_day()
         # self.water_control.start()
@@ -817,7 +840,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.check_stage(1)
             self.check_stage(2)
         elif cmd == NWC_FEED:
-            self.feed_controller.feeds(data[0]).load_feed_date()
+            self.feed_controller.feeds[data[0]].load_feed_date()
             self.update_next_feeds()
         elif cmd == NWC_SWITCH_REQUEST:
             self.get_switch_position(data[0])

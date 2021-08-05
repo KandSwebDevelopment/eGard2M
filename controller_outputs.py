@@ -3,6 +3,7 @@ import winsound
 
 from PyQt5.QtCore import QObject, pyqtSlot
 
+from class_output_water_heater import OutputWaterHeater
 from class_outputs import OutputClass
 from defines import *
 from functions import play_sound, sound_click
@@ -42,7 +43,10 @@ class OutputController(QObject):
         for row in rows:
             oid = row[6]    # Pin number
             if oid not in self.outputs.keys():
-                self.outputs[oid] = OutputClass(self, row[0])   # ID used for controls id
+                if row[2] == 7:     # If area 7 then its a water heater
+                    self.outputs[oid] = OutputWaterHeater(self, row[0])   # ID used for controls id
+                else:
+                    self.outputs[oid] = OutputClass(self, row[0])   # ID used for controls id
             self.outputs[oid].load_profile()
             if self.outputs[oid].input > 0:
                 self.areas_controller.sensors[self.outputs[oid].input].set_action_handler(self.outputs[oid])  # Link sensor to output

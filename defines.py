@@ -120,6 +120,7 @@ CFT_NOTIFIER = "notifier"
 CFT_SOIL_SENSORS = "soil sensor"
 CFT_SCALES = "scales"
 CFT_SOIL_LIMITS = "soil limits"
+CFT_WATER_HEATER = "water heater"
 CFT_WATER_SUPPLY = "water supply"
 CFT_WORKSHOP_HEATER = "workshop heater"
 
@@ -142,6 +143,7 @@ COM_IO_REBOOT = "reboot"            # IO Unit has rebooted
 CMD_IO_RESTART = "restart"          # Reboot IO
 CMD_VALVE_CLUSTER = "valve cluster"
 CMD_SET_FAN_SENSOR = "sensor fan"       # Set sensor number for fan, send fan num, sensor num
+CMD_GET_FAN_SENSOR = "get fan"       # Get sensor number for fan current set in IO unit, send fan num
 CMD_FAN_SPEED = "speed"                 # fan number, speed
 
 # Feeder Mix tank
@@ -459,8 +461,8 @@ SR_FINISH_C = 13
 # Switch pins
 SW_LIGHT_1 = 0
 SW_LIGHT_2 = 1
-SW_WATER_HEATER_1 = 8
-SW_WATER_HEATER_2 = 9
+SW_WATER_HEATER_1 = 6
+SW_WATER_HEATER_2 = 5
 SW_WATER_MAINS_1 = 13
 SW_WATER_MAINS_2 = 12
 

@@ -233,23 +233,6 @@ class OutputClass(QObject):
             print("Output ERROR ", e.args)
         return
 
-    # def switch_by_button(self):
-    #     if self.mode == 1:
-    #         # self.switch(OFF, True)
-    #         self.save_mode(0)
-    #         # self.output_controller.coms_interface.send_switch(self.output_pin, 0)
-    #         self.output_controller.coms_interface.relay_send(NWC_OUTPUT_MODE, self.id, self.mode)
-    #         # self.output_controller.coms_interface.relay_send(NWC_OUTPUT, self.id, OFF)
-    #     elif self.mode == 0:
-    #         # self.switch(ON, True)
-    #         self.save_mode(1)
-    #         # self.output_controller.coms_interface.send_switch(self.output_pin, 1)
-    #         self.output_controller.coms_interface.relay_send(NWC_OUTPUT_MODE, self.id, self.mode)
-    #         # self.output_controller.coms_interface.relay_send(NWC_OUTPUT, self.id, ON)
-    #     # else:
-    #         # self.switch(None, True)
-    #         # self.output_controller.coms_interface.relay_send(NWC_OUTPUT, self.id, int(not self.status))
-    #
     def switch(self, state=None):
         """ This will only send switch if it is the master, use for software switching requests
         @param state: On or Off
@@ -260,27 +243,8 @@ class OutputClass(QObject):
         if state != self.status_last and self.output_controller.master_mode == MASTER:
             self.output_controller.areas_controller.main_window.coms_interface.send_switch(self.output_pin, state)
             # @Todo Add to event log
-        #     if state == OFF:
-        #         if self.type < 5:   # Not water heater
-        #             self.off_time = None
-        #         if self.detection & DET_TIMER == DET_TIMER:
-        #             self.is_active = False
-        #             self.timer.stop()
-        #             self.output_controller.lbl_workshop_timer.setText("")
-        #         if self.out_status_last is not None:
-        #             play_sound(SND_OFF)
-        #     else:   # Water heater
-        #         if self.out_status_last is not None:
-        #             play_sound(SND_ON)
-        #         if self.detection & DET_TIMER == DET_TIMER and self.type != 5:
-        #             if self.duration > 0:
-        #                 self.off_time = (datetime.now() + timedelta(minutes=self.duration))
-        #                 self.remaining = self.duration
-        #                 self.timer.start()
-        #             else:
-        #                 self.off_time = None
-        #                 self.remaining = 0
-        # return
+        self.status = state
+        self.status_last = state
 
     def switch_hard(self, state=None):
         """ This will send switch if it is the master or slave, use for user switching requests
@@ -342,7 +306,7 @@ class OutputClass(QObject):
         self.output_controller.lbl_workshop_timer.setText(s)
 
     def update_control(self, state):
-        # self.output_update.emit(self.id, self.status, self.tooltip)
+        """ Displays on or off """
         ctrl = getattr(self.output_controller.main_panel, "pb_output_status_%i" % self.id)
 
         if state == ON:
@@ -351,6 +315,7 @@ class OutputClass(QObject):
             ctrl.setIcon(QIcon(":/normal/output_off.png"))
 
     def update_info(self):
+        """ Displays the output type icon, sensor icon and mode icon """
         getattr(self.output_controller.main_panel, "lbl_output_number_%i" % self.id).setText(self.short_name[1:])
         ctrl = getattr(self.output_controller.main_panel, "lbl_output_%i" % self.id)
         if self.short_name[:1] == "H":

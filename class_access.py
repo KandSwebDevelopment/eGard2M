@@ -50,55 +50,54 @@ class Access(QObject):
 
     @pyqtSlot(int, int, int, name="updateSwitch")   # Sw No, State, From Module
     def switch_update(self, sw, state, module):
-        if not module == MODULE_DE:
-            return
-        if sw == SW_COVER_LOCK:
-            if state == ON_RELAY:
-                self.add_status(ACS_COVER_LOCKED)
-                if not self.has_status(ACS_COVER_LOCKED):
-                    self.my_parent.coms_interface.send_switch(SW_DOOR_LOCK, ON_RELAY, MODULE_DE)
-            else:
-                self.remove_status(ACS_COVER_LOCKED)
-                if self.has_status(ACM_OPENING):
-                    self.my_parent.coms_interface.send_switch(SW_COVER_OPEN, ON_RELAY, MODULE_DE)
-                    print("open")
+        if module == MODULE_DE or module == MODULE_SL:
+            if sw == SW_COVER_LOCK:
+                if state == ON_RELAY:
+                    self.add_status(ACS_COVER_LOCKED)
+                    if not self.has_status(ACS_COVER_LOCKED):
+                        self.my_parent.coms_interface.send_switch(SW_DOOR_LOCK, ON_RELAY, MODULE_DE)
+                else:
+                    self.remove_status(ACS_COVER_LOCKED)
+                    if self.has_status(ACM_OPENING):
+                        self.my_parent.coms_interface.send_switch(SW_COVER_OPEN, ON_RELAY, MODULE_DE)
+                        print("open")
 
-        elif sw == SW_DOOR_LOCK:
-            if state == ON_RELAY:
-                self.add_status(ACS_DOOR_LOCKED)
-                if self.has_status(ACM_CLOSING):
-                    self.my_parent.coms_interface.send_switch(SW_COVER_CLOSE, ON_RELAY, MODULE_DE)
-                self.remove_status(ACS_AUTO_ARMED)
-            else:
-                self.remove_status(ACS_DOOR_LOCKED)
+            elif sw == SW_DOOR_LOCK:
+                if state == ON_RELAY:
+                    self.add_status(ACS_DOOR_LOCKED)
+                    if self.has_status(ACM_CLOSING):
+                        self.my_parent.coms_interface.send_switch(SW_COVER_CLOSE, ON_RELAY, MODULE_DE)
+                    self.remove_status(ACS_AUTO_ARMED)
+                else:
+                    self.remove_status(ACS_DOOR_LOCKED)
 
-        elif sw == SW_COVER_OPEN:
-            if state == ON_RELAY:     # Motor on to open
-                self.add_status(ACS_OPENING)
-                self.remove_status(ACS_COVER_CLOSED)
-                if self.duration_remaining == 0:
-                    self.duration_remaining = self.cover_duration
-                self.timer_cover.start()
-                self.update_duration.emit(self.duration_remaining)
+            elif sw == SW_COVER_OPEN:
+                if state == ON_RELAY:     # Motor on to open
+                    self.add_status(ACS_OPENING)
+                    self.remove_status(ACS_COVER_CLOSED)
+                    if self.duration_remaining == 0:
+                        self.duration_remaining = self.cover_duration
+                    self.timer_cover.start()
+                    self.update_duration.emit(self.duration_remaining)
 
-            else:
-                self.remove_status(ACS_OPENING)
-                self.remove_status(ACM_OPENING)
-                self.add_status(ACS_COVER_OPEN)
+                else:
+                    self.remove_status(ACS_OPENING)
+                    self.remove_status(ACM_OPENING)
+                    self.add_status(ACS_COVER_OPEN)
 
-        elif sw == SW_COVER_CLOSE:
-            if state == ON_RELAY:
-                self.add_status(ACS_CLOSING)
-                self.remove_status(ACS_COVER_OPEN)
-                if self.duration_remaining == 0:
-                    self.duration_remaining = self.cover_duration
-                self.timer_cover.start()
-                self.update_duration.emit(self.duration_remaining)
-            else:
-                self.remove_status(ACS_CLOSING)
-                self.remove_status(ACM_CLOSING)
-                self.add_status(ACS_COVER_CLOSED)
-        self.update_access.emit(self.status)
+            elif sw == SW_COVER_CLOSE:
+                if state == ON_RELAY:
+                    self.add_status(ACS_CLOSING)
+                    self.remove_status(ACS_COVER_OPEN)
+                    if self.duration_remaining == 0:
+                        self.duration_remaining = self.cover_duration
+                    self.timer_cover.start()
+                    self.update_duration.emit(self.duration_remaining)
+                else:
+                    self.remove_status(ACS_CLOSING)
+                    self.remove_status(ACM_CLOSING)
+                    self.add_status(ACS_COVER_CLOSED)
+            self.update_access.emit(self.status)
 
     @pyqtSlot(int, int)
     def inputs_update(self, _input, _value):

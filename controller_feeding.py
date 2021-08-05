@@ -236,7 +236,7 @@ class FeedControl(QThread):
         self.feeds[area].get_recipe_status()
         # self._check_feed_due_today()
         # self.main_window.lbl_water_required.setText(str(self.get_next_water_required()))
-        self.main_window.update_next_feeds()
+        self.main_window.main_panel.update_next_feeds()
         # self.main_window.process_from_location(area).load_feed_date()
 
     def deduct_fed_feed(self, area):

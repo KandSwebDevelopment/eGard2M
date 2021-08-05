@@ -142,9 +142,11 @@ class CommunicationInterface(QObject):
         # self.thread_udp_client.quit()
         # self.thread_udp_client.wait()
         self.thread_udp_client.terminate()
+        print("UDP Client Finished")
 
     def udp_relay_finished(self):
         self.thread_udp_relay.quit()
+        print("UDP Relay Finished")
 
     @pyqtSlot(int, int, int, name="updateStatus")
     def status_update(self, sid, status, from_port):
@@ -266,6 +268,8 @@ class CommunicationInterface(QObject):
             self.relay_command(relay_command)
         elif command == COM_OTHER_READINGS:
             self.update_other_readings.emit(prams)
+            self.update_float_switch.emit(1, int(prams[2]))
+            self.update_float_switch.emit(2, int(prams[3]))
             self.relay_command(relay_command)
         elif command == CMD_FAN_SPEED:
             self.update_fan_speed.emit(int(prams[0]), int(prams[1]))
@@ -370,7 +374,7 @@ class CommunicationInterface(QObject):
     # Sending functions communication
     def get_next_udp_communication(self, who) -> (str, tuple):
         """
-        This will get the next command and the destination it is to be sent to
+        This will get the next command and the which UDP is requesting it
         @param who: The id of the UDP Client requesting the data
         @type who: int
         @return: The command as a string and the IP and port as a tuple for the destination of the command
@@ -416,11 +420,11 @@ class CommunicationInterface(QObject):
                     cmd = self.command_io[0]['cmd'].encode("utf-8", "replace")
                     to = self.command_io[0]['address']
                     self.command_io.pop(0)
-            self.last_communication = org_cmd
+            # self.last_communication = org_cmd
             if org_cmd != "":
                 self.update_cmd_issued.emit(org_cmd[1:len(org_cmd) - 1], to)
 
-        if who == 2:
+        if who == 2:    # Relay command
             if len(self.relay_stack) > 0:
                 org_cmd = self.relay_stack[0]['cmd']
                 cmd = self.relay_stack[0]['cmd'].encode("utf-8", "replace")
@@ -429,10 +433,11 @@ class CommunicationInterface(QObject):
             if org_cmd != "":
                 self.update_cmd_issued.emit(org_cmd[1:len(org_cmd) - 1], to)
 
-        self.last_communication = org_cmd
+        # self.last_communication = org_cmd
         return cmd, to
 
     def get_next_relay_communication(self) -> (str, int):
+        """ This is NOT used. See get_next_udp where who = 2"""
         org_cmd = cmd = ''
         to = -1
         if len(self.relay_stack) > 0:

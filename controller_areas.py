@@ -4,10 +4,11 @@ from PyQt5 import QtGui
 from PyQt5.QtCore import QObject
 from PyQt5.QtGui import QPixmap
 
-from class_fan import FanController
+from class_fan import FanClass
 from class_outputs import OutputClass
 from class_sensor import SensorClass
 from class_soil_sensors import SoilSensorClass
+from controller_fans import FansController
 from controller_outputs import OutputController
 from defines import *
 from class_process import ProcessClass
@@ -27,18 +28,18 @@ class AreaController(QObject):
         self.areas_pid = collections.defaultdict(int)                         # The PID in the area
         self.areas_items = collections.defaultdict(list)     # The items in the area
         self.areas_processes = collections.defaultdict(ProcessClass)
+        self.sensors = collections.defaultdict(SensorClass)
+
         self.area_manual = collections.defaultdict(int)      # Area is in manual mode
         self.output_controller = OutputController(self)
+        self.soil_sensors = SoilSensorClass(self)
         self.light_relay_1 = UNSET        # Hold the actual position of the relay, this is only changed by switch updates
         self.light_relay_2 = UNSET
-
-        self.sensors = collections.defaultdict(SensorClass)
-        self.soil_sensors = SoilSensorClass(self)
-        self.fans = collections.defaultdict(FanController)
 
         self.main_panel.timer.start()
 
         self.load_areas()
+        self.fan_controller = FansController(self)
 
     def load_areas(self):
         """ Load the PID's and items for all the areas"""
@@ -86,11 +87,6 @@ class AreaController(QObject):
         self.load_sensors(5)    # Outside
 
         self.output_controller.load_all_areas()
-
-        self.fans[1] = FanController(self, 1)
-        self.sensors[self.fans[1].sensor].is_fan = True
-        self.fans[2] = FanController(self, 2)
-        self.sensors[self.fans[2].sensor].is_fan = True
 
     def reload_area(self, area):
         """ Load the PID's and items for all the area"""
