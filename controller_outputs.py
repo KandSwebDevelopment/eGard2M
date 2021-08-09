@@ -1,12 +1,11 @@
 import collections
-import winsound
 
 from PyQt5.QtCore import QObject, pyqtSlot
 
 from class_output_water_heater import OutputWaterHeater
 from class_outputs import OutputClass
 from defines import *
-from functions import play_sound, sound_click
+from functions import sound_click
 
 
 class OutputController(QObject):
@@ -54,6 +53,10 @@ class OutputController(QObject):
                 self.areas_controller.main_window.coms_interface.relay_send(NWC_SWITCH_REQUEST, oid)
                 print("out request ", oid)
 
+    def check_water_heaters(self):
+        self.outputs[OUT_WATER_HEATER_1].check(0)
+        self.outputs[OUT_WATER_HEATER_2].check(0)
+
     def get_set_temperatures(self, op_id):
         return self.outputs[op_id].get_set_temperatures()
 
@@ -84,6 +87,9 @@ class OutputController(QObject):
             self.main_panel.coms_interface.relay_send(NWC_OUTPUT_MODE, op_id, self.outputs[op_id].mode)
             self.outputs[op_id].switch_hard(state)
         sound_click()
+
+    def set_last_feed_date(self, lfd):
+        self.areas_controller.main_window.feed_controller.set_last_feed_date(lfd)
 
     @pyqtSlot(int, int, int, name="updateSwitch")
     def switch_update(self, sw, state, module):

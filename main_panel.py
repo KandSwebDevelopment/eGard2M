@@ -182,6 +182,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.coms_interface.send_command(COM_OTHER_READINGS)
             self.coms_interface.send_data(COM_WATTS, False, MODULE_DE)
             self.coms_interface.send_data(COM_READ_KWH, False, MODULE_DE)
+        self.area_controller.output_controller.check_water_heaters()
 
     def loop_5(self):  # 60 secs
         # if NWC_SOIL_READ in self.current_data:

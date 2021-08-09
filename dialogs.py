@@ -2532,7 +2532,7 @@ class DialogFan(QDialog, Ui_DialogFan):
 
     def change_mode(self, mode):
         if mode == 0:
-            self.fan_controller.stop(self.id)
+            self.fan_controller.stop_fan(self.id)
             self.dl_fan.setEnabled(False)
         if mode == 1:
             self.fan_controller.start_manual()
@@ -2869,6 +2869,7 @@ class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
         else:
             self.cb_feed_mode.setEnabled(False)
             self.de_feed_date.setEnabled(False)
+        self.pb_delay.clicked.connect(self.delay_feed)
 
     def delay_feed(self):
         msg = QMessageBox()
@@ -2879,10 +2880,11 @@ class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
         msg.setDefaultButton(QMessageBox.Cancel)
         if msg.exec_() == QMessageBox.Cancel:
             return
-        self.main_panel.feed_control.set_last_feed_date(
-            self.area, self.feed_data['lfd'] + timedelta(days=1))
+        self.main_panel.feed_controller.set_last_feed_date(
+            self.area, self.main_panel.feed_controller.get_last_feed_date(self.area) + timedelta(days=1))
         # self.process.set_last_feed_date(self.process.last_feed_date + timedelta(days=1))
         self.main_panel.update_next_feeds()
+        self.de_feed_date.setDate(self.main_panel.feed_controller.get_last_feed_date(self.area))
         self.main_panel.coms_interface.relay_send(NWC_FEED, self.area)  # Just send feed as it is only the feed date that is changed
 
 

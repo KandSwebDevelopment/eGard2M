@@ -181,8 +181,8 @@ class FanClass(QThread):
     def start_manual(self):
         if self.speed > 0:
             return
-        self.fan_controller.area_controller.main_window.msg_sys.add\
-            ("Fan {} starting".format(self.id), MSG_FAN_START + self.id, INFO)
+        self.fan_controller.area_controller.main_window.msg_sys.\
+            add("Fan {} starting".format(self.id), MSG_FAN_START + self.id, INFO)
         self.switch(5)
         self.spin_up = True
         self.startup_timer.start()

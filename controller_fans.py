@@ -82,4 +82,5 @@ class FansController(QObject):
     def stop_fan(self, area):
         self.fans[area].stop()
 
-
+    def update_temperature(self, area, value):
+        self.fans[area].update_input_value(value)

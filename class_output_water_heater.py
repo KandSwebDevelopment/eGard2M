@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta
 
+from PyQt5.QtGui import QIcon
+
 from class_outputs import OutputClass
 from defines import *
 
@@ -11,6 +13,7 @@ class OutputWaterHeater(OutputClass):
         self.output_controller = parent
         self.output_controller.areas_controller.main_window.coms_interface.update_float_switch.connect(self.float_update)
         self.float = FLOAT_DOWN
+        self.is_feeding = False     # Set true if float goes down during feed time
         self.advance = 0    # For mode advance 0=Not used, 1=On till next off, 2=off till next on
         self.days_till_feed = 0         # This can not be set until the feed_control has initialised,
         #                                 init set by main_window calling new_day
@@ -18,6 +21,9 @@ class OutputWaterHeater(OutputClass):
         self.use_float = int(self.db.get_config(CFT_WATER_HEATER, "float {}".format(self.area), 1))
         self.set_duration(self.db.get_config(CFT_WATER_HEATER, "heater duration", "03:00"))
         self.set_off_time(self.db.get_config(CFT_PROCESS, "feed time", "19:00"))
+        self.feed_tol = int(self.db.get_config(CFT_PROCESS, "feed time tolerance", "2"))
+        if not self.use_float:
+            self.float = FLOAT_UP
 
     def set_off_time(self, off):
         dt = datetime.now()
@@ -31,14 +37,23 @@ class OutputWaterHeater(OutputClass):
         self.on_time = self.off_time - timedelta(minutes=self.duration)
 
     def float_update(self, tank, position):
+        if not self.use_float:
+            return
         if self.area == tank:
             self.float = position
             if self.status == ON and position == FLOAT_DOWN:
                 self.switch(OFF)
-                self.output_controller.areas_controller.main_window.msg_sys.\
-                    add("Tank {} Empty".format(tank), MSG_FLOAT + self.id, WARNING)
+                # Check to see if we are in feed window
+                if datetime.now().time() >= (self.off_time - timedelta(hours=self.feed_tol)).time():
+                    self.output_controller.areas_controller.main_window.msg_sys.\
+                        add("Heater {} Off for feeding".format(tank), MSG_FLOAT_FEEDING + self.id - 1, WARNING)
+                    self.is_feeding = True
+                else:
+                    self.output_controller.areas_controller.main_window.msg_sys.\
+                        add("Tank {} Empty".format(tank), MSG_FLOAT + self.id - 1, WARNING)
             if position == FLOAT_UP:
-                self.output_controller.areas_controller.main_window.msg_sys.remoce(MSG_FLOAT + self.id)
+                self.output_controller.areas_controller.main_window.msg_sys.remove(MSG_FLOAT + self.id - 1)
+                self.output_controller.areas_controller.main_window.msg_sys.remove(MSG_FLOAT_HEATER + self.id - 1)
 
     def load_profile(self):
         row = self.db.execute_one_row('SELECT `name`, `area`, `type`, `input`, `range`, `pin`, `short_name`, '
@@ -61,17 +76,36 @@ class OutputWaterHeater(OutputClass):
         self.update_control(self.status)
         self.update_info()
 
-    def check(self, value):
-        # if self.output_controller.master_mode == SLAVE:
+    def check(self, value=None):
+        if self.float == FLOAT_DOWN and not self.is_feeding:
+            if self.status == ON:
+                self.switch(OFF)
+            else:
+                if self.mode > 0:
+                    self.output_controller.areas_controller.main_window.msg_sys.\
+                        add("Tank {} Empty".format(self.area), MSG_FLOAT + self.id - 1, WARNING)
+                else:
+                    self.output_controller.areas_controller.main_window.msg_sys.remove(MSG_FLOAT + self.id - 1)
+                self.output_controller.areas_controller.main_window.msg_sys.remove(MSG_FLOAT_HEATER + self.id - 1)
+        else:
+            self.output_controller.areas_controller.main_window.msg_sys.remove(MSG_FLOAT + self.id - 1)
+            self.output_controller.areas_controller.main_window.msg_sys.remove(MSG_FLOAT_HEATER + self.id - 1)
 
         try:
             self._check()
-
-            if self.days_till_feed == 0:
-                if datetime.now().time() >= self.off_time:
+            if self.mode < 2:
+                return
+            if self.days_till_feed <= 0:
+                if datetime.now().time() >= self.off_time.time():
                     self.switch(OFF)
-                elif datetime.now().time() >= self.on_time:
-                    self.switch(ON)
+                    if self.is_feeding:
+                        self.output_controller.areas_controller.main_window.msg_sys.remove(
+                            MSG_FLOAT_FEEDING + self.id - 1)
+                elif datetime.now().time() >= self.on_time.time():
+                    if not self.is_feeding:
+                        self.switch(ON)
+            else:
+                self.switch(OFF)
             self.update_control(self.status)
         except Exception as e:
             print("Output ERROR ", e.args)
@@ -83,8 +117,11 @@ class OutputWaterHeater(OutputClass):
         @type state: int
         """
         if self.float == FLOAT_DOWN and state == ON:
-            self.output_controller.areas_controller.main_window.msg_sys. \
-                add("Tank {} Empty Heater Required".format(self.area), MSG_FLOAT + self.id, WARNING)
+            if not self.is_feeding:
+                self.output_controller.areas_controller.main_window.msg_sys. \
+                    add("Tank {} Empty. Heater Required".format(self.area), MSG_FLOAT_HEATER + self.id - 1, WARNING)
+            if self.output_controller.areas_controller.main_window.msg_sys.has_msg_id(MSG_FLOAT + self.id - 1):
+                self.output_controller.areas_controller.main_window.msg_sys.remove(MSG_FLOAT + self.id - 1)
             self.output_controller.areas_controller.main_window.coms_interface.send_switch(self.output_pin, OFF)
             return
 
@@ -102,7 +139,13 @@ class OutputWaterHeater(OutputClass):
             setText(datetime.strftime(self.off_time, "%H:%M"))
         getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.id).\
             setText(datetime.strftime(self.on_time, "%H:%M"))
+        getattr(self.output_controller.main_panel, "lbl_output_sensor_%i" % self.id).setText(str(self.days_till_feed))
+        if self.is_feeding:
+            getattr(self.my_parent, "pb_output_mode_%i" % self.id).setIcon(QIcon(":/normal/next_feed.png"))
+
+    def load_days_till_feed(self):
+        self.days_till_feed = self.output_controller.areas_controller.main_window.feed_controller.days_till_feed(self.area)
+        self.update_info()
 
     def new_day(self):
-        self.days_till_feed = self.output_controller.areas_controller.main_window.\
-            feed_controller.days_till_feed(self.area)
+        self.load_days_till_feed()

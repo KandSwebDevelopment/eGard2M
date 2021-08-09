@@ -280,8 +280,13 @@ MSG_DATABASE_DEBUG = 4    # Using localhost debug db
 MSG_LOGGING = 5
 MSG_FAN_START = 6
 MSG_UPCOMING = 7   # Upcoming start
-MSG_FLOAT = 10   # Note ID is add to this so 11 and 12 are used and 10 is not
-MSG_FEED_DATE = 12  # Note location is add to this so 13 and 14 are used and 12 is not
+MSG_FLOAT = 11   # Tank 1
+MSG_FLOAT_2 = 12   # Tank 2
+MSG_FLOAT_HEATER = 13   # Tank 1 float down when heater is required
+MSG_FLOAT_HEATER_2 = 14
+MSG_FLOAT_FEEDING = 15  # Tank 1 float down during feed time
+MSG_FLOAT_FEEDING_2 = 16
+MSG_FEED_DATE = 18  #
 
 # To locations - For the client so correct ip address can be connected to, to send
 MODULE_IO = 0
