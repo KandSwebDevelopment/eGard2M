@@ -266,7 +266,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.coms_interface.update_power.connect(self.update_power)
         self.coms_interface.update_other_readings.connect(self.update_others)
         self.area_controller.soil_sensors.update_soil_reading.connect(self.update_soil_display)
-        self.coms_interface.update_fan_speed.connect(self.update_fans)
+        self.area_controller.fan_controller.update_fans_speed.connect(self.update_fans)
         self.coms_interface.update_float_switch.connect(self.update_float)
         self.coms_interface.update_from_relay.connect(self.process_relay_command)
         self.coms_interface.update_received.connect(self.coms_indicator)
@@ -831,6 +831,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.area_controller.output_controller.outputs[data[0]].set_mode(data[1])
         elif cmd == NWC_OUTPUT_TRIGGER:
             self.area_controller.output_controller.outputs[data[0]].set_detection(data[1])
+        elif cmd == NWC_FAN_UPDATE:
+            self.area_controller.fan_controller.update_fans_speed(int(data[0]), int(data[1]))
         elif cmd == NWC_FAN_SENSOR:
             self.area_controller.fans[data[0]].reload_sensor(data[1])
         elif cmd == NWC_OUTPUT_RANGE:

@@ -28,10 +28,10 @@ class FanClass(QThread):
         self._logging = False    # if True will log sensor temperature and fan speed
         self._mode = 0
         self._master_power = 0
-        self.fan_spin_up = int(self.db.get_config(CFT_FANS, "spin up"))
+        self.fan_spin_up = int(self.db.get_config(CFT_FANS, "spin up", 10)) * 1000
         self.startup_timer = QTimer()
         self.startup_timer.timeout.connect(self.spin_up_finished)
-        self.startup_timer.setInterval(1000)
+        self.startup_timer.setInterval(self.fan_spin_up)
         self.startup_counter = 0
         self.spin_up = False     # True when fan is in spin up mode
         row = self.db.execute_one_row("SELECT sensor, mode, Kp, Ki, Kd FROM {} WHERE id = {}".format(DB_FANS, self.id))
@@ -117,8 +117,13 @@ class FanClass(QThread):
         self.fan_controller.area_controller.sensors[self._sensor].is_fan = True
         # self.fan_controller.update_fans_sensor()
 
+    def update_speed(self, speed):
+        """ This updates the speed without switching and is used by slave to keep display up to date"""
+        self._speed = speed
+
     @property
     def speed(self):
+        """ This sets the speed and switches fan to required speed"""
         return self._speed
 
     @speed.setter

@@ -132,7 +132,7 @@ COM_US_READ = "us reading"
 COM_OTHER_READINGS = "other_reading"
 COM_OW_COUNT = "ow_sensor_refresh"
 COM_MIX_OVER_STATUS = "mix overflow status"
-COM_FANS = "fans"
+COM_FANS = "fans"               # This is the temperature reading from the sensors for the fans
 COM_FLOAT_SWITCHES = "float"
 CMD_SWITCH = "switch"
 COM_SWITCH_POS = "switch_pos"
@@ -144,7 +144,7 @@ CMD_IO_RESTART = "restart"          # Reboot IO
 CMD_VALVE_CLUSTER = "valve cluster"
 CMD_SET_FAN_SENSOR = "sensor fan"       # Set sensor number for fan, send fan num, sensor num
 CMD_GET_FAN_SENSOR = "get fan"       # Get sensor number for fan current set in IO unit, send fan num
-CMD_FAN_SPEED = "speed"                 # fan number, speed
+CMD_FAN_SPEED = "speed"                 # Set fan speed  fan number, speed
 
 # Feeder Mix tank
 COM_FEEDER_STATUS = "feeder status"

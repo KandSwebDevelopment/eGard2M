@@ -7,7 +7,8 @@ from defines import *
 
 
 class FansController(QObject):
-    update_fans_mode = pyqtSignal(int, int, int, name='updateFansMode')     # speed 1, speed 2, master power
+    update_fans_mode = pyqtSignal(int, int, int, name='updateFansMode')     # mode 1, mode 2, master power
+    update_fans_speed = pyqtSignal(int, int, name="updateFansSpeed")     # speed 1, speed 2
 
     def __init__(self, parent):
         """
@@ -29,7 +30,16 @@ class FansController(QObject):
         current = self.db.execute_single('SELECT sensor FROM {} WHERE id = {}'.format(DB_FANS, 2))
         self.set_fan_sensor(2, current)
 
-        self.set_master_power(self.master_power)
+        if self.area_controller.master_mode == MASTER:
+            self.set_master_power(self.master_power)
+        self.update_fans_mode.emit(self.get_speed(1), self.get_speed(2), self.master_power)
+        self.area_controller.main_window.coms_interface.update_fan_speed.connect(self.speed_update)
+
+    def speed_update(self, fan1, fan2):
+        """ Used by slave to keep display updated """
+        self.fans[1].update_speed(fan1)
+        self.fans[2].update_speed(fan2)
+        self.update_fans_speed.emit(fan1, fan2, self.master_power)
 
     def get_mode(self, area):
         return self.fans[area].mode
