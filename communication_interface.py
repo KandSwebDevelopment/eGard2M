@@ -257,7 +257,7 @@ class CommunicationInterface(QObject):
                 if len(prams) > 0:
                     self.main_window.area_controller.fan_controller.update_temperature(1, string_to_float(prams[0]))
                     if len(prams) > 1:
-                        self.main_window.area_controller.fanfan_controller.update_input_value(2, string_to_float(prams[1]))
+                        self.main_window.area_controller.fan_controller.update_input_value(2, string_to_float(prams[1]))
             return
         if command == CMD_SWITCH:
             self.update_switch.emit(int(prams[0]), int(prams[1]), module)

@@ -77,7 +77,7 @@ class OutputController(QObject):
 
     def change_trigger(self, op_id, mode):
         self.outputs[op_id].set_detection(mode)
-        self.main_panel.coms_interface.relay_send(NWC_OUTPUT_TRIGGER, op_id)
+        self.main_panel.coms_interface.relay_send(NWC_OUTPUT_TRIGGER, op_id, mode)
 
     def switch_output(self, op_id, state=None):
         if self.outputs[op_id].mode >= 2:    # Auto modes

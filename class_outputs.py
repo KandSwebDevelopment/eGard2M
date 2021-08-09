@@ -127,7 +127,7 @@ class OutputClass(QObject):
 
     def set_detection(self, detection):  # See defines DET_ detection types
         self.detection = detection
-        self.db.execute_write('UPDATE `trigger` FROM {} WHERE id = {} LIMIT 1'. format(DB_OUTPUTS, self.id))
+        self.db.execute_write('UPDATE {} SET `trigger` WHERE id = {} LIMIT 1'. format(DB_OUTPUTS, self.id))
 
     def set_duration(self, duration):   # Only for timer
         """ Set timer duration
