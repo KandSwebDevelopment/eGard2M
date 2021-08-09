@@ -39,7 +39,7 @@ class FansController(QObject):
         """ Used by slave to keep display updated """
         self.fans[1].update_speed(fan1)
         self.fans[2].update_speed(fan2)
-        self.update_fans_speed.emit(fan1, fan2, self.master_power)
+        self.update_fans_speed.emit(fan1, fan2)
 
     def get_mode(self, area):
         return self.fans[area].mode
