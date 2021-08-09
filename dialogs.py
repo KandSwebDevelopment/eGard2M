@@ -2535,11 +2535,11 @@ class DialogFan(QDialog, Ui_DialogFan):
             self.fan_controller.stop_fan(self.id)
             self.dl_fan.setEnabled(False)
         if mode == 1:
-            self.fan_controller.start_manual()
+            self.fan_controller.start_manual(self.id)
             self.dl_fan.setEnabled(True)
             self.dl_fan.setValue(5)
         if mode == 2:
-            self.fan_controller.start_fan()
+            self.fan_controller.start_fan(self.id)
             self.dl_fan.setEnabled(False)
         # self.fan.mode = mode
         self.check_mode()
@@ -2918,7 +2918,12 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         self.offset_off = string_to_float(t[1])
         self.detection_mode = self.output_controller.outputs[self.pin_id].detection
         self.lbl_detection.setText("<" if self.detection_mode == DET_FALL else ">")
-        self.lbl_name.setText("{} in area {}".format(row[1], self.area))
+        if self.area < 4:
+            self.lbl_name.setText("{} in area {}".format(row[1], self.area))
+        elif self.area == 4:
+            self.lbl_name.setText("Workshop Heater")
+        elif self.area == 7:
+            self.lbl_name.setText("Water Heater in tank {}".format(self.area))
         self.cb_out_mode_1_1.addItem("Off", 0)
         self.cb_out_mode_1_1.addItem("Manual On", 1)
         self.cb_out_mode_1_1.addItem("Sensor", 2)
@@ -2948,7 +2953,7 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         self.lbl_set_off_1_1.setText(str(self.off))
         self.cb_trigger.addItem("Falling", DET_FALL)
         self.cb_trigger.addItem("Rising", DET_RISE)
-        self.cb_trigger.setCurrentIndex(self.cb_trigger.findData(self.change_detection_mode))
+        self.cb_trigger.setCurrentIndex(self.cb_trigger.findData(self.detection_mode))
         self.cb_trigger.currentIndexChanged.connect(self.change_detection_mode)
 
     def change_detection_mode(self):
