@@ -243,7 +243,7 @@ class AreaController(QObject):
         if self.area_has_process(area):
             return self.get_area_process(area).get_light_status()
 
-    def pet_process_active_temperature_ranges(self, area):
+    def get_process_active_temperature_ranges(self, area):
         if self.area_has_process(area):
             return self.get_area_process(area).temperature_ranges_active
 

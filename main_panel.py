@@ -21,16 +21,16 @@ class MainPanel(QMdiSubWindow, Ui_Form):
     def __init__(self, *args, **kwargs):
         QWidget.__init__(self, *args, **kwargs)
         self.setupUi(self)
-        self.my_parent = args[0]
+        self.main_window = args[0]
         self.db = args[0].db
-        self.sub = self.my_parent.mdiArea.addSubWindow(self)
-        self.wc = self.my_parent.wc
-        self.master_mode = self.my_parent.master_mode
+        self.sub = self.main_window.mdiArea.addSubWindow(self)
+        self.wc = self.main_window.wc
+        self.master_mode = self.main_window.master_mode
         # self.sub.setMinimumSize(1600, 1200)
         self.sub.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint | QtCore.Qt.FramelessWindowHint)
         # sub.setFixedSize(sub.width(), sub.height())
         self.setGeometry(0, 0, self.width(), 900)
-        self.my_parent.resize(self.width(), 900)
+        self.main_window.resize(self.width(), 900)
         self.show()
 
         self.le_stage_1.installEventFilter(self)
@@ -83,12 +83,12 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.scales = ScalesComs(self)
         if not self.has_scales:
             self.panel_9.hide()
-            self.my_parent.actionCounter.setEnabled(False)
-            self.my_parent.actionInternal.setEnabled(False)
-            self.my_parent.actionScales.setEnabled(False)
-            self.my_parent.actionStorage.setEnabled(False)
-            self.my_parent.actionReconciliation.setEnabled(False)
-            self.my_parent.actionLoading.setEnabled(False)
+            self.main_window.actionCounter.setEnabled(False)
+            self.main_window.actionInternal.setEnabled(False)
+            self.main_window.actionScales.setEnabled(False)
+            self.main_window.actionStorage.setEnabled(False)
+            self.main_window.actionReconciliation.setEnabled(False)
+            self.main_window.actionLoading.setEnabled(False)
 
     def eventFilter(self, source, event):
         # Remember to install event filter for control first
@@ -196,17 +196,18 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.db.execute("select name from " + DB_NUTRIENTS_NAMES)  # This is only to keep the database connection alive
 
     def connect_to_main_window(self):
-        self.area_controller = self.my_parent.area_controller
-        self.feed_controller = self.my_parent.feed_controller
-        self.coms_interface = self.my_parent.coms_interface
-        self.logger = self.my_parent.logger
-        self.access = self.my_parent.access
-        self.msg_sys = self.my_parent.msg_sys
+        self.area_controller = self.main_window.area_controller
+        self.feed_controller = self.main_window.feed_controller
+        self.coms_interface = self.main_window.coms_interface
+        self.logger = self.main_window.logger
+        self.access = self.main_window.access
+        self.msg_sys = self.main_window.msg_sys
         self.connect_signals()
 
         if self.has_scales:     # These have to be here to allow signals to connect
             self.scales.connect()
         self.update_duration_texts()
+        self.area_controller.output_controller.update_water_heater_info()
 
     def connect_signals(self):
         self.pb_cover.clicked.connect(lambda: self.access.open())
@@ -273,8 +274,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.area_controller.fan_controller.update_fans_mode.connect(self.update_fan_mode)
 
     def test(self):
-        print(self.my_parent.mdiArea.subWindowList())
-        # self.my_parent.mdiArea.cascadeSubWindows()
+        print(self.main_window.mdiArea.subWindowList())
+        # self.main_window.mdiArea.cascadeSubWindows()
 
     def update_next_feeds(self):
         """
@@ -737,11 +738,13 @@ class MainPanel(QMdiSubWindow, Ui_Form):
 
             if mode == 0:
                 ctrl.setPixmap(QtGui.QPixmap(":/normal/002-stop.png"))
+                getattr(self, "lefanspeed_{}".format(x)).setStyleSheet("background-color: red; color: White")
             elif mode == 1:
                 ctrl.setPixmap(QtGui.QPixmap(":/normal/output_manual_1.png"))
-                self.lefanspeed_2.setStyleSheet("background-color: lightblue; color: White")
+                getattr(self, "lefanspeed_{}".format(x)).setStyleSheet("background-color: lightblue; color: black")
             elif mode == 2:
                 ctrl.setPixmap(QtGui.QPixmap(":/normal/output_auto.png"))
+                getattr(self, "lefanspeed_{}".format(x)).setStyleSheet("")
 
     def update_duration_texts(self):
         """ Update the days elapsed and remaining for areas 1 and 2"""
@@ -844,6 +847,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.update_duration_texts()
             self.check_stage(1)
             self.check_stage(2)
+        elif cmd == NWC_FEED_DATE:
+            self.area_controller.output_controller.update_water_heater_info()
         elif cmd == NWC_FEED:
             self.feed_controller.feeds[data[0]].load_feed_date()
             self.update_next_feeds()

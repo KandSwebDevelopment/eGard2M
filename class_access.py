@@ -126,7 +126,7 @@ class Access(QObject):
                     self.timer_close.start()
             else:   # Door closed
                 self.add_status(ACS_DOOR_CLOSED)
-                if self.has_status(ACS_AUTO_ARMED):
+                if self.has_status(ACS_AUTO_SET):
                     self.timer_close.stop()
                     # self.remove_status(ACS_AUTO_ARMED)
                     self.my_parent.coms_interface.send_switch(SW_DOOR_LOCK, ON_RELAY, MODULE_DE)

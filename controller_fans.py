@@ -32,7 +32,7 @@ class FansController(QObject):
 
         if self.area_controller.master_mode == MASTER:
             self.set_master_power(self.master_power)
-        self.update_fans_mode.emit(self.get_speed(1), self.get_speed(2), self.master_power)
+        self.update_fans_mode.emit(self.get_mode(1), self.get_mode(2), self.master_power)
         self.area_controller.main_window.coms_interface.update_fan_speed.connect(self.speed_update)
 
     def speed_update(self, fan1, fan2):
@@ -49,7 +49,10 @@ class FansController(QObject):
 
     def set_mode(self, area, mode):
         self.fans[area].mode = mode
-        self.update_fans_mode.emit(self.get_speed(1), self.get_speed(2), self.master_power)
+        self.update_fans_mode.emit(self.get_mode(1), self.get_mode(2), self.master_power)
+
+    def get_fan_sensor(self, area):
+        return self.fans[area].sensor
 
     def set_fan_sensor(self, area, sensor_id):
         current = self.fans[area].sensor
@@ -66,15 +69,15 @@ class FansController(QObject):
     def set_master_power(self, state):
         # if state == self.master_power:
         self.master_power = state
-        self.area_controller.main_window.coms_interface.send_switch(37, state)
+        self.area_controller.main_window.coms_interface.send_switch(SW_FANS_POWER, state)
         self.db.set_config(CFT_FANS, "master", state)
         if state == OFF:
-            self.fans[1].stop()
-            self.fans[2].stop()
+            self.fans[1].stop_fan()
+            self.fans[2].stop_fan()
         else:
             self.start_fan(1)
             self.start_fan(2)
-        # self.area_controller.main_panel.update_fan_mode()
+        self.update_fans_mode.emit(self.get_mode(1), self.get_mode(2), self.master_power)
 
     def set_speed(self, area, speed):
         self.fans[area].speed = speed
@@ -90,7 +93,10 @@ class FansController(QObject):
         self.fans[area].start_manual()
 
     def stop_fan(self, area):
-        self.fans[area].stop()
+        self.fans[area].stop_fan()
 
     def update_temperature(self, area, value):
         self.fans[area].update_input_value(value)
+
+    def update_mode(self, fan_id, mode):
+        pass

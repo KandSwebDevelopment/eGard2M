@@ -11,7 +11,7 @@ from defines import *
 from plotter import *
 from ui.dialogDispatchCounter import Ui_DialogDispatchCounter
 from ui.dialogDispatchInternal import Ui_DialogDispatchInternal
-from functions import string_to_float, m_box, play_sound, auto_capital
+from functions import string_to_float, m_box, play_sound, auto_capital, sound_click
 from ui.dialogAccess import Ui_DialogDEmodule
 from ui.dialogDispatchOverview import Ui_DialogLogistics
 from ui.dialogDispatchReports import Ui_DialogDispatchReport
@@ -2471,25 +2471,44 @@ class DialogProcessInfo(QDialog, Ui_DialogProcessInfo):
 
 
 class DialogFan(QDialog, Ui_DialogFan):
-    def __init__(self, parent, fan):
+    def __init__(self, parent, fan_id):
         super(DialogFan, self).__init__()
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint)
         self.setupUi(self)
         self.sub = None
         self.setFixedSize(self.width(), self.height())
-        self.setWindowTitle("Fan {}".format(fan))
-        self.my_parent = parent
-        self.db = self.my_parent.db
-        self.id = fan
-        self.fan_controller = self.my_parent.area_controller.fan_controller
+        self.setWindowTitle("Fan {} Settings".format(fan_id))
+        self.main_panel = parent
+        self.db = self.main_panel.db
+        self.id = fan_id        # Also is area
+        self.fan_controller = self.main_panel.area_controller.fan_controller
         self.dl_fan.valueChanged.connect(self.change_speed)
         self.pb_close.clicked.connect(lambda: self.sub.close())
-        self.pb_mode_off.clicked.connect(lambda: self.change_mode(0))
-        self.pb_mode_manual.clicked.connect(lambda: self.change_mode(1))
-        self.pb_mode_a.clicked.connect(lambda: self.change_mode(2))
         self.pb_master.clicked.connect(self.power)
-        self.my_parent.coms_interface.update_fan_speed.connect(self.update_speed)
+        self.main_panel.main_window.coms_interface.update_fan_speed.connect(self.update_speed)
+        self.main_panel.main_window.coms_interface.update_switch.connect(self.update_switch)
+        self.cb_mode.addItem("Off", 0)
+        self.cb_mode.addItem("Manual", 1)
+        self.cb_mode.addItem("Auto", 2)
+        self.cb_mode.setCurrentIndex(self.cb_mode.findData(self.fan_controller.get_mode(self.id)))
+        self.cb_mode.currentIndexChanged.connect(self.change_mode)
+        self.cb_sensor.addItem("Humidity", 1)   # The data is the area_range as in the sensors_config table
+        self.cb_sensor.addItem("Temperature", 2)
+        self.cb_sensor.addItem("Canopy", 3)
+        self.cb_sensor.addItem("Root", 4)
+        self.fan_sensor_id = self.fan_controller.get_fan_sensor(self.id)
+        self.fan_sensor = self.db.execute_single("SELECT area_range FROM {} WHERE area = {} AND id = {}".
+                                                 format(DB_SENSORS_CONFIG, self.id, self.fan_sensor_id))
+        self.cb_sensor.setCurrentIndex(self.cb_sensor.findData(self.fan_sensor))
+
+        self.lbl_name.setText("Fan {}".format(self.id))
+        if self.fan_controller.master_power == ON:
+            self.lbl_master.setText("On")
+            self.lbl_master.setStyleSheet("")
+        else:
+            self.lbl_master.setText("Off")
+            self.lbl_master.setStyleSheet("background-color: red; color: yellow")
         self.check_mode()
 
     def power(self):
@@ -2504,22 +2523,17 @@ class DialogFan(QDialog, Ui_DialogFan):
                 return
             self.fan_controller.set_master_power(OFF)
         else:
+            sound_click()
             self.fan_controller.set_master_power(ON)
 
     def check_mode(self):
         if self.fan_controller.master_power == OFF:
-            self.lbl_mode.setText("M. Off")
             return
-        if self.fan_controller.get_mode == 0:
-            # self.dl_fan.setValue(0)
-            self.lbl_mode.setText("Off")
+        if self.fan_controller.get_mode(self.id) == 0:
             self.dl_fan.setEnabled(False)
-        elif self.fan_controller.get_mode == 2:
-            self.dl_fan.setValue(self.fan.speed)
-            self.lbl_mode.setText("Auto")
+        elif self.fan_controller.get_mode(self.id) == 2:
             self.dl_fan.setEnabled(False)
         else:
-            self.lbl_mode.setText("Manual")
             self.dl_fan.setEnabled(True)
 
     def change_speed(self, speed):
@@ -2528,28 +2542,40 @@ class DialogFan(QDialog, Ui_DialogFan):
         @param speed:
         @type speed: int
         """
-        self.fan_controller.set_speed = speed
+        self.fan_controller.set_speed(self.id, speed)
 
-    def change_mode(self, mode):
+    def change_mode(self):
+        mode = self.cb_mode.currentData()
+        self.fan_controller.set_mode(self.id, mode)
         if mode == 0:
             self.fan_controller.stop_fan(self.id)
             self.dl_fan.setEnabled(False)
         if mode == 1:
             self.fan_controller.start_manual(self.id)
             self.dl_fan.setEnabled(True)
-            self.dl_fan.setValue(5)
         if mode == 2:
             self.fan_controller.start_fan(self.id)
             self.dl_fan.setEnabled(False)
-        # self.fan.mode = mode
         self.check_mode()
 
     @pyqtSlot(int, int, name="updateFanSpeed")
     def update_speed(self, fan, speed):
-        if fan == self.id and self.fan_controller.get_mode == 2:
+        if fan == self.id and self.fan_controller.get_mode(self.id) == 2:
             self.dl_fan.blockSignals(True)
             self.dl_fan.setValue(speed)
             self.dl_fan.blockSignals(False)
+
+    @pyqtSlot(int, int, int, name="updateSwitch")
+    def update_switch(self, sw, state, module):
+        if module != MODULE_IO:
+            return
+        if sw == SW_FANS_POWER:
+            if state == ON:
+                self.lbl_master.setText("On")
+                self.lbl_master.setStyleSheet("")
+            else:
+                self.lbl_master.setText("Off")
+                self.lbl_master.setStyleSheet("background-color: red; color: yellow")
 
 
 class DialogWaterHeaterSettings(QWidget, Ui_DialogWaterHeatertSetting):
@@ -2870,6 +2896,7 @@ class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
             self.cb_feed_mode.setEnabled(False)
             self.de_feed_date.setEnabled(False)
         self.pb_delay.clicked.connect(self.delay_feed)
+        self.de_feed_date.dateChanged.connect(self.new_date)
 
     def delay_feed(self):
         msg = QMessageBox()
@@ -2882,10 +2909,16 @@ class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
             return
         self.main_panel.feed_controller.set_last_feed_date(
             self.area, self.main_panel.feed_controller.get_last_feed_date(self.area) + timedelta(days=1))
-        # self.process.set_last_feed_date(self.process.last_feed_date + timedelta(days=1))
         self.main_panel.update_next_feeds()
+        self.main_panel.area_controller.output_controller.update_water_heater_info()
         self.de_feed_date.setDate(self.main_panel.feed_controller.get_last_feed_date(self.area))
         self.main_panel.coms_interface.relay_send(NWC_FEED, self.area)  # Just send feed as it is only the feed date that is changed
+
+    def new_date(self):
+        new_feed_date = self.de_feed_date.date().toPyDate()
+        self.main_panel.feed_controller.set_last_feed_date(self.area, new_feed_date)
+        self.main_panel.update_next_feeds()
+        self.main_panel.area_controller.output_controller.update_water_heater_info()
 
 
 class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):

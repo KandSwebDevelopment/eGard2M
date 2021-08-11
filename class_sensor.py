@@ -81,9 +81,9 @@ class SensorClass(object):
         self.status_ctrl = ctrl
 
     def set_action_handler(self, handler):
-        if self._find_handler(handler.id) == handler.id:
+        if self._find_handler(handler.ctrl_id) == handler.ctrl_id:
             return
-        self.action_handler[handler.id] = handler
+        self.action_handler[handler.ctrl_id] = handler
         self.update_handler(handler)
 
     def _find_handler(self, hid):

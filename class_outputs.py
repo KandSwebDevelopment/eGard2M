@@ -13,12 +13,12 @@ from functions import play_sound
 class OutputClass(QObject):
     # output_update = pyqtSignal(int, int, str)   # id, state, tooltip
 
-    def __init__(self, parent, o_id):
+    def __init__(self, parent, ctrl_id):
         super().__init__()
         """ :type parent: MainWindow """
         self.output_controller = parent
         self.db = self.output_controller.db
-        self.id = o_id
+        self.ctrl_id = ctrl_id
         self.detection = DET_FALL  # How it is triggered
         self.output_pin = None  # The output number/pin number to switch
         self.name = ""
@@ -58,7 +58,7 @@ class OutputClass(QObject):
 
     def load_profile(self):
         row = self.db.execute_one_row('SELECT `name`, `area`, `type`, `input`, `range`, `pin`, `short_name`, `trigger` FROM {}'
-                                      ' WHERE id = {}'. format(DB_OUTPUTS, self.id))
+                                      ' WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
         if len(row) == 0:
             return
         self.name = row[0]
@@ -86,7 +86,7 @@ class OutputClass(QObject):
     def set_mode(self, mode):
         """ Updates the outputs mode and saves it to the db and updates the outputs info control """
         self.mode = mode
-        self.db.execute_write('UPDATE {} SET type = {} WHERE id = {} LIMIT 1'.format(DB_OUTPUTS, mode, self.id))
+        self.db.execute_write('UPDATE {} SET type = {} WHERE id = {} LIMIT 1'.format(DB_OUTPUTS, mode, self.ctrl_id))
         self._check()
         self.update_info()
         # Don't send this from here as is causes a loop
@@ -113,7 +113,7 @@ class OutputClass(QObject):
         self.range[0] = on_dif
         self.range[1] = off_dif
         r = "{}, {}".format(on_dif, off_dif)
-        sql = 'UPDATE {} SET `range` = "{}" WHERE id = {}'.format(DB_OUTPUTS, r, self.id)
+        sql = 'UPDATE {} SET `range` = "{}" WHERE id = {}'.format(DB_OUTPUTS, r, self.ctrl_id)
         print(sql)
         self.db.execute_write(sql)
 
@@ -122,12 +122,12 @@ class OutputClass(QObject):
     def set_input_sensor(self, sensor_id):
         """ Updates the input sensor and saves it to the db and reloads all outputs for the area.
             This ensures the sensor classes handler list has any old inputs removed"""
-        self.db.execute_write('UPDATE {} SET input = {} WHERE id = {} LIMIT 1'.format(DB_OUTPUTS, sensor_id, self.id))
+        self.db.execute_write('UPDATE {} SET input = {} WHERE id = {} LIMIT 1'.format(DB_OUTPUTS, sensor_id, self.ctrl_id))
         self.output_controller.load_outputs(self.area)
 
     def set_detection(self, detection):  # See defines DET_ detection types
         self.detection = detection
-        self.db.execute_write('UPDATE {} SET `trigger` WHERE id = {} LIMIT 1'. format(DB_OUTPUTS, self.id))
+        self.db.execute_write('UPDATE {} SET `trigger` WHERE id = {} LIMIT 1'. format(DB_OUTPUTS, self.ctrl_id))
 
     def set_duration(self, duration):   # Only for timer
         """ Set timer duration
@@ -307,7 +307,7 @@ class OutputClass(QObject):
 
     def update_control(self, state):
         """ Displays on or off """
-        ctrl = getattr(self.output_controller.main_panel, "pb_output_status_%i" % self.id)
+        ctrl = getattr(self.output_controller.main_panel, "pb_output_status_%i" % self.ctrl_id)
 
         if state == ON:
             ctrl.setIcon(QIcon(":/normal/output_on.png"))
@@ -316,8 +316,8 @@ class OutputClass(QObject):
 
     def update_info(self):
         """ Displays the output type icon, sensor icon and mode icon """
-        getattr(self.output_controller.main_panel, "lbl_output_number_%i" % self.id).setText(self.short_name[1:])
-        ctrl = getattr(self.output_controller.main_panel, "lbl_output_%i" % self.id)
+        getattr(self.output_controller.main_panel, "lbl_output_number_%i" % self.ctrl_id).setText(self.short_name[1:])
+        ctrl = getattr(self.output_controller.main_panel, "lbl_output_%i" % self.ctrl_id)
         if self.short_name[:1] == "H":
             ctrl.setPixmap(QPixmap(":/normal/output_heater.png"))
         if self.short_name[:1] == "A":
@@ -326,8 +326,8 @@ class OutputClass(QObject):
             ctrl.setPixmap(QPixmap(":/normal/output_socket.png"))
 
         if self.has_process or self.area > 3:
-            getattr(self.output_controller.main_panel, "frm_output_%i" % self.id).setEnabled(True)
-            ctrl = getattr(self.output_controller.main_panel, "pb_output_mode_%i" % self.id)
+            getattr(self.output_controller.main_panel, "frm_output_%i" % self.ctrl_id).setEnabled(True)
+            ctrl = getattr(self.output_controller.main_panel, "pb_output_mode_%i" % self.ctrl_id)
             if self.mode == 0:
                 ctrl.setIcon(QIcon(":/normal/output_off_1.png"))
                 ctrl.setToolTip("Mode: Off")
@@ -352,7 +352,7 @@ class OutputClass(QObject):
                 ctrl.setIcon(QIcon(":/normal/output_night.png"))
                 ctrl.setToolTip("Mode: All Night")
 
-            ctrl = getattr(self.output_controller.main_panel, "lbl_output_sensor_%i" % self.id)
+            ctrl = getattr(self.output_controller.main_panel, "lbl_output_sensor_%i" % self.ctrl_id)
             if self.mode == 1:
                 ctrl.setPixmap(QtGui.QPixmap())
             else:
@@ -369,21 +369,21 @@ class OutputClass(QObject):
                         ctrl.setPixmap(QtGui.QPixmap(":/normal/062-plant.png"))
 
             if self.mode == 2 or self.mode == 4:
-                getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.id).setText(str(self.temp_off_adjusted))
-                getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.id).setText(str(self.temp_on_adjusted))
+                getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.ctrl_id).setText(str(self.temp_off_adjusted))
+                getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.ctrl_id).setText(str(self.temp_on_adjusted))
                 if self.temp_on != self.temp_on_adjusted:
-                    getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.id).setFont(self.font_i)
+                    getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.ctrl_id).setFont(self.font_i)
                 else:
-                    getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.id).setFont(self.font_n)
+                    getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.ctrl_id).setFont(self.font_n)
                 if self.temp_off != self.temp_off_adjusted:
-                    getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.id).setFont(self.font_i)
+                    getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.ctrl_id).setFont(self.font_i)
                 else:
-                    getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.id).setFont(self.font_n)
+                    getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.ctrl_id).setFont(self.font_n)
             else:
-                getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.id).clear()
-                getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.id).clear()
+                getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.ctrl_id).clear()
+                getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.ctrl_id).clear()
                 # t += "<br>F: {}<br>N: {}".format(self.temp_off_adjusted, self.temp_on_adjusted)
             # self.info_ctrl.setText(t)
         else:
-            getattr(self.output_controller.main_panel, "frm_output_%i" % self.id).setEnabled(False)
+            getattr(self.output_controller.main_panel, "frm_output_%i" % self.ctrl_id).setEnabled(False)
             pass

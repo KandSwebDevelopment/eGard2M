@@ -95,3 +95,16 @@ class OutputController(QObject):
     def switch_update(self, sw, state, module):
         if sw in self.outputs:
             self.outputs[sw].switch_update(state)
+
+    def update_info(self, op_id):
+        self.outputs[op_id].update_info()
+
+    def update_water_heater_info(self):
+        """ This should be called any time the feed date changes
+            It updates the days_till_feed, displays it and relays to other pc"""
+        d = min(self.areas_controller.main_window.feed_controller.days_till_feed(1),
+                self.areas_controller.main_window.feed_controller.days_till_feed(2))
+        self.outputs[OUT_WATER_HEATER_1].set_days_till_feed(d)
+        self.outputs[OUT_WATER_HEATER_2].set_days_till_feed(d)
+        self.main_panel.coms_interface.relay_send(NWC_FEED_DATE)
+

@@ -36,7 +36,7 @@ class FeedClass(QObject):
         @type parent: pClass
         """
         super(FeedClass, self).__init__()
-        self.my_parent = parent
+        self.feed_controller = parent
         self.db = parent.db
         self.process_id = 0
         self.pattern_id = 0
@@ -361,16 +361,16 @@ class FeedClass(QObject):
             return 0
         return (self.nfd.date() - datetime.now().date()).days
 
-    def set_last_feed_date(self, area, f_date):
-        """ Sets the last feed date for the given area in the data structure and the also updates the db"""
-        t = self.feed_time.split(":")
-        f_date = datetime(f_date.year, f_date.month, f_date.day, int(t[0]), int(t[1]))
-        self.lfd = f_date
-        self.nfd = f_date + timedelta(days=self.frequency)
-        sql = "UPDATE {} SET dt = '{}' WHERE item = '{}' and id = {} LIMIT 1". \
-            format(DB_PROCESS_ADJUSTMENTS, f_date, PA_FEED_DATE, area)
-        self.db.execute_write(sql)
-        self._check_feed_due_today()
+    # def set_last_feed_date(self, area, f_date):
+    #     """ Sets the last feed date for the given area in the data structure and the also updates the db"""
+    #     t = self.feed_time.split(":")
+    #     f_date = datetime(f_date.year, f_date.month, f_date.day, int(t[0]), int(t[1]))
+    #     self.lfd = f_date
+    #     self.nfd = f_date + timedelta(days=self.frequency)
+    #     sql = "UPDATE {} SET dt = '{}' WHERE item = '{}' and id = {} LIMIT 1". \
+    #         format(DB_PROCESS_ADJUSTMENTS, f_date, PA_FEED_DATE, area)
+    #     self.db.execute_write(sql)
+    #     self._check_feed_due_today()
 
     def get_mix_count(self):
         """ Return the number of mixes for the area"""
@@ -450,6 +450,7 @@ class FeedClass(QObject):
             format(DB_PROCESS_ADJUSTMENTS, f_date, PA_FEED_DATE, self.area)
         self.db.execute_write(sql)
         # self._check_feed_due_today()
+        self.feed_controller.main_window.area_controller.output_controller.update_water_heater_info()
 
     def cycles_reduce(self):
         """ Reduces the number of cycles in each mix in the area by 1 and remove any mixes

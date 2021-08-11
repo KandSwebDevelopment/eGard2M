@@ -310,7 +310,7 @@ NWC_OUTPUT_SENSOR = "output sensor"         # An output sensor has changed, send
 NWC_OUTPUT_RANGE = "output range"           # An output range has changed, send output id
 NWC_OUTPUT_TRIGGER = "output trigger"       # An output trigger (rise/fall etc) has changed
 NWC_PROCESS_FEED_MODE = "feed mode"         # A feed mode has been changed, send location
-NWC_PROCESS_FEED_DATE = "feed date"         # A feed has been changed, send location
+NWC_FEED_DATE = "feed date"         # A feed has been changed, send location
 NWC_PROCESS_MIX_CHANGE = "mix change"       # A feed mix has been changed, send location
 NWC_QUE_STATUS = "que_status"               # The que status
 NWC_RELOAD_PROCESSES = "process reload"     # A change has been made in other unit the requires the processes to be reloaded
@@ -470,6 +470,7 @@ SW_WATER_HEATER_1 = 6
 SW_WATER_HEATER_2 = 5
 SW_WATER_MAINS_1 = 13
 SW_WATER_MAINS_2 = 12
+SW_FANS_POWER = 37
 
 # Switch pins Feeder
 SW_NUTRIENT_STIR = 30    # 17

@@ -1,7 +1,10 @@
 import time
 
+from PyQt5 import QtGui
 from PyQt5.QtCore import QThread, pyqtSignal, QTimer
 # from simple_pid import PID
+from PyQt5.QtGui import QPixmap
+
 import PID
 from defines import *
 
@@ -15,7 +18,7 @@ class FanClass(QThread):
         QThread.__init__(self, parent)
         self.fan_controller = parent                         # This's parent which is Area Controller
         self.db = self.fan_controller.db
-        self.id = _id
+        self.id = _id                                        # Fan 1 or 2 same as area
         self.pid = PID.PID(0, 0, 0)
         self.pid.sample_time = 1
         self.setObjectName("fan{}".format(self.id))
@@ -28,10 +31,10 @@ class FanClass(QThread):
         self._logging = False    # if True will log sensor temperature and fan speed
         self._mode = 0
         self._master_power = 0
-        self.fan_spin_up = int(self.db.get_config(CFT_FANS, "spin up", 10)) * 1000
+        self.fan_spin_up = int(self.db.get_config(CFT_FANS, "spin up", 10))
         self.startup_timer = QTimer()
         self.startup_timer.timeout.connect(self.spin_up_finished)
-        self.startup_timer.setInterval(self.fan_spin_up)
+        self.startup_timer.setInterval(1000)
         self.startup_counter = 0
         self.spin_up = False     # True when fan is in spin up mode
         row = self.db.execute_one_row("SELECT sensor, mode, Kp, Ki, Kd FROM {} WHERE id = {}".format(DB_FANS, self.id))
@@ -42,6 +45,7 @@ class FanClass(QThread):
                      row[4] if row[4] is not None else 0)
         self._load_set_point()
         self._load_sensor_calibration()
+        self.update_info()
 
     def _load_sensor_calibration(self):
         self.input_calibration = self.db.execute_single(
@@ -170,7 +174,7 @@ class FanClass(QThread):
     def reset(self):
         self.pid.clear()
 
-    def stop(self):
+    def stop_fan(self):
         self.mode = 0
         self.terminate()     # Stop thread
         # self.thread_udp_client.quit()
@@ -236,3 +240,23 @@ class FanClass(QThread):
         if self._sensor == 0:
             return
         self.set_point(self.fan_controller.area_controller.sensors[self._sensor].get_set())
+
+    def update_info(self):
+        # Sensor for fan
+        if self.sensor == 3 or self.sensor == 5:
+            getattr(self.fan_controller.main_panel, "lbl_fan_sensor_{}".format(self.id)).setPixmap((QPixmap(":/normal/065-humidity.png")))
+        elif self.sensor == 4 or self.sensor == 6:
+            getattr(self.fan_controller.main_panel, "lbl_fan_sensor_{}".format(self.id)).setPixmap(QtGui.QPixmap(":/normal/061-care.png"))
+        elif self.sensor == 10 or self.sensor == 12:
+            getattr(self.fan_controller.main_panel, "lbl_fan_sensor_{}".format(self.id)).setPixmap(QtGui.QPixmap(":/normal/067-leaf.png"))
+        elif self.sensor == 11 or self.sensor == 13:
+            getattr(self.fan_controller.main_panel, "lbl_fan_sensor_{}".format(self.id)).setPixmap(QtGui.QPixmap(":/normal/062-plant.png"))
+
+        # Fan mode
+        ctrl = getattr(self.fan_controller.main_panel, "lbl_fan_mode_{}".format(self.id))
+        if self.mode == 0:
+            ctrl.setPixmap(QtGui.QPixmap(":/normal/002-stop.png"))
+        elif self.mode == 1:
+            ctrl.setPixmap(QtGui.QPixmap(":/normal/output_manual_1.png"))
+        elif self.mode == 2:
+            ctrl.setPixmap(QtGui.QPixmap(":/normal/output_auto.png"))
