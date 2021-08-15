@@ -6,13 +6,13 @@ import time as _time
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import pyqtSlot, Qt, QTimer
 from PyQt5.QtGui import QPixmap
-from PyQt5.QtWidgets import QWidget, QMdiSubWindow
+from PyQt5.QtWidgets import QWidget, QMdiSubWindow, QMessageBox
 
 from class_fan import FanClass
 from class_soil_sensors import SoilSensorClass
 from defines import *
 from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan, DialogOutputSettings, \
-    DialogSensorSettings, DialogProcessAdjustments, DialogWaterHeaterSettings
+    DialogSensorSettings, DialogProcessAdjustments, DialogWaterHeaterSettings, DialogWorkshopSettings
 from scales_com import ScalesComs
 from ui.main import Ui_Form
 
@@ -64,7 +64,6 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.logger = None
         self.soil_sensors = None
         self.msg_sys = None
-        self.ck_auto_boost.setChecked(int(self.db.get_config(CFT_ACCESS, "auto boost", 1)))
         self.stage_change_warning_days = int(self.db.get_config(CFT_PROCESS, "stage change days", 7))
         self.unit_price = float(self.db.get_config(CFT_ACCESS, "unit price", 20)) / 100
 
@@ -76,8 +75,6 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.timer.setInterval(1000)
         self.timer.timeout.connect(self.recurring_timer)
         self.loop_15_flag = True  # To give every other loop 15
-
-        self.ck_auto_boost.setChecked(int(self.db.get_config(CFT_ACCESS, "auto boost", 1)))
 
         self.has_scales = int(self.db.get_config(CFT_MODULES, "ss unit", 0))
         self.scales = ScalesComs(self)
@@ -124,14 +121,14 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 self.wc.show(DialogSensorSettings(self, 2, 12))
             elif source is self.tesstatus_9.viewport():
                 self.wc.show(DialogSensorSettings(self, 2, 13))
-            # Area 3
+            # Area 3, drying
             elif source is self.tesstatus_11.viewport():
-                self.wc.show(DialogSensorSettings(self, 3, 1))
+                self.wc.show(DialogSensorSettings(self, 3, 7))
             elif source is self.tesstatus_12.viewport():
-                self.wc.show(DialogSensorSettings(self, 3, 2))
-            # Area 3
+                self.wc.show(DialogSensorSettings(self, 3, 8))
+            # Area 4, workshop
             elif source is self.tesstatus_10.viewport():
-                self.wc.show(DialogSensorSettings(self, 4, 1))
+                self.wc.show(DialogSensorSettings(self, 4, 9))
 
         return QWidget.eventFilter(self, source, event)
 
@@ -207,7 +204,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         if self.has_scales:     # These have to be here to allow signals to connect
             self.scales.connect()
         self.update_duration_texts()
-        self.area_controller.output_controller.update_water_heater_info()
+        self.area_controller.output_controller.water_heater_update_info()
 
     def connect_signals(self):
         self.pb_cover.clicked.connect(lambda: self.access.open())
@@ -245,6 +242,14 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.pb_output_mode_5.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 2, 2)))
         self.pb_output_mode_6.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 2, 3)))
         self.pb_output_mode_10.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 2, 4)))
+        self.pb_pm_1.clicked.connect(lambda: self.advance_finishing(1))
+        self.pb_pm_2.clicked.connect(lambda: self.advance_finishing(2))
+        self.pb_pm_3.clicked.connect(lambda: self.advance_finishing(3))
+        self.pb_pm_4.clicked.connect(lambda: self.advance_finishing(4))
+        self.pb_pm_5.clicked.connect(lambda: self.advance_finishing(5))
+        self.pb_pm_6.clicked.connect(lambda: self.advance_finishing(6))
+        self.pb_pm_7.clicked.connect(lambda: self.advance_finishing(7))
+        self.pb_pm_8.clicked.connect(lambda: self.advance_finishing(8))
         # Area 3
         self.pbjournal_3.clicked.connect(lambda: self.wc.show_journal(3))
         self.pbinfo_3.clicked.connect(lambda: self.wc.show_process_info(3))
@@ -253,7 +258,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.pb_output_mode_7.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 3, 1)))
         # Workshop
         self.pb_output_status_8.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_ROOM))
-        self.pb_output_mode_8.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 4, 1)))
+        self.pb_output_mode_8.clicked.connect(lambda: self.wc.show(DialogWorkshopSettings(self)))
         # Water
         self.pb_output_status_11.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_WATER_HEATER_1))
         self.pb_output_status_12.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_WATER_HEATER_2))
@@ -417,40 +422,36 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                     for w in p.strain_window:
                         ctrl = getattr(self, "pb_pm_%i" % x)
                         ctrl.setText(str(x))
+                        flush_start = self.db.execute_single("SELECT start FROM {} WHERE item = {}".format(DB_FLUSHING, x))
+                        if flush_start is not None:
+                            w = 4
                         if w == -1:     # Item removed
                             ctrl.setText("")
                             ctrl.setEnabled(False)
                             ctrl.setToolTip("")
                             continue
-                        flush_start = self.db.execute_single("SELECT start FROM {} WHERE item = {}".format(DB_FLUSHING, x))
-                        if flush_start is None:
-                            if p.strain_location[x - 1] != location:
-                                ctrl.setText("")
-                            if p.strain_location[x - 1] != location or w == 0:
-                                ctrl.setEnabled(False)
-                                ctrl.setToolTip("")
-                            elif w == 1:
-                                ctrl.setEnabled(True)
-                                ctrl.setStyleSheet("background-color: Yellow;")
-                                name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
-                                                              "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
-                                                              .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
-                                ctrl.setToolTip(name)
-                            elif w == 2:
-                                ctrl.setEnabled(True)
-                                ctrl.setStyleSheet("background-color: Green;")
-                                name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
-                                                              "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
-                                                              .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
-                                ctrl.setToolTip(name)
-                            elif w == 3:
-                                ctrl.setEnabled(True)
-                                ctrl.setStyleSheet("background-color: Orange;")
-                                name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
-                                                              "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
-                                                              .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
-                                ctrl.setToolTip(name)
-                        else:   # Item is flushing
+                        elif w == 1:
+                            ctrl.setEnabled(True)
+                            ctrl.setStyleSheet("background-color: Yellow;")
+                            name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
+                                                          "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
+                                                          .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
+                            ctrl.setToolTip(name)
+                        elif w == 2:
+                            ctrl.setEnabled(True)
+                            ctrl.setStyleSheet("background-color: Green;")
+                            name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
+                                                          "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
+                                                          .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
+                            ctrl.setToolTip(name)
+                        elif w == 3:
+                            ctrl.setEnabled(True)
+                            ctrl.setStyleSheet("background-color: Orange;")
+                            name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
+                                                          "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
+                                                          .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
+                            ctrl.setToolTip(name)
+                        elif w == 4:   # Item is flushing
                             ctrl.setEnabled(True)
                             ctrl.setStyleSheet("background-color: DodgerBlue;")
                             name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
@@ -467,6 +468,65 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             else:
                 self.frmstagechange_2.setEnabled(False)
                 return None
+
+    def advance_finishing(self, item):
+        sql = "SELECT start FROM {} WHERE item = {}".format(DB_FLUSHING, item)
+        row = self.db.execute_one_row(sql)
+        if row is None:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("Confirm you wish to flush number {} ".format(item))
+            msg.setWindowTitle("Confirm Flush")
+            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+            msg.setDefaultButton(QMessageBox.Cancel)
+            if msg.exec_() == QMessageBox.Cancel:
+                return
+            sql = "INSERT into {} (item, start) VALUES ({}, '{}')".format(DB_FLUSHING, item, datetime.now().date())
+            self.db.execute_write(sql)
+            # self.feed_control.check_flushes(2)
+            self.check_stage(2)
+        else:
+            self.move_to_finishing(item)
+
+    def move_to_finishing(self, item):
+        # moves a single plant into drying, if last one then advance the stage
+        # the location will be area 2 ?? This may change
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Warning)
+        msg.setText("Confirm you wish to move number {} into Drying".format(item))
+        msg.setWindowTitle("Confirm Move to Drying")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        msg.setDefaultButton(QMessageBox.Cancel)
+        if msg.exec_() == QMessageBox.Cancel:
+            return
+
+        self.sender().setStyleSheet("")
+        self.sender().setEnabled(False)
+        p = self.area_controller.get_area_process(2)  # Don't need to check if process at location as it should never be here unless there is a process
+        p.strain_location[item - 1] = 3
+        sql = "INSERT INTO {} (area, process_id, item) VALUES (3, {}, {})".format(DB_AREAS, p.id, item)
+        self.db.execute_write(sql)
+        sql = "DELETE FROM {} WHERE process_id = {} AND item = {} AND area = 2".format(DB_AREAS, p.id, item)
+        self.db.execute_write(sql)
+        # Update location and total days
+        sql = "UPDATE {} SET location = 3, total_days = {} WHERE process_id = {} and item = {}". \
+            format(DB_PROCESS_STRAINS, p.days_total, p.id, item)
+        self.db.execute_write(sql)
+        # Remove item from flushing table
+        sql = "DELETE FROM {} WHERE item = {} LIMIT 1".format(DB_FLUSHING, item)
+        self.db.execute_write(sql)
+        getattr(self, "pb_pm2_%i" % item).setEnabled(True)
+        dt = datetime.strftime(datetime.now(), '%d/%m/%y %H:%M')
+        p.journal_write(dt + "    Number " + str(item) + " Cut and moved to drying. Days flowering "
+                        + str(p.stage_days_elapsed) + "  ^")
+        if len(self.area_controller.get_items(2)) == 0:  # If no items left in area 2
+            # Update the processes current stage
+            self.db.execute_write(
+                "UPDATE " + DB_PROCESS + " SET stage = 4, location = 3 WHERE id = " + str(p.id))
+            p.current_stage += 1
+        self.area_controller.reload_area(2)
+        self.area_controller.reload_area(3)
+        self.coms_interface.relay_send(NWC_MOVE_TO_FINISHING)
 
     def feed_manual(self, loc):
         self.feed_controller.feed(loc)
@@ -521,43 +581,47 @@ class MainPanel(QMdiSubWindow, Ui_Form):
     def update_access(self, status_code):
         print("Access = ", status_code)
         if self.access.has_status(ACS_DOOR_CLOSED):
-            self.le_door_pos.setStyleSheet("background-color: Green; color: White")
+            self.lbl_door_lock.setStyleSheet("")
         else:
-            self.le_door_pos.setStyleSheet("background-color: Red; color: White")
+            self.lbl_door_lock.setStyleSheet("background-color: Red; color: White; border-radius: 6px;")
 
         if self.access.has_status(ACS_COVER_OPEN):  # Open limit sw
-            self.le_access_status_1.setText("Open")
-            self.le_cover_pos_2.setStyleSheet("background-color: red; color: White")
-            self.le_access_status_1.setStyleSheet("background-color: red; color: White")
+            self.le_access_status_1.setText("<  >")
+            self.lbl_cover_lock.setStyleSheet("background-color: red; color: White; border-radius: 6px;")
+            self.le_access_status_1.setStyleSheet("background-color: red; color: White; border-radius: 6px;")
             self.pb_cover.setEnabled(False)
             self.pb_cover_close.setEnabled(True)
 
         if self.access.has_status(ACS_COVER_CLOSED):    # Closed limit sw
-            self.le_cover_pos_2.setStyleSheet("background-color: green; color: White")
-            self.le_access_status_1.setStyleSheet("background-color: Green; color: White")
-            self.le_access_status_1.setText("Closed")
+            # self.lbl_cover_lock.setStyleSheet("background-color: green; color: White")
+            self.le_access_status_1.setStyleSheet("background-color: Green; color: White; border-radius: 6px;")
+            self.le_access_status_1.setText(">><<")
             self.pb_cover_close.setEnabled(False)
             self.pb_cover.setEnabled(True)
         else:  # In open position or somewhere between
             if self.access.has_status(ACS_CLOSING) or self.access.has_status(ACS_OPENING):
-                self.le_cover_pos_2.setStyleSheet("background-color: blue; color: White")
+                self.lbl_cover_lock.setStyleSheet("background-color: blue; color: White; border-radius: 6px;")
                 self.le_access_status_1.setText("Closing")
             self.pb_cover.setEnabled(False)
             self.pb_cover_close.setEnabled(True)
 
         if status_code & ACS_DOOR_LOCKED == ACS_DOOR_LOCKED:
-            self.le_access_status_3.setText("Locked")
-            self.le_access_status_3.setStyleSheet("background-color: Green; color: White")
+            self.lbl_door_lock.setPixmap(QtGui.QPixmap(":/normal/locked.png"))
+            # self.le_access_status_3.setText("Locked")
+            # self.le_access_status_3.setStyleSheet("background-color: Green; color: White")
         else:
-            self.le_access_status_3.setText("Open")
-            self.le_access_status_3.setStyleSheet("background-color: Red; color: White")
+            self.lbl_door_lock.setPixmap(QtGui.QPixmap(":/normal/011-unlock.png"))
+            # self.le_access_status_3.setText("Open")
+            # self.le_access_status_3.setStyleSheet("background-color: Red; color: White")
 
         if status_code & ACS_COVER_LOCKED == ACS_COVER_LOCKED:
-            self.le_access_status_2.setText("Locked")
-            self.le_access_status_2.setStyleSheet("background-color: Green; color: White")
+            self.lbl_cover_lock.setPixmap(QtGui.QPixmap(":/normal/locked.png"))
+            # self.le_access_status_2.setText("Locked")
+            # self.le_access_status_2.setStyleSheet("background-color: Green; color: White")
         else:
-            self.le_access_status_2.setText("Open")
-            self.le_access_status_2.setStyleSheet("background-color: Red; color: White")
+            self.lbl_cover_lock.setPixmap(QtGui.QPixmap(":/normal/011-unlock.png"))
+            # self.le_access_status_2.setText("Open")
+            # self.le_access_status_2.setStyleSheet("background-color: Red; color: White")
 
         if status_code & ACS_AUTO_SET == ACS_AUTO_SET:
             self.le_access_status_1.setText("Auto")
@@ -567,47 +631,28 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.le_access_status_1.setStyleSheet("background-color: Orange; color: Red")
 
         if status_code & ACS_OPENING == ACS_OPENING and not status_code & ACS_STOPPED == ACS_STOPPED:
-            self.le_access_status_1.setText("Opening")
-            self.le_cover_duration.show()
+            # self.le_access_status_1.setText("Opening")
+            # self.le_cover_duration.show()
             self.access_open_time = _time.time()
             # self.pb_cover_rev.hide()
             self.le_access_status_1.setStyleSheet("background-color: Yellow; color: Black")
         if status_code & ACS_CLOSING == ACS_CLOSING and \
                 not status_code & ACS_STOPPED == ACS_STOPPED:
-            self.le_access_status_1.setText("Closing")
-            self.le_cover_duration.show()
+            # self.le_access_status_1.setText("Closing")
+            # self.le_cover_duration.show()
             # self.pb_cover_rev.hide()
             self.le_access_status_1.setStyleSheet("background-color: Yellow; color: Black")
-        # elif status_code & ACS_COVER_LOCKED == ACS_COVER_LOCKED:
-        #     self.le_access_status_1.setText("Closed")
-        #     self.access_open_time = 0
-        #     self.pb_cover.setText("Open")
-        #     self.le_cover_duration.hide()
-        #     self.le_access_status_1.setStyleSheet("background-color: Green; color: White")
-        # elif status_code & ACS_STOPPED == ACS_STOPPED:
-        #     if status_code & ACS_OPENING == ACS_OPENING:
-        #         self.le_access_status_1.setText("Stopped O")
-        #         self.pb_cover.setText("Open")
-        #         self.pb_cover_rev.setText("Close")
-        #     else:
-        #         self.le_access_status_1.setText("Stopped C")
-        #         self.pb_cover.setText("Close")
-        #         self.pb_cover_rev.setText("Open")
-        #     self.pb_cover_rev.show()
-        #     self.le_cover_duration.show()
-        #     self.le_access_status_1.setStyleSheet("background-color: Yellow; color: Black")
-        # else:
-        #     self.le_access_status_1.setText("Open")
-        #     if self.access_open_time == 0:
-        #         self.access_open_time = _time.time()
-        #     self.le_cover_duration.hide()
-        #     self.le_access_status_1.setStyleSheet("background-color: Red; color: White")
 
     @pyqtSlot(int)
     def update_cover_duration(self, d):
         if d < 0:
             d = ""
-        self.le_cover_duration.setText(str(d))
+        if self.access.has_status(ACS_CLOSING):
+            t = ">{}<"
+        elif self.access.has_status(ACS_OPENING):
+            t = "<{}>"
+
+        self.le_access_status_1.setText(t.format(d))
 
     @pyqtSlot(int, int)
     def update_access_inputs(self, _input, _value):
@@ -622,25 +667,26 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         """
         if _input == AUD_DOOR:
             if _value == 1:
-                self.le_door_pos.setStyleSheet("background-color: Green; color: White")
+                pass
+                # self.le_door_pos.setStyleSheet("background-color: Green; color: White")
             else:
-                self.le_door_pos.setStyleSheet("background-color: Red; color: White")
+                self.lbl_door_lock.setStyleSheet("background-color: Red; color: White")
         elif _input == AUD_COVER_OPEN:  # Open limit sw
             if _value == 0:  # Not in open position
                 if self.access.cover_closed_sw == 0:
-                    self.le_cover_pos_2.setStyleSheet("background-color: green; color: White")
+                    self.lbl_cover_lock.setStyleSheet("")
                 else:  # In open position
-                    self.le_cover_pos_2.setStyleSheet("background-color: blue; color: White")
+                    self.lbl_cover_lock.setStyleSheet("background-color: blue; color: White")
             else:
-                self.le_cover_pos_2.setStyleSheet("background-color: red; color: White")
+                self.lbl_cover_lock.setStyleSheet("background-color: red; color: White")
         elif _input == AUD_COVER_CLOSED:
             if _value == 0:
-                self.le_cover_pos_2.setStyleSheet("background-color: Green; color: White")
+                self.lbl_cover_lock.setStyleSheet("")
             else:
                 if self.access.cover_open_sw == 0:
-                    self.le_cover_pos_2.setStyleSheet("background-color: blue; color: White")
+                    self.lbl_cover_lock.setStyleSheet("background-color: blue; color: White")
                 else:
-                    self.le_cover_pos_2.setStyleSheet("background-color: red; color: White")
+                    self.lbl_cover_lock.setStyleSheet("background-color: red; color: White")
         elif _input == AUD_AUTO_SET:
             pass
 
@@ -819,11 +865,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
     def process_relay_command(self, cmd, data):
         """ For outputs use the actual output class and not the controller as it relays the action"""
         if cmd == NWC_SENSOR_RELOAD:
-            if self.area_controller.area_has_process(data[0]):
-                self.area_controller.get_area_process(data[0]).load_active_temperature_ranges()
-            else:
-                # No process, load defaults
-                pass
+            self.area_controller.load_sensor_ranges(data[0], data[1])
         elif cmd == NWC_STAGE_ADJUST:
             self.area_controller.get_area_process(1).process_load_stage_info()
             self.update_duration_texts()
@@ -838,8 +880,12 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             # self.area_controller.fan_controller.update_fans_speed.emit(int(data[0]), int(data[1]))
             self.update_fans(1, data[0])
             self.update_fans(2, data[1])
+        elif cmd == NWC_FAN_MODE:
+            self.area_controller.fan_controller.set_mode(data[0], data[1])
+        elif cmd == NWC_FAN_SPEED:
+            self.area_controller.fan_controller.update_speed(data[0], data[1])
         elif cmd == NWC_FAN_SENSOR:
-            self.area_controller.fans[data[0]].reload_sensor(data[1])
+            self.area_controller.fan_controller.set_fan_sensor(data[0], data[1])
         elif cmd == NWC_OUTPUT_RANGE:
             self.area_controller.output_controller.outputs[data[0]].load_profile()
         elif cmd == NWC_RELOAD_PROCESSES:
@@ -848,12 +894,19 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.check_stage(1)
             self.check_stage(2)
         elif cmd == NWC_FEED_DATE:
-            self.area_controller.output_controller.update_water_heater_info()
+            self.area_controller.output_controller.water_heater_update_info()
         elif cmd == NWC_FEED:
             self.feed_controller.feeds[data[0]].load_feed_date()
             self.update_next_feeds()
         elif cmd == NWC_SWITCH_REQUEST:
             self.get_switch_position(data[0])
+        elif cmd == NWC_WH_DURATION:
+            self.area_controller.output_controller.outputs[data[0]].set_duration(data[1])
+        elif cmd == NWC_WH_FREQUENCY:
+            self.area_controller.output_controller.water_heater_set_frequency(data[0], data[1])
+        elif cmd == NWC_WORKSHOP_BOOST:
+            self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].auto_boost = data[0]
+            self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].update_info()
 
     def get_switch_position(self, sw):
         if sw == 0:

@@ -3,6 +3,7 @@ import collections
 from PyQt5.QtCore import QObject, pyqtSlot
 
 from class_output_water_heater import OutputWaterHeater
+from class_output_workshop_heater import OutputWorkshopHeater
 from class_outputs import OutputClass
 from defines import *
 from functions import sound_click
@@ -27,11 +28,9 @@ class OutputController(QObject):
         # for row in rows:
 
     def load_all_areas(self):
-        for a in range(1, 4):
-            if self.areas_controller.area_has_process(a):
-                # Area has process so load outputs
-                self.load_outputs(a)
-        # self.load_outputs(3)    # Drying
+        self.load_outputs(1)
+        self.load_outputs(2)
+        self.load_outputs(3)    # Drying
         self.load_outputs(4)    # Workshop
         self.load_outputs(7)    # Water heaters
 
@@ -44,7 +43,9 @@ class OutputController(QObject):
             if oid not in self.outputs.keys():
                 if row[2] == 7:     # If area 7 then its a water heater
                     self.outputs[oid] = OutputWaterHeater(self, row[0])   # ID used for controls id
-                else:
+                elif row[2] == 4:     # If area 4 then its a workshop heater
+                    self.outputs[oid] = OutputWorkshopHeater(self, row[0])   # ID used for controls id
+                else:   # All other outputs
                     self.outputs[oid] = OutputClass(self, row[0])   # ID used for controls id
             self.outputs[oid].load_profile()
             if self.outputs[oid].input > 0:
@@ -64,6 +65,7 @@ class OutputController(QObject):
         return self.outputs[op_id].relay_position
 
     def change_mode(self, op_id, mode):
+        """ Set the mode for a output and relays it"""
         self.outputs[op_id].set_mode(mode)
         self.main_panel.coms_interface.relay_send(NWC_OUTPUT_MODE, op_id, mode)
 
@@ -91,6 +93,9 @@ class OutputController(QObject):
     def set_last_feed_date(self, lfd):
         self.areas_controller.main_window.feed_controller.set_last_feed_date(lfd)
 
+    def set_limits(self, op_id, low, high):
+        self.outputs[op_id].set_limits(low, high)
+
     @pyqtSlot(int, int, int, name="updateSwitch")
     def switch_update(self, sw, state, module):
         if sw in self.outputs:
@@ -99,7 +104,7 @@ class OutputController(QObject):
     def update_info(self, op_id):
         self.outputs[op_id].update_info()
 
-    def update_water_heater_info(self):
+    def water_heater_update_info(self):
         """ This should be called any time the feed date changes
             It updates the days_till_feed, displays it and relays to other pc"""
         d = min(self.areas_controller.main_window.feed_controller.days_till_feed(1),
@@ -108,3 +113,24 @@ class OutputController(QObject):
         self.outputs[OUT_WATER_HEATER_2].set_days_till_feed(d)
         self.main_panel.coms_interface.relay_send(NWC_FEED_DATE)
 
+    def water_heater_set_duration(self, duration):
+        """ duration can either be an int with duration as minutes ie 240 or as a string ie 'hh:mm' or a QTime object"""
+        if type(duration) == str:
+            s = duration.split(':')
+            d = (int(s[0]) * 60) + int(s[1])
+        elif not type(duration) == int:
+            d = ((duration.hour() * 60) + duration.minute())
+        else:
+            d = duration
+        self.db.set_config(CFT_WATER_HEATER, 'heater duration', d)
+        self.outputs[OUT_WATER_HEATER_1].set_duration(d)
+        self.outputs[OUT_WATER_HEATER_2].set_duration(d)
+
+    def water_heater_set_off_time(self, off_time):
+        """ This only updates the water heater variable as main handling is done bt the feed_controller """
+        self.outputs[OUT_WATER_HEATER_1].set_off_time(off_time)
+        self.outputs[OUT_WATER_HEATER_2].set_off_time(off_time)
+
+    def water_heater_set_frequency(self, output_pin, frequency):
+        self.outputs[output_pin].set_frequency(frequency)
+        self.db.set_config(CFT_WATER_HEATER, "frequency {}".format(self.outputs[output_pin].heater_id), frequency)

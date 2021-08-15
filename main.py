@@ -61,13 +61,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.feed_controller = FeedControl(self)
 
         # This can only be called after the feed_control has initialised, it sets the days_till_feed
-        self.area_controller.output_controller.outputs[OUT_WATER_HEATER_1].new_day()
-        self.area_controller.output_controller.outputs[OUT_WATER_HEATER_2].new_day()
+        # self.area_controller.output_controller.outputs[OUT_WATER_HEATER_1].new_day()
+        # self.area_controller.output_controller.outputs[OUT_WATER_HEATER_2].new_day()
 
         self.connect_signals()
 
         self.main_panel.connect_to_main_window()
-        self.wc.show(DialogEngineerIo(self))
+        # self.wc.show(DialogEngineerIo(self))
 
         self.main_panel.update_next_feeds()
         self.main_panel.check_stage(1)
@@ -102,8 +102,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.db.reconnect()
         self.coms_interface.reconnect()
 
-    @pyqtSlot(int, int, int, name="updateQueStatus")
-    def update_que(self, pri, norm, lock_status):
+    @pyqtSlot(int, int, int, int, name="updateQueStatus")
+    def update_que(self, pri, relay, norm, lock_status):
         level = INFO
         if pri + norm > 5:
             level = WARNING
@@ -113,7 +113,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             level = PENDING
         elif lock_status == 1:
             level = OPERATE
-        self.update_status_bar(SBP_QUE, str(pri) + " - " + str(norm), level)
+        self.update_status_bar(SBP_QUE, str(pri) + " - " + str(relay) + " - " + str(norm), level)
 
     def update_stock(self):
         tot = round(self.db.execute_single('SELECT SUM(weight - nett - hum_pac) FROM {}'.format(DB_JARS)), 1)

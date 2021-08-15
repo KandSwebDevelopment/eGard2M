@@ -48,6 +48,16 @@ class FeedControl(QThread):
                                       self.main_window.area_controller.get_area_items(area))
                 self.feeds[area].load_mixes()
 
+    def set_feed_time(self, feed_time):
+        """
+
+        :type feed_time: str
+        """
+        if feed_time == self.feed_time:
+            return
+        self.feed_time = feed_time
+        self.db.set_config(CFT_FEEDER, "feed time", feed_time)
+
     def days_till_feed(self, area):
         return self.feeds[area].get_days_till_feed()
 

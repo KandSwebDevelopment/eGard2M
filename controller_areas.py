@@ -89,7 +89,7 @@ class AreaController(QObject):
         self.output_controller.load_all_areas()
 
     def reload_area(self, area):
-        """ Load the PID's and items for all the area"""
+        """ Load the PID's and items for the area"""
         sql = "SELECT process_id, item FROM {} WHERE area = {}".format(DB_AREAS, area)
         rows = self.db.execute(sql)
         if len(rows) > 0:
@@ -171,34 +171,51 @@ class AreaController(QObject):
                     if p != 0:
                         r = p.temperature_ranges_active
                         if r is not None:
-                            r = r[self.sensors[sid].area_range]
+                            r = r[self.sensors[sid].item]
                             self.sensors[sid].set_range(r)
-                            ro = p.temperature_ranges_active_org[self.sensors[sid].area_range]
+                            ro = p.temperature_ranges_active_org[self.sensors[sid].item]
                             self.sensors[sid].set_range_org(ro)
                         else:
                             # @todo Add call to msg sys - No temperature range for process
                             pass
             else:
-                if self.area_manual[area]:
-                    # Load default range as area has no process and is on manual
-                    # As manual only displays room temperature, skip others
-                    if row[6] == 2:
-                        sql = 'SELECT low, set_point, high FROM {} WHERE area = {}'\
-                            .format(DB_TEMPERATURES_DEFAULT, area)
-                        row = self.db.execute_one_row(sql)
-                        if row is None:
-                            # @todo Add call to msg sys - No default temperature range for area
-                            return
-                        self.sensors[sid].set_range({'low': row[0], 'set': row[1], 'high': row[2]})
-                else:
-                    self.sensors[sid].off()
+                self.load_manual_ranges(area, sid)
+                # if self.area_manual[area]:
+                #     # Load default range as area has no process and is on manual
+                #     # As manual only displays room temperature, skip others
+                #     if row[6] == 2:
+                #         sql = 'SELECT low, set_point, high FROM {} WHERE area = {}'\
+                #             .format(DB_TEMPERATURES_DEFAULT, area)
+                #         row = self.db.execute_one_row(sql)
+                #         if row is None:
+                #             # @todo Add call to msg sys - No default temperature range for area
+                #             return
+                #         self.sensors[sid].set_range({'low': row[0], 'set': row[1], 'high': row[2]})
+                # else:
+                #     self.sensors[sid].off()
 
-    def load_sensor_ranges(self, area):
+    def load_sensor_ranges(self, area, sid):
         if self.area_has_process(area):
-            pass
+            p = self.areas_processes[area]
+            r = p.temperature_ranges_active
+            if r is not None:
+                r = r[self.sensors[sid].item]
+                self.sensors[sid].set_range(r)
+                ro = p.temperature_ranges_active_org[self.sensors[sid].item]
+                self.sensors[sid].set_range_org(ro)
+            else:
+                # @todo Add call to msg sys - No temperature range for process
+                pass
+        else:
+            self.load_manual_ranges(area, sid)
 
-    def load_manual_ranges(self, area):
+    def load_manual_ranges(self, area, sid):
         """ Load the set manual ranges for an area"""
+        item = self.sensors[sid].item
+        rows = self.db.execute('SELECT setting, value FROM {} WHERE area = {} AND item = {}'.
+                               format(DB_PROCESS_TEMPERATURE, area, item))
+        if len(rows) > 0:
+            self.sensors[sid].set_range({'low': rows[0][1], 'set': rows[1][1], 'high': rows[2][1]})
 
     def get_area_pid(self, area):
         """ Returns the PID in the area"""
@@ -236,12 +253,13 @@ class AreaController(QObject):
         try:
             return self.areas_processes[area]
         except Exception as e:
-            print("get_area_process", e)
+            # print("get_area_process", e)
             return 0
 
     def get_light_status(self, area):
         if self.area_has_process(area):
             return self.get_area_process(area).get_light_status()
+        return -1
 
     def get_process_active_temperature_ranges(self, area):
         if self.area_has_process(area):
@@ -249,3 +267,8 @@ class AreaController(QObject):
 
     def sensors_set_as_fan(self, s_id, state):
         self.sensors[s_id].is_fan(state)
+
+    def get_sid_from_item(self, area, item):
+        """ This returns the sensor id from the area and the item number """
+        return self.db.execute_single('SELECT id FROM {} WHERE area = {} AND area_range = {}'.
+                                      format(DB_SENSORS_CONFIG, area, item))

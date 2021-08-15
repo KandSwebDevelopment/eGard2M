@@ -450,7 +450,7 @@ class FeedClass(QObject):
             format(DB_PROCESS_ADJUSTMENTS, f_date, PA_FEED_DATE, self.area)
         self.db.execute_write(sql)
         # self._check_feed_due_today()
-        self.feed_controller.main_window.area_controller.output_controller.update_water_heater_info()
+        self.feed_controller.main_window.area_controller.output_controller.water_heater_update_info()
 
     def cycles_reduce(self):
         """ Reduces the number of cycles in each mix in the area by 1 and remove any mixes

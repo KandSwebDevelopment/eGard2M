@@ -12,27 +12,46 @@ class OutputWaterHeater(OutputClass):
         self .on_time = datetime.now()      # Just to stop errors on initial loading
         self.output_controller = parent
         self.output_controller.areas_controller.main_window.coms_interface.update_float_switch.connect(self.float_update)
-        self.float = FLOAT_DOWN
+        self.float = FLOAT_UP
         self.is_feeding = False     # Set true if float goes down during feed time
         self.advance = 0    # For mode advance 0=Not used, 1=On till next off, 2=off till next on
         self.days_till_feed = 0         # This can not be set until the feed_control has initialised,
-        #                                 init set by main_window calling new_day
-        self.frequency = int(self.db.get_config(CFT_WATER_HEATER, "frequency {}".format(self.area), 1))
-        self.use_float = int(self.db.get_config(CFT_WATER_HEATER, "float {}".format(self.area), 1))
-        self.set_duration(self.db.get_config(CFT_WATER_HEATER, "heater duration", "03:00"))
-        self.set_off_time(self.db.get_config(CFT_PROCESS, "feed time", "19:00"))
+        #                                 init set by
+        self.heater_id = self.ctrl_id - 10      # Heater 1 or 2
+        self.frequency = int(self.db.get_config(CFT_WATER_HEATER, "frequency {}".format(self.heater_id), 1))
+        self.use_float = int(self.db.get_config(CFT_WATER_HEATER, "float {}".format(self.heater_id), 1))
+        self.days_since = int(self.db.get_config(CFT_WATER_HEATER, "days since {}".format(self.heater_id)), 10)
+        self.set_duration(int(self.db.get_config(CFT_WATER_HEATER, "heater duration", 240)))
+        self.set_off_time(self.db.get_config(CFT_FEEDER, "feed time", "19:00"))
         self.feed_tol = int(self.db.get_config(CFT_PROCESS, "feed time tolerance", "2"))
-        self.heater_id = self.ctrl_id - 10
         if not self.use_float:
             self.float = FLOAT_UP
 
+    def set_float_use(self, in_use):
+        self.use_float = in_use
+        if not self.use_float:
+            self.float = FLOAT_UP
+        self.db.set_config(CFT_WATER_HEATER, "float {}".format(self.heater_id), in_use)
+
+    def set_duration(self, duration):   # Only for timer
+        """ Set timer duration and update display """
+        if duration == self.duration:
+            return
+        self.duration = duration
+        self.calculate_on_time()
+        self.update_info()
+
+    def set_frequency(self, frequency):
+        self.frequency = frequency
+
     def set_off_time(self, off):
         dt = datetime.now()
-        ot = datetime.strptime(off, "%H:%M:%S")
+        ot = datetime.strptime(off, "%H:%M")
         self.off_time = datetime.combine(dt, ot.time())
         if dt > self.off_time:
             self.off_time = self.off_time + timedelta(days=1)
         self.calculate_on_time()
+        self.update_info()
 
     def calculate_on_time(self):
         self.on_time = self.off_time - timedelta(minutes=self.duration)
@@ -105,6 +124,8 @@ class OutputWaterHeater(OutputClass):
                 elif datetime.now().time() >= self.on_time.time():
                     if not self.is_feeding:
                         self.switch(ON)
+                else:
+                    self.switch(OFF)
             else:
                 self.switch(OFF)
             self.update_control(self.status)
@@ -133,21 +154,40 @@ class OutputWaterHeater(OutputClass):
             # @Todo Add to event log
         self.status = state
         self.status_last = state
+        if state == ON:
+            self.days_since = 0
 
     def update_info(self):
         OutputClass.update_info(self)
+        getattr(self.output_controller.main_panel, "lbl_output_number_%i" % self.ctrl_id).setText(str(self.days_till_feed))
+
         getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.ctrl_id).\
             setText(datetime.strftime(self.off_time, "%H:%M"))
         getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.ctrl_id).\
             setText(datetime.strftime(self.on_time, "%H:%M"))
-        getattr(self.output_controller.main_panel, "lbl_output_sensor_%i" % self.ctrl_id).setText(str(self.days_till_feed))
+        if self.frequency == 0:
+            txt = "AR"
+        else:
+            txt = "D{}".format(self.frequency)
+        getattr(self.output_controller.main_panel, "lbl_output_sensor_%i" % self.ctrl_id).setText(txt)
         if self.is_feeding:
             getattr(self.my_parent, "pb_output_mode_%i" % self.ctrl_id).setIcon(QIcon(":/normal/next_feed.png"))
 
     def set_days_till_feed(self, days):
-        self.days_till_feed = days
+        """ Set the days_till_feed. It will only do this if frequency is As Required
+            Otherwise it set it = frequency - days_since"""
+        if self.frequency == 0:
+            self.days_till_feed = days
+        else:
+            self.days_till_feed = self.frequency - self.days_since
+            if self.days_till_feed < 0:
+                self.days_till_feed = 0
         self.update_info()
 
     def new_day(self):
-        # self.load_days_till_feed()
-        pass
+        self.days_since += 1
+        if self.frequency != 0:  # Set days freq, call this to update
+            self.set_days_till_feed(0)
+        self.db.set_config(CFT_WATER_HEATER, "days since {}".format(self.heater_id), self.days_since)
+        self.update_info()
+

@@ -43,6 +43,7 @@ class Ui_DialogDispatchCounter(object):
         self.pb_start = QtWidgets.QPushButton(DialogDispatchCounter)
         self.pb_start.setEnabled(False)
         self.pb_start.setGeometry(QtCore.QRect(130, 100, 81, 31))
+        self.pb_start.setDefault(True)
         self.pb_start.setObjectName("pb_start")
         self.lb_info = QtWidgets.QLabel(DialogDispatchCounter)
         self.lb_info.setGeometry(QtCore.QRect(320, 10, 251, 131))

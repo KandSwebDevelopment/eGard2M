@@ -53,6 +53,11 @@ def auto_capital(line_edit_object):
     edit.setText(text.upper())
 
 
+def minutes_to_hhmm(minutes):
+    h = int(minutes / 60)
+    m = minutes % 60
+    return h, m
+
 def get_last_friday(current_time=None):
     """
     Return the date of the friday before the date passed in. If no date is passed in it will use the current date

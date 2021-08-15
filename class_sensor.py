@@ -16,7 +16,7 @@ class SensorClass(object):
         self.db = self.my_parent.db
         self.action_handler = collections.defaultdict()
         self.area = None
-        self.area_range = 0  # An area with process has 4 ranges, this is which one to use, read from db
+        self.item = 0  # An area with process has 4 ranges, this is which one to use, read from db
         self.step = 1
         self.high = 22.0
         self.set = 20.0
@@ -50,7 +50,7 @@ class SensorClass(object):
         self.calibration = row[1]
         self.step = row[2]
         self.area = row[3]
-        self.area_range = row[4]
+        self.item = row[4]
         self.short_name = row[5]
 
     @property

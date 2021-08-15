@@ -16,8 +16,8 @@ class CommunicationInterface(QObject):
     update_sensors = pyqtSignal(list, name="updateSensors")
     update_other_readings = pyqtSignal(list, name="updateOthers")
     update_soil_reading = pyqtSignal(list, name="updateSoil")  # List will contain area 1 and area 2
-    update_que_status = pyqtSignal(int, int, int,
-                                   name="updateQueStatus")  # The length of the 2 command ques & stack lock
+    update_que_status = pyqtSignal(int, int, int, int,
+                                   name="updateQueStatus")  # The length of the 3 command ques & stack lock
     update_cmd_issued = pyqtSignal(str, tuple, name="updateCmdIssued")  # command sent and (ip, port) sent to
     update_us_reading = pyqtSignal(int, int)  # Tank, value
     update_network_status = pyqtSignal(int, int)  # sender id, status
@@ -336,7 +336,7 @@ class CommunicationInterface(QObject):
         if command == NWC_MODULES_STATUS:
             self.update_network_status.emit(int(prams[0]), int(prams[1]))
         elif command == NWC_QUE_STATUS:
-            self.update_que_status.emit(int(prams[0]), int(prams[1]), int(prams[2]))
+            self.update_que_status.emit(int(prams[0]), int(prams[1]), int(prams[2]), int(prams[3]))
         # No prams
         elif command == NWC_WORKSHOP_HEATER or \
                 command == NWC_DRYING_AREA or \
@@ -358,13 +358,18 @@ class CommunicationInterface(QObject):
                 command == NWC_OUTPUT_RANGE or \
                 command == NWC_ACCESS_OPERATE or \
                 command == NWC_OUTPUT_TRIGGER or \
-                command == NWC_SWITCH_REQUEST:
+                command == NWC_OUTPUT_TRIGGER or \
+                command == NWC_WORKSHOP_BOOST:
             self.update_from_relay.emit(command, [int(prams[0])])
         # 2 prams
         elif command == NWC_OUTPUT or \
                 command == NWC_OUTPUT_MODE or \
-                command == NWC_FAN_SENSOR or \
                 command == NWC_OUTPUT_SENSOR or \
+                command == NWC_WH_DURATION or \
+                command == NWC_WH_FREQUENCY or \
+                command == NWC_FAN_SENSOR or \
+                command == NWC_FAN_SPEED or \
+                command == NWC_FAN_MODE or \
                 command == NWC_FAN_UPDATE:
             self.update_from_relay.emit(command, [int(prams[0]), int(prams[1])])
         # 2 float prams
@@ -393,7 +398,7 @@ class CommunicationInterface(QObject):
                 cmd = self.lock_cmd.encode("utf-8", "replace")
                 self.lock_cmd = ""
                 self.lock = 0
-                self.update_que_status.emit(len(self.priority_io) + len(self.relay_stack),
+                self.update_que_status.emit(len(self.priority_io), len(self.relay_stack),
                                             len(self.command_io) + len(self.command_de),
                                             self.lock)
                 return cmd, self.io_address
@@ -480,7 +485,7 @@ class CommunicationInterface(QObject):
                 print("Starting UDP thread")
                 self.thread_udp_client.start()
 
-        self.update_que_status.emit(len(self.priority_io) + len(self.relay_stack),
+        self.update_que_status.emit(len(self.priority_io), len(self.relay_stack),
                                     len(self.command_io) + len(self.command_de),
                                     self.lock)
         # self.slave_send(NWC_QUE_STATUS, len(self.priority_io) + len(self.priority_de),
@@ -488,11 +493,18 @@ class CommunicationInterface(QObject):
         #                 self.lock)
 
     def stack_relay(self, data):
-        if next((item for item in self.relay_stack if item["cmd"] == data), None) is None:
-            self.relay_stack.append({'address': self.slave_address,  'cmd': data})
-        self.update_que_status.emit(len(self.priority_io) + len(self.relay_stack),
-                                    len(self.command_io) + len(self.command_de),
-                                    self.lock)
+        cmd = data[1:data.find(">")]
+        if cmd in [NWC_MESSAGE, COM_SOIL_READ, COM_SENSOR_READ, COM_OTHER_READINGS, COM_READ_KWH, COM_WATTS]:
+            # Find and replace
+            for item in self.relay_stack:
+                if item['cmd'].find(cmd):
+                    item = data
+        else:
+            if next((item for item in self.relay_stack if item["cmd"] == cmd), None) is None:
+                self.relay_stack.append({'address': self.slave_address,  'cmd': data})
+            self.update_que_status.emit(len(self.priority_io), len(self.relay_stack),
+                                        len(self.command_io) + len(self.command_de),
+                                        self.lock)
         if len(self.relay_stack) > 0:
             if not self.thread_udp_relay.isRunning():
                 print("Starting Relay thread")
@@ -558,7 +570,7 @@ class CommunicationInterface(QObject):
         self.lock = lock
         self.lock_cmd = cmd
         if lock == 2 or lock == 1 or lock == 3:
-            self.update_que_status.emit(len(self.priority_io) + len(self.relay_stack),
+            self.update_que_status.emit(len(self.priority_io), len(self.relay_stack),
                                         len(self.command_io) + len(self.command_de),
                                         self.lock)
             if not self.thread_udp_client.isRunning():

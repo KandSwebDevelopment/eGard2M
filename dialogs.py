@@ -11,7 +11,7 @@ from defines import *
 from plotter import *
 from ui.dialogDispatchCounter import Ui_DialogDispatchCounter
 from ui.dialogDispatchInternal import Ui_DialogDispatchInternal
-from functions import string_to_float, m_box, play_sound, auto_capital, sound_click
+from functions import string_to_float, m_box, play_sound, auto_capital, sound_click, minutes_to_hhmm
 from ui.dialogAccess import Ui_DialogDEmodule
 from ui.dialogDispatchOverview import Ui_DialogLogistics
 from ui.dialogDispatchReports import Ui_DialogDispatchReport
@@ -28,6 +28,7 @@ from ui.dialogProcessInfo import Ui_DialogProcessInfo
 from ui.dialogSensorSettings import Ui_DialogSensorSettings
 from ui.dialogStrainFinder import Ui_DialogStrainFinder
 from ui.dialogWaterHeaterSettings import Ui_DialogWaterHeatertSetting
+from ui.dialogWorkshopSettings import Ui_DialogWorkshopSetting
 
 
 class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
@@ -36,7 +37,7 @@ class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
         super(DialogDispatchCounter, self).__init__()
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setupUi(self)
-        self.my_parent = parent
+        self.main_panel = parent
         self.db = parent.db
         self.sub = None
         self.pb_close.clicked.connect(lambda: self.sub.close())
@@ -236,7 +237,7 @@ class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
         self.logger.save_dispatch_counter(self.client, self.le_amount.text(), self.jar, self.strain_name,
                                           self.strain_id, round(self.weight_required, 1), self.reading)
         self.has_got = 0
-        self.my_parent.my_parent.update_stock()
+        self.main_panel.main_window.update_stock()
 
     def cancel(self):
         self.cb_jar.setEnabled(True)
@@ -294,8 +295,8 @@ class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
 
     def position_last_marker(self):
         w = self.le_progress.size().width()
-        last = self.my_parent.db.execute_single("SELECT grams FROM {} WHERE client = {} ORDER BY date DESC".
-                                                format(DB_DISPATCH, self.cb_client.currentData()))
+        last = self.main_panel.db.execute_single("SELECT grams FROM {} WHERE client = {} ORDER BY date DESC".
+                                                 format(DB_DISPATCH, self.cb_client.currentData()))
         if last is None or last == 0:
             self.l_marker_last.hide()
             return
@@ -847,7 +848,7 @@ class DialogDispatchInternal(QDialog, Ui_DialogDispatchInternal):
         self.le_weight.setText("Remove")
         self.lb_info.setText("")
         self.cb_jar.setCurrentIndex(0)
-        self.my_parent.my_parent.update_stock()
+        self.my_parent.main_window.update_stock()
         self.pb_start.setEnabled(False)
 
     def load_jars_list(self):
@@ -2086,10 +2087,13 @@ class DialogEngineerIo(QDialog, Ui_DialogMessage):
     def outgoing(self, data, sender):
         if self.check_outgoing(sender):
             if len(data) > 0:
+                colour = "LightSkyBlue"
+                if sender[1] == self.my_parent.coms_interface.slave_port:
+                    colour = "LightGreen"
                 data = data.replace('>', '')
                 data = data.replace('<', '')
                 self.te_message.append(
-                    "<p style='background-color: LightSkyBlue;'>" + str(data) + " (" + str(sender) + ")</p>")
+                    "<p style='background-color: " + colour + ";'>" + str(data) + " (" + str(sender) + ")</p>")
 
     @pyqtSlot(list, list)
     def raw_update_c(self, priorities, commands):
@@ -2487,7 +2491,7 @@ class DialogFan(QDialog, Ui_DialogFan):
         self.pb_close.clicked.connect(lambda: self.sub.close())
         self.pb_master.clicked.connect(self.power)
         self.main_panel.main_window.coms_interface.update_fan_speed.connect(self.update_speed)
-        self.main_panel.main_window.coms_interface.update_switch.connect(self.update_switch)
+        self.main_panel.main_window.coms_interface.update_switch.connect(self.switch_update)
         self.cb_mode.addItem("Off", 0)
         self.cb_mode.addItem("Manual", 1)
         self.cb_mode.addItem("Auto", 2)
@@ -2501,7 +2505,7 @@ class DialogFan(QDialog, Ui_DialogFan):
         self.fan_sensor = self.db.execute_single("SELECT area_range FROM {} WHERE area = {} AND id = {}".
                                                  format(DB_SENSORS_CONFIG, self.id, self.fan_sensor_id))
         self.cb_sensor.setCurrentIndex(self.cb_sensor.findData(self.fan_sensor))
-
+        self.cb_sensor.currentIndexChanged.connect(self.change_sensor)
         self.lbl_name.setText("Fan {}".format(self.id))
         if self.fan_controller.master_power == ON:
             self.lbl_master.setText("On")
@@ -2510,6 +2514,15 @@ class DialogFan(QDialog, Ui_DialogFan):
             self.lbl_master.setText("Off")
             self.lbl_master.setStyleSheet("background-color: red; color: yellow")
         self.check_mode()
+
+    def change_sensor(self):
+        new_sensor = self.cb_sensor.currentData()
+        sid = self.main_panel.area_controller.get_sid_from_item(self.id, new_sensor)
+        self.main_panel.area_controller.fan_controller.set_fan_sensor(self.id, sid)
+        self.main_panel.area_controller.fan_controller.refresh_info(self.id)
+        self.main_panel.coms_interface.relay_send(NWC_FAN_SENSOR, self.id, sid)
+        # Change Arduino fan sensor
+        self.my_parent.coms_interface.send_data(CMD_SET_FAN_SENSOR, True, MODULE_IO, self.id, sid)
 
     def power(self):
         if self.fan_controller.master_power == ON:
@@ -2525,6 +2538,7 @@ class DialogFan(QDialog, Ui_DialogFan):
         else:
             sound_click()
             self.fan_controller.set_master_power(ON)
+        # No relay here as it will be pick up by the switch signal
 
     def check_mode(self):
         if self.fan_controller.master_power == OFF:
@@ -2543,6 +2557,7 @@ class DialogFan(QDialog, Ui_DialogFan):
         @type speed: int
         """
         self.fan_controller.set_speed(self.id, speed)
+        self.main_panel.coms_interface.relay_send(NWC_FAN_SPEED, self.id, speed)
 
     def change_mode(self):
         mode = self.cb_mode.currentData()
@@ -2557,6 +2572,7 @@ class DialogFan(QDialog, Ui_DialogFan):
             self.fan_controller.start_fan(self.id)
             self.dl_fan.setEnabled(False)
         self.check_mode()
+        self.main_panel.coms_interface.relay_send(NWC_FAN_MODE, self.id, mode)
 
     @pyqtSlot(int, int, name="updateFanSpeed")
     def update_speed(self, fan, speed):
@@ -2566,7 +2582,7 @@ class DialogFan(QDialog, Ui_DialogFan):
             self.dl_fan.blockSignals(False)
 
     @pyqtSlot(int, int, int, name="updateSwitch")
-    def update_switch(self, sw, state, module):
+    def switch_update(self, sw, state, module):
         if module != MODULE_IO:
             return
         if sw == SW_FANS_POWER:
@@ -2576,6 +2592,65 @@ class DialogFan(QDialog, Ui_DialogFan):
             else:
                 self.lbl_master.setText("Off")
                 self.lbl_master.setStyleSheet("background-color: red; color: yellow")
+
+
+class DialogWorkshopSettings(QWidget, Ui_DialogWorkshopSetting):
+    def __init__(self, parent):
+        """ :type parent: MainWindow """
+        super(DialogWorkshopSettings, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.main_panel = parent
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.db = parent.db
+        self.sub = None
+        self.output = self.main_panel.area_controller.output_controller.outputs[OUT_HEATER_ROOM]
+        self.ck_auto_boost.setChecked(self.output.auto_boost)
+        self.cb_sensor_.addItem("Temperature")
+        self.cb_mode.addItem("Off", 0)
+        self.cb_mode.addItem("On", 1)
+        self.cb_mode.addItem("Auto", 2)
+        self.cb_mode.setCurrentIndex(self.cb_mode.findData(self.output.mode))
+        self.cb_mode.currentIndexChanged.connect(self.mode_change)
+        self.ck_auto_boost.clicked.connect(self.change_boost)
+        self.ck_frost.setChecked(self.output.frost)
+        self.ck_frost.clicked.connect(self.change_frost)
+        self.le_min_frost.setText(str(self.output.min_frost))
+        self.le_max_frost.setText(str(self.output.max_frost))
+        if not self.output.frost:
+            self.le_min_frost.setEnabled(False)
+            self.le_max_frost.setEnabled(False)
+        self.le_max.setText(str(self.output.max))
+        self.le_min.setText(str(self.output.min))
+        h = self.output.duration / 60
+        m = self.output.duration % 60
+        self.tm_duration.setTime(QTime(h, m))
+
+    def change_frost(self):
+        f = int(self.ck_frost.isChecked())
+        self.output.change_frost(f)
+
+    def change_boost(self):
+        b = int(self.ck_auto_boost.isChecked())
+        self.output.change_boost(b)
+        self.main_panel.coms_interface.relay_send(NWC_WORKSHOP_BOOST, b)
+
+    def mode_change(self):
+        mode = self.cb_mode.currentData()
+        if mode != self.output.mode:
+            self.main_panel.area_controller.output_controller.change_mode(self.output.output_pin, mode)
+
+    def range_change(self):
+        # if self.sender().hasFocus():
+        #     return
+        on = string_to_float(self.le_min.text())
+        off = string_to_float(self.le_max.text())
+
+        if on - 1 < off:
+            off = on - 1
+            self.le_max.setText(str(off))
+        self.output_controller.set_limits(self.pin_id, on, off)
+        self.main_panel.coms_interface.relay_send(NWC_OUTPUT_RANGE, self.pin_id)
 
 
 class DialogWaterHeaterSettings(QWidget, Ui_DialogWaterHeatertSetting):
@@ -2600,11 +2675,15 @@ class DialogWaterHeaterSettings(QWidget, Ui_DialogWaterHeatertSetting):
         self.output_controller = self.main_panel.area_controller.output_controller
         self.frequency = int(self.db.get_config(CFT_WATER_HEATER, "frequency {}".format(self.tank), 1))
         self.use_float = int(self.db.get_config(CFT_WATER_HEATER, "float {}".format(self.tank), 1))
-        self.duration = self.db.get_config(CFT_WATER_HEATER, "heater duration", "03:00")
-        self.off_time = self.db.get_config(CFT_PROCESS, "feed time", "19:00")
+        self.duration = int(self.db.get_config(CFT_WATER_HEATER, "heater duration", "240"))
+        self.off_time = self.db.get_config(CFT_FEEDER, "feed time", "19:00")
         self.tm_off.setTime(QTime.fromString(self.off_time))
-        self.tm_duration.setTime(QTime.fromString(self.duration))
+        self.tm_off.timeChanged.connect(self.change_off_time)
+        h, m = minutes_to_hhmm(self.duration)
+        self.tm_duration.setTime(QTime(h, m))
+        self.tm_duration.dateTimeChanged.connect(self.change_duration)
         self.ck_use_float.setChecked(self.use_float)
+        self.ck_use_float.clicked.connect(self.change_float)
         self.cb_mode.addItem("Off", 0)
         self.cb_mode.addItem("Manual On", 1)
         self.cb_mode.addItem("Auto", 2)
@@ -2615,7 +2694,33 @@ class DialogWaterHeaterSettings(QWidget, Ui_DialogWaterHeatertSetting):
         self.cb_frequency.addItem("2 Days", 2)
         self.cb_frequency.addItem("3 Days", 3)
         self.cb_frequency.setCurrentIndex(self.cb_frequency.findData(self.frequency))
+        self.cb_frequency.currentIndexChanged.connect(self.change_frequency)
         self.cb_mode.currentIndexChanged.connect(self.mode_change)
+
+    def change_float(self):
+        f = int(self.ck_use_float.isChecked())
+        if f == self.use_float:
+            return
+        self.output_controller.outputs[self.pin_id].set_float_use(f)
+        self.main_panel.coms_interface.relay_send(NWC_WH_FLOAT_USE, self.pin_id, f)
+
+    def change_frequency(self):
+        f = self.cb_frequency.currentData()
+        self.db.set_config(CFT_WATER_HEATER,"frequency {}".format(self.tank), f)
+        self.output_controller.outputs[self.pin_id].set_frequency(f)
+        self.output_controller.water_heater_update_info()
+        self.main_panel.coms_interface.relay_send(NWC_WH_FREQUENCY, self.pin_id, f)
+
+    def change_off_time(self):
+        t = self.tm_off.time()
+        self.main_panel.feed_controller.set_feed_time(t.toString("hh:mm"))
+        self.main_panel.area_controller.output_controller.water_heater_set_off_time(t.toString("hh:mm"))
+
+    def change_duration(self):
+        d = self.tm_duration.time()
+        duration = ((d.hour() * 60) + d.minute())
+        self.output_controller.water_heater_set_duration(duration)
+        self.main_panel.coms_interface.relay_send(NWC_WH_DURATION, self.pin_id, duration)
 
     def mode_change(self):
         mode = self.cb_mode.currentData()
@@ -2646,10 +2751,10 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self.font_n.setItalic(False)
 
         self.set = self.high = self.low = 0
-        self.temperatures_active = []
-        self.temperatures_inactive = []
-        self.temperatures_active_org = []
-        self.temperatures_inactive_org = []
+        self.temperatures_active = collections.defaultdict()
+        self.temperatures_inactive = collections.defaultdict()
+        self.temperatures_active_org = collections.defaultdict()
+        self.temperatures_inactive_org = collections.defaultdict()
         self.low_org = 0
         self.set_org = 0
         self.high_org = 0
@@ -2658,6 +2763,8 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         # Load sensor config from db
         self.config = self.db.execute_one_row('SELECT id, name, maps_to, calibration, step, area, area_range, '
                                               'short_name FROM {} WHERE id = {}'.format(DB_SENSORS_CONFIG, self.s_id))
+        if self.config is None:
+            return
         self.item = self.config[6]
         self.lbl_name.setText(self.config[1])
 
@@ -2682,13 +2789,17 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
             if txt == "":
                 txt = "None"
         else:
-            txt += "Outputs<br>"
+            txt += ""
             for row in rows:
                 txt += row[0] + ", "
             txt = txt[:-2]
         self.lbl_connections.setText(txt)
 
         self.load_ranges()
+
+        if self.process == 0:
+            self.pb_switch.setEnabled(False)
+            self.pb_set_fan.setEnabled(False)
 
         self.pb_set_fan.clicked.connect(self.set_as_fan)
         self.le_set.editingFinished.connect(self.change_set)
@@ -2724,15 +2835,19 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
                 self.temperatures_inactive = self.process.temperature_ranges_inactive[self.item]
                 self.temperatures_active_org = self.process.temperature_ranges_active_org[self.item]
                 self.temperatures_inactive_org = self.process.temperature_ranges_inactive_org[self.item]
-            self.low = self.temperatures_active['low']
-            self.set = self.temperatures_active['set']
-            self.high = self.temperatures_active['high']
-            self.low_org = self.temperatures_active_org['low']
-            self.set_org = self.temperatures_active_org['set']
-            self.high_org = self.temperatures_active_org['high']
         else:
-            # No process so use default values
-            pass    # Still to be done
+            # No process so use default values which are stored in the process_temperature_adjustments
+            rows = self.db.execute('SELECT item, setting, value FROM {} WHERE area = {} AND item = {}'.
+                                   format(DB_PROCESS_TEMPERATURE, self.area, self.item))
+            for row in rows:
+                self.temperatures_active[row[1]] = row[2]
+            self.temperatures_active_org = self.temperatures_inactive = self.temperatures_inactive_org = self.temperatures_active
+        self.low = self.temperatures_active['low']
+        self.set = self.temperatures_active['set']
+        self.high = self.temperatures_active['high']
+        self.low_org = self.temperatures_active_org['low']
+        self.set_org = self.temperatures_active_org['set']
+        self.high_org = self.temperatures_active_org['high']
         self.update_display()
 
     def update_display(self):
@@ -2743,12 +2858,21 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self.lbl_set.setText(str(self.set_org))
         self.lbl_high.setText(str(self.high_org))
         self.lbl_low.setText(str(self.low_org))
+        if self.area < 4:
+            txt = "Area {}".format(self.area)
+        elif self.area == 4:
+            txt = "Workshop"
+        elif self.area == 5:
+            txt = "Outside"
         if self.inverted:
-            self.lbl_area.setText("Area {} ({})".format(self.area, "Night" if self.on_day else "Day"))
+            txt += " ({})".format("Night" if self.on_day else "Day")
+            self.lbl_area.setText(txt)
             self.pb_switch.setText("Day" if self.on_day else "Night")
             stylesheet = "Color: White; background-color: red"
         else:
-            self.lbl_area.setText("Area {} ({})".format(self.area, "Day" if self.on_day else "Night"))
+            if self.process != 0:
+                txt += " ({})".format("Day" if self.on_day else "Night")
+            self.lbl_area.setText(txt)
             self.pb_switch.setText("Night" if self.on_day else "Day")
             stylesheet = ""
         self.le_set.setStyleSheet(stylesheet)
@@ -2769,12 +2893,15 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self.le_low.setText(str(self.low))
         self.db.execute_write('UPDATE {} SET value = 0 WHERE area= {} AND day = {} AND item = {} '
                               'LIMIT 3'.format(DB_PROCESS_TEMPERATURE, self.area, self.day_night, self.item))
-        self.process.load_active_temperature_ranges()
-        self.main_panel.coms_interface.relay_send(NWC_SENSOR_RELOAD, self.area)
+        if self.process != 0:
+            self.process.load_active_temperature_ranges()
+        else:
+            self.main_panel.area_controller.load_manual_ranges(self.area, self.s_id)
+        self.main_panel.coms_interface.relay_send(NWC_SENSOR_RELOAD, self.area, self.s_id)
 
     def change_set(self):
-        if self.sender().hasFocus():
-            return
+        # if self.sender().hasFocus():
+        #     return
         nv = string_to_float(self.le_set.text())
         if nv == self.set:
             return
@@ -2785,11 +2912,15 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self._check_high(nv)
         # Check low value
         self._check_low(nv)
-        self.process.load_active_temperature_ranges()
+        if self.process != 0:
+            self.process.load_active_temperature_ranges()
+        else:
+            self.main_panel.area_controller.load_manual_ranges(self.area, self.s_id)
+        self.main_panel.coms_interface.relay_send(NWC_SENSOR_RELOAD, self.area, self.s_id)
 
     def change_high(self):
-        if self.sender().hasFocus():
-            return
+        # if self.sender().hasFocus():
+        #     return
         nv = string_to_float(self.le_high.text())
         if nv == self.high:
             return
@@ -2798,11 +2929,15 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self.high = nv
         self._check_set_high(nv)
         self._check_low(self.set)
-        self.process.load_active_temperature_ranges()
+        if self.process != 0:
+            self.process.load_active_temperature_ranges()
+        else:
+            self.main_panel.area_controller.load_manual_ranges(self.area, self.s_id)
+        self.main_panel.coms_interface.relay_send(NWC_SENSOR_RELOAD, self.area, self.s_id)
 
     def change_low(self):
-        if self.sender().hasFocus():
-            return
+        # if self.sender().hasFocus():
+        #     return
         nv = string_to_float(self.le_low.text())
         if nv == self.low:
             return
@@ -2811,7 +2946,11 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self.low = nv
         self._check_set_low(nv)
         self._check_high(self.set)
-        self.process.load_active_temperature_ranges()
+        if self.process != 0:
+            self.process.load_active_temperature_ranges()
+        else:
+            self.main_panel.area_controller.load_manual_ranges(self.area, self.s_id)
+        self.main_panel.coms_interface.relay_send(NWC_SENSOR_RELOAD, self.area, self.s_id)
 
     def _check_high(self, nv):
         if self.high < nv + 0.5:
@@ -2910,7 +3049,7 @@ class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
         self.main_panel.feed_controller.set_last_feed_date(
             self.area, self.main_panel.feed_controller.get_last_feed_date(self.area) + timedelta(days=1))
         self.main_panel.update_next_feeds()
-        self.main_panel.area_controller.output_controller.update_water_heater_info()
+        self.main_panel.area_controller.output_controller.water_heater_update_info()
         self.de_feed_date.setDate(self.main_panel.feed_controller.get_last_feed_date(self.area))
         self.main_panel.coms_interface.relay_send(NWC_FEED, self.area)  # Just send feed as it is only the feed date that is changed
 
@@ -2918,7 +3057,7 @@ class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
         new_feed_date = self.de_feed_date.date().toPyDate()
         self.main_panel.feed_controller.set_last_feed_date(self.area, new_feed_date)
         self.main_panel.update_next_feeds()
-        self.main_panel.area_controller.output_controller.update_water_heater_info()
+        self.main_panel.area_controller.output_controller.water_heater_update_info()
 
 
 class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):

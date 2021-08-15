@@ -74,7 +74,7 @@ class FanClass(QThread):
     @mode.setter
     def mode(self, mode):
         """
-        Set the fan operation mode and stores value in db and calls for the display to update
+        Set the fan operation mode and stores value in db
             0 = Off
             1 = Manual
             2 = Auto
@@ -94,7 +94,7 @@ class FanClass(QThread):
     @sensor.setter
     def sensor(self, value):
         """
-        Set the sensor which supplies the input. Stores new value in db and calls for display to update
+        Set the sensor which supplies the input and removes setting from old sensor. Stores new value in db
         @param value:
         @type value:
         """
@@ -102,12 +102,11 @@ class FanClass(QThread):
             self.fan_controller.area_controller.sensors[self._sensor].is_fan = False
         self._sensor = value
         self.fan_controller.db.execute_write("UPDATE {} set sensor = {} WHERE id = {}".
-                                        format(DB_FANS, value, self.id))
+                                             format(DB_FANS, value, self.id))
         self._load_set_point()
         self._load_sensor_calibration()
         self.pid.clear()
         self.fan_controller.area_controller.sensors[self._sensor].is_fan = True
-        # self.fan_controller.main_panel.update_fans_sensor()
 
     def reload_sensor(self):
         """ reload sensor when relay command indicates a sensor change"""
@@ -242,6 +241,7 @@ class FanClass(QThread):
         self.set_point(self.fan_controller.area_controller.sensors[self._sensor].get_set())
 
     def update_info(self):
+        """ Displays the fan sensor and mode"""
         # Sensor for fan
         if self.sensor == 3 or self.sensor == 5:
             getattr(self.fan_controller.main_panel, "lbl_fan_sensor_{}".format(self.id)).setPixmap((QPixmap(":/normal/065-humidity.png")))

@@ -22,12 +22,10 @@ class OutputClass(QObject):
         self.detection = DET_FALL  # How it is triggered
         self.output_pin = None  # The output number/pin number to switch
         self.name = ""
-        self.area = None
+        self.area = 0
         self.status = -1  # The output current status
         self.status_last = None
         self.mode = 0   # 0=Off, 1=Manual, 2=Sensor, 3=Timer, 4=Both, 5=Day only, 6=Night only,
-        #                 11=Advance on till off, 12 advance off till on
-        #                 99 = Not a mode, indicates
         self.type = 1   # 1=Normal, 5=Water heater
         self.input = None
         self.range = [0, 0]
@@ -129,16 +127,6 @@ class OutputClass(QObject):
         self.detection = detection
         self.db.execute_write('UPDATE {} SET `trigger` WHERE id = {} LIMIT 1'. format(DB_OUTPUTS, self.ctrl_id))
 
-    def set_duration(self, duration):   # Only for timer
-        """ Set timer duration
-            duration can either be an int with duration as minuets ie 240 or as a string ie 'hh:mm'
-        """
-        if type(duration) == str:
-            s = duration.split(':')
-            duration = (int(s[0]) * 60) + int(s[1])
-
-        self.duration = int(duration)
-
     def set_active(self, active=None):
         # If active is not provided it will just swap states
         if active is None:
@@ -159,8 +147,7 @@ class OutputClass(QObject):
             self.switch(OFF)
 
     def set_limits(self, on_temp, off_temp):
-        """ Set the on and off temperatures for the output and updates all
-            Call with 0, 0 to have the output use its sensors values"""
+        """ Set the on and off temperatures for the output and updates all """
         self.temp_on = on_temp
         self.temp_off = off_temp
         self.calculate_limits()

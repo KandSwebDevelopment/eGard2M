@@ -874,6 +874,7 @@ class ProcessClass(QObject):
                 if row[1] in self.temperature_ranges_active:
                     if row[0] == 0:
                         # No adjustment so set it to original value
+                        # temperature_ranges_ [item][setting] = value
                         self.temperature_ranges_active[row[1]][row[2]] = row[0]
                         pass
                     else:
