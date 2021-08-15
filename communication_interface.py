@@ -353,7 +353,6 @@ class CommunicationInterface(QObject):
         elif command == NWC_FEED_DATE or \
                 command == NWC_PROCESS_MIX_CHANGE or \
                 command == NWC_PROCESS_FEED_MODE or \
-                command == NWC_SENSOR_RELOAD or \
                 command == NWC_SWITCH_REQUEST or \
                 command == NWC_RELOAD_PROCESSES or \
                 command == NWC_OUTPUT_RANGE or \
@@ -366,6 +365,7 @@ class CommunicationInterface(QObject):
         elif command == NWC_OUTPUT or \
                 command == NWC_OUTPUT_MODE or \
                 command == NWC_OUTPUT_SENSOR or \
+                command == NWC_SENSOR_RELOAD or \
                 command == NWC_WH_DURATION or \
                 command == NWC_WH_FREQUENCY or \
                 command == NWC_FAN_SENSOR or \
