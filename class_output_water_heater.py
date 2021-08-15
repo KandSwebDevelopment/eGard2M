@@ -20,7 +20,7 @@ class OutputWaterHeater(OutputClass):
         self.heater_id = self.ctrl_id - 10      # Heater 1 or 2
         self.frequency = int(self.db.get_config(CFT_WATER_HEATER, "frequency {}".format(self.heater_id), 1))
         self.use_float = int(self.db.get_config(CFT_WATER_HEATER, "float {}".format(self.heater_id), 1))
-        self.days_since = int(self.db.get_config(CFT_WATER_HEATER, "days since {}".format(self.heater_id)), 10)
+        self.days_since = int(self.db.get_config(CFT_WATER_HEATER, "days since {}".format(self.heater_id), 10))
         self.set_duration(int(self.db.get_config(CFT_WATER_HEATER, "heater duration", 240)))
         self.set_off_time(self.db.get_config(CFT_FEEDER, "feed time", "19:00"))
         self.feed_tol = int(self.db.get_config(CFT_PROCESS, "feed time tolerance", "2"))

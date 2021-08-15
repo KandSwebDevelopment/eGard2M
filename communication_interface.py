@@ -354,6 +354,7 @@ class CommunicationInterface(QObject):
                 command == NWC_PROCESS_MIX_CHANGE or \
                 command == NWC_PROCESS_FEED_MODE or \
                 command == NWC_SENSOR_RELOAD or \
+                command == NWC_SWITCH_REQUEST or \
                 command == NWC_RELOAD_PROCESSES or \
                 command == NWC_OUTPUT_RANGE or \
                 command == NWC_ACCESS_OPERATE or \
@@ -496,9 +497,16 @@ class CommunicationInterface(QObject):
         cmd = data[1:data.find(">")]
         if cmd in [NWC_MESSAGE, COM_SOIL_READ, COM_SENSOR_READ, COM_OTHER_READINGS, COM_READ_KWH, COM_WATTS]:
             # Find and replace
-            for item in self.relay_stack:
-                if item['cmd'].find(cmd):
-                    item = data
+            if len(self.relay_stack) > 0:
+                for item in self.relay_stack:
+                    if item['cmd'].find(cmd):
+                        item = data
+            else:
+                self.relay_stack.append({'address': self.slave_address, 'cmd': data})
+                self.update_que_status.emit(len(self.priority_io), len(self.relay_stack),
+                                            len(self.command_io) + len(self.command_de),
+                                            self.lock)
+
         else:
             if next((item for item in self.relay_stack if item["cmd"] == cmd), None) is None:
                 self.relay_stack.append({'address': self.slave_address,  'cmd': data})
