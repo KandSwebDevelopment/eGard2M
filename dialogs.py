@@ -2710,6 +2710,7 @@ class DialogWaterHeaterSettings(QWidget, Ui_DialogWaterHeatertSetting):
         self.output_controller.outputs[self.pin_id].set_frequency(f)
         self.output_controller.water_heater_update_info()
         self.main_panel.coms_interface.relay_send(NWC_WH_FREQUENCY, self.pin_id, f)
+        self.main_panel.coms_interface.relay_send(NWC_FEED_DATE)
 
     def change_off_time(self):
         t = self.tm_off.time()
@@ -3058,6 +3059,7 @@ class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
         self.main_panel.feed_controller.set_last_feed_date(self.area, new_feed_date)
         self.main_panel.update_next_feeds()
         self.main_panel.area_controller.output_controller.water_heater_update_info()
+        self.main_panel.coms_interface.relay_send(NWC_FEED_DATE)
 
 
 class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):

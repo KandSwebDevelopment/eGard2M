@@ -204,7 +204,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         if self.has_scales:     # These have to be here to allow signals to connect
             self.scales.connect()
         self.update_duration_texts()
-        self.area_controller.output_controller.water_heater_update_info()
+        self.area_controller.output_controller.water_heater_update_info()   # Required here it init things
 
     def connect_signals(self):
         self.pb_cover.clicked.connect(lambda: self.access.open())
@@ -601,23 +601,17 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         else:  # In open position or somewhere between
             if self.access.has_status(ACS_CLOSING) or self.access.has_status(ACS_OPENING):
                 self.lbl_cover_lock.setStyleSheet("background-color: blue; color: White; border-radius: 6px;")
-                self.le_access_status_1.setText("Closing")
+                # self.le_access_status_1.setText("Closing")
             self.pb_cover.setEnabled(False)
             self.pb_cover_close.setEnabled(True)
 
         if status_code & ACS_DOOR_LOCKED == ACS_DOOR_LOCKED:
             self.lbl_door_lock.setPixmap(QtGui.QPixmap(":/normal/locked.png"))
-            # self.le_access_status_3.setText("Locked")
-            # self.le_access_status_3.setStyleSheet("background-color: Green; color: White")
         else:
             self.lbl_door_lock.setPixmap(QtGui.QPixmap(":/normal/011-unlock.png"))
-            # self.le_access_status_3.setText("Open")
-            # self.le_access_status_3.setStyleSheet("background-color: Red; color: White")
 
         if status_code & ACS_COVER_LOCKED == ACS_COVER_LOCKED:
             self.lbl_cover_lock.setPixmap(QtGui.QPixmap(":/normal/locked.png"))
-            # self.le_access_status_2.setText("Locked")
-            # self.le_access_status_2.setStyleSheet("background-color: Green; color: White")
         else:
             self.lbl_cover_lock.setPixmap(QtGui.QPixmap(":/normal/011-unlock.png"))
             # self.le_access_status_2.setText("Open")
@@ -651,6 +645,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             t = ">{}<"
         elif self.access.has_status(ACS_OPENING):
             t = "<{}>"
+        else:
+            t = ""
 
         self.le_access_status_1.setText(t.format(d))
 
