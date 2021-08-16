@@ -48,8 +48,8 @@ class OutputController(QObject):
                 else:   # All other outputs
                     self.outputs[oid] = OutputClass(self, row[0])   # ID used for controls id
             self.outputs[oid].load_profile()
-            if self.outputs[oid].input > 0:
-                self.areas_controller.sensors[self.outputs[oid].input].set_action_handler(self.outputs[oid])  # Link sensor to output
+            if self.outputs[oid].input_sensor > 0:
+                self.areas_controller.sensors[self.outputs[oid].input_sensor].set_action_handler(self.outputs[oid])  # Link sensor to output
             if self.master_mode == SLAVE:
                 self.areas_controller.main_window.coms_interface.relay_send(NWC_SWITCH_REQUEST, oid)
                 print("out request ", oid)
@@ -76,6 +76,11 @@ class OutputController(QObject):
     def change_range(self, op_id, on, off):
         self.outputs[op_id].set_range(on, off)
         self.main_panel.coms_interface.relay_send(NWC_OUTPUT_RANGE, op_id)
+
+    def reload_range(self, op_id):
+        sid = self.outputs[op_id].input_sensor
+        s, hi, lo = self.areas_controller.sensors[sid].get_set_temperatures()
+        self.set_limits(op_id, lo, s)
 
     def change_trigger(self, op_id, mode):
         self.outputs[op_id].set_detection(mode)

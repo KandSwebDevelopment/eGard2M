@@ -29,8 +29,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         # self.sub.setMinimumSize(1600, 1200)
         self.sub.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint | QtCore.Qt.FramelessWindowHint)
         # sub.setFixedSize(sub.width(), sub.height())
-        self.setGeometry(0, 0, self.width(), 900)
-        self.main_window.resize(self.width(), 900)
+        self.setGeometry(0, 0, self.width(), 1000)
+        self.main_window.resize(self.width(), 1000)
         self.show()
 
         self.le_stage_1.installEventFilter(self)

@@ -2897,7 +2897,7 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         if self.process != 0:
             self.process.load_active_temperature_ranges()
         else:
-            self.main_panel.area_controller.load_manual_ranges(self.area, self.s_id)
+            self.main_panel.area_controller.sensor_load_manual_ranges(self.area, self.item)
         self.main_panel.coms_interface.relay_send(NWC_SENSOR_RELOAD, self.area, self.s_id)
 
     def change_set(self):
@@ -2916,8 +2916,9 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         if self.process != 0:
             self.process.load_active_temperature_ranges()
         else:
-            self.main_panel.area_controller.load_manual_ranges(self.area, self.s_id)
+            self.main_panel.area_controller.sensor_load_manual_ranges(self.area, self.item)
         self.main_panel.coms_interface.relay_send(NWC_SENSOR_RELOAD, self.area, self.s_id)
+        self.main_panel.area_controller.sensors[self.s_id].update_status_ctrl()
 
     def change_high(self):
         # if self.sender().hasFocus():
@@ -2933,7 +2934,7 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         if self.process != 0:
             self.process.load_active_temperature_ranges()
         else:
-            self.main_panel.area_controller.load_manual_ranges(self.area, self.s_id)
+            self.main_panel.area_controller.sensor_load_manual_ranges(self.area, self.item)
         self.main_panel.coms_interface.relay_send(NWC_SENSOR_RELOAD, self.area, self.s_id)
 
     def change_low(self):
@@ -2950,7 +2951,7 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         if self.process != 0:
             self.process.load_active_temperature_ranges()
         else:
-            self.main_panel.area_controller.load_manual_ranges(self.area, self.s_id)
+            self.main_panel.area_controller.sensor_load_manual_ranges(self.area, self.item)
         self.main_panel.coms_interface.relay_send(NWC_SENSOR_RELOAD, self.area, self.s_id)
 
     def _check_high(self, nv):
@@ -3171,4 +3172,4 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         on = on - self.on
         off = off - self.off
         self.output_controller.change_range(self.pin_id, on, off)
-        self.main_panel.coms_interface.relay_send(NWC_OUTPUT_RANGE, self.pin_id)
+        # self.main_panel.coms_interface.relay_send(NWC_OUTPUT_RANGE, self.pin_id)

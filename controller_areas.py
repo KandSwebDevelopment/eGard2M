@@ -163,36 +163,7 @@ class AreaController(QObject):
                 self.sensors[sid] = SensorClass(self, sid)
             else:
                 self.sensors[sid].load_profile()
-
-            if self.area_has_process(area):
-                # Load process range values
-                if self.sensors[sid].area < 3:  # Only load process temperature ranges for areas 1 & 2
-                    p = self.areas_processes[area]
-                    if p != 0:
-                        r = p.temperature_ranges_active
-                        if r is not None:
-                            r = r[self.sensors[sid].item]
-                            self.sensors[sid].set_range(r)
-                            ro = p.temperature_ranges_active_org[self.sensors[sid].item]
-                            self.sensors[sid].set_range_org(ro)
-                        else:
-                            # @todo Add call to msg sys - No temperature range for process
-                            pass
-            else:
-                self.load_manual_ranges(area, sid)
-                # if self.area_manual[area]:
-                #     # Load default range as area has no process and is on manual
-                #     # As manual only displays room temperature, skip others
-                #     if row[6] == 2:
-                #         sql = 'SELECT low, set_point, high FROM {} WHERE area = {}'\
-                #             .format(DB_TEMPERATURES_DEFAULT, area)
-                #         row = self.db.execute_one_row(sql)
-                #         if row is None:
-                #             # @todo Add call to msg sys - No default temperature range for area
-                #             return
-                #         self.sensors[sid].set_range({'low': row[0], 'set': row[1], 'high': row[2]})
-                # else:
-                #     self.sensors[sid].off()
+            self.sensors[sid].load_range()
 
     def load_sensor_ranges(self, area, sid):
         if self.area_has_process(area):
@@ -207,15 +178,16 @@ class AreaController(QObject):
                 # @todo Add call to msg sys - No temperature range for process
                 pass
         else:
-            self.load_manual_ranges(area, sid)
+            self.sensor_load_manual_ranges(area, sid)
 
-    def load_manual_ranges(self, area, sid):
+    def sensor_load_manual_ranges(self, area, item):
         """ Load the set manual ranges for an area"""
-        item = self.sensors[sid].item
+        sid = self.get_sid_from_item(area, item)
         rows = self.db.execute('SELECT setting, value FROM {} WHERE area = {} AND item = {}'.
                                format(DB_PROCESS_TEMPERATURE, area, item))
         if len(rows) > 0:
             self.sensors[sid].set_range({'low': rows[0][1], 'set': rows[1][1], 'high': rows[2][1]})
+            self.sensors[sid].update_status_ctrl()
 
     def get_area_pid(self, area):
         """ Returns the PID in the area"""

@@ -12,8 +12,8 @@ class SensorClass(object):
         self.id = sid
         self.display_id = None
         self.var_name = ctr
-        self.my_parent = parent
-        self.db = self.my_parent.db
+        self.area_controller = parent
+        self.db = self.area_controller.db
         self.action_handler = collections.defaultdict()
         self.area = None
         self.item = 0  # An area with process has 4 ranges, this is which one to use, read from db
@@ -53,6 +53,23 @@ class SensorClass(object):
         self.item = row[4]
         self.short_name = row[5]
 
+    def load_range(self):
+        if self.area_controller.area_has_process(self.area):
+            # Load process range values
+            p = self.area_controller.get_area_process(self.area)
+            if p != 0:
+                r = p.temperature_ranges_active
+                if r is not None:
+                    r = r[self.item]
+                    self.set_range(r)
+                    ro = p.temperature_ranges_active_org[self.item]
+                    self.set_range_org(ro)
+                else:
+                    # @todo Add call to msg sys - No temperature range for process
+                    self.area_controller.sensor_load_manual_ranges(self.area, self.item)
+        else:
+            self.area_controller.sensor_load_manual_ranges(self.area, self.item)
+
     @property
     def is_fan(self):
         return self._is_fan
@@ -66,14 +83,14 @@ class SensorClass(object):
         if did is None or did > 12:
             return
         self.display_id = did
-        self.display_ctrl = getattr(self.my_parent.main_panel, "lereading_%i" % self.display_id)
-        self.status_ctrl = getattr(self.my_parent.main_panel, "tesstatus_%i" % self.display_id)
-        self.trend_ctrl = getattr(self.my_parent.main_panel, "lbltrend_%i" % self.display_id)
+        self.display_ctrl = getattr(self.area_controller.main_panel, "lereading_%i" % self.display_id)
+        self.status_ctrl = getattr(self.area_controller.main_panel, "tesstatus_%i" % self.display_id)
+        self.trend_ctrl = getattr(self.area_controller.main_panel, "lbltrend_%i" % self.display_id)
 
     def set_display_ctrl_name(self, name):
         self.var_name = name
         try:
-            self.display_ctrl = getattr(self.my_parent, self.var_name)
+            self.display_ctrl = getattr(self.area_controller, self.var_name)
         except():
             self.display_ctrl = None
 

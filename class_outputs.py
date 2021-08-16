@@ -27,7 +27,7 @@ class OutputClass(QObject):
         self.status_last = None
         self.mode = 0   # 0=Off, 1=Manual, 2=Sensor, 3=Timer, 4=Both, 5=Day only, 6=Night only,
         self.type = 1   # 1=Normal, 5=Water heater
-        self.input = None
+        self.input_sensor = None
         self.range = [0, 0]
         self.has_process = False    # If area 1 to 3, is there an active process
         self.linked = ""    # The sensor name it is linked to
@@ -62,7 +62,7 @@ class OutputClass(QObject):
         self.name = row[0]
         self.area = row[1]
         self.mode = row[2]
-        self.input = row[3]
+        self.input_sensor = row[3]
         self.detection = row[7]
         self.range = (row[4]).split(",")
         self.output_pin = row[5]
@@ -80,6 +80,13 @@ class OutputClass(QObject):
         #     return
         self.calculate_limits()
         self.update_control(self.status)
+
+    def load_ranges(self):
+        s, hi, lo = self.output_controller.area_controller.sensors[self.input_sensor].get_set_temperatures()
+        range = self.db.execute_single('SELECT `range` FROM {} WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
+        self.temp_on = lo
+        self.temp_off = s
+        self.set_range(range[0], range[1])
 
     def set_mode(self, mode):
         """ Updates the outputs mode and saves it to the db and updates the outputs info control """
@@ -127,24 +134,24 @@ class OutputClass(QObject):
         self.detection = detection
         self.db.execute_write('UPDATE {} SET `trigger` WHERE id = {} LIMIT 1'. format(DB_OUTPUTS, self.ctrl_id))
 
-    def set_active(self, active=None):
-        # If active is not provided it will just swap states
-        if active is None:
-            self.is_active = not self.is_active
-        else:
-            self.is_active = active
-        if self.is_active:
-            if self.detection & DET_TIMER == DET_TIMER:
-                if self.duration > 0:
-                    self.off_time = (datetime.now() + timedelta(minutes=self.duration))
-                else:
-                    self.off_time = None
-                self.update_control(active)
-            else:
-                self.is_active = True
-                self.update_control(OFF)
-        else:
-            self.switch(OFF)
+    # def set_active(self, active=None):
+    #     # If active is not provided it will just swap states
+    #     if active is None:
+    #         self.is_active = not self.is_active
+    #     else:
+    #         self.is_active = active
+    #     if self.is_active:
+    #         if self.detection & DET_TIMER == DET_TIMER:
+    #             if self.duration > 0:
+    #                 self.off_time = (datetime.now() + timedelta(minutes=self.duration))
+    #             else:
+    #                 self.off_time = None
+    #             self.update_control(active)
+    #         else:
+    #             self.is_active = True
+    #             self.update_control(OFF)
+    #     else:
+    #         self.switch(OFF)
 
     def set_limits(self, on_temp, off_temp):
         """ Set the on and off temperatures for the output and updates all """
@@ -230,8 +237,6 @@ class OutputClass(QObject):
         if state != self.status_last and self.output_controller.master_mode == MASTER:
             self.output_controller.areas_controller.main_window.coms_interface.send_switch(self.output_pin, state)
             # @Todo Add to event log
-        self.status = state
-        self.status_last = state
 
     def switch_hard(self, state=None):
         """ This will send switch if it is the master or slave, use for user switching requests
@@ -343,16 +348,16 @@ class OutputClass(QObject):
             if self.mode == 1:
                 ctrl.setPixmap(QtGui.QPixmap())
             else:
-                if self.input < 0:
+                if self.input_sensor < 0:
                     ctrl.setPixmap(QtGui.QPixmap(":/normal/none.png"))
                 else:
-                    if self.output_controller.areas_controller.sensors[self.input].short_name.find("Hum") == 0:
+                    if self.output_controller.areas_controller.sensors[self.input_sensor].short_name.find("Hum") == 0:
                         ctrl.setPixmap(QtGui.QPixmap(":/normal/065-humidity.png"))
-                    elif self.output_controller.areas_controller.sensors[self.input].short_name.find("Roo") == 0:
+                    elif self.output_controller.areas_controller.sensors[self.input_sensor].short_name.find("Roo") == 0:
                         ctrl.setPixmap(QtGui.QPixmap(":/normal/061-care.png"))
-                    elif self.output_controller.areas_controller.sensors[self.input].short_name.find("Pro") == 0:
+                    elif self.output_controller.areas_controller.sensors[self.input_sensor].short_name.find("Pro") == 0:
                         ctrl.setPixmap(QtGui.QPixmap(":/normal/067-leaf.png"))
-                    elif self.output_controller.areas_controller.sensors[self.input].short_name.find("Cor") == 0:
+                    elif self.output_controller.areas_controller.sensors[self.input_sensor].short_name.find("Cor") == 0:
                         ctrl.setPixmap(QtGui.QPixmap(":/normal/062-plant.png"))
 
             if self.mode == 2 or self.mode == 4:
