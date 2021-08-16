@@ -18,6 +18,7 @@ class OutputWaterHeater(OutputClass):
         self.days_till_feed = 0         # This can not be set until the feed_control has initialised,
         #                                 init set by
         self.heater_id = self.ctrl_id - 10      # Heater 1 or 2
+        self.input_sensor = 0
         self.frequency = int(self.db.get_config(CFT_WATER_HEATER, "frequency {}".format(self.heater_id), 1))
         self.use_float = int(self.db.get_config(CFT_WATER_HEATER, "float {}".format(self.heater_id), 1))
         self.days_since = int(self.db.get_config(CFT_WATER_HEATER, "days since {}".format(self.heater_id), 10))
@@ -83,7 +84,7 @@ class OutputWaterHeater(OutputClass):
         self.name = row[0]
         self.area = row[8]
         self.mode = row[2]
-        self.input = row[3]
+        self.input_sensor = row[3]
         self.detection = row[7]
         self.range = (row[4]).split(",")
         self.output_pin = row[5]
