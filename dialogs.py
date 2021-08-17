@@ -2710,7 +2710,7 @@ class DialogWaterHeaterSettings(QWidget, Ui_DialogWaterHeatertSetting):
         self.output_controller.outputs[self.pin_id].set_frequency(f)
         self.output_controller.water_heater_update_info()
         self.main_panel.coms_interface.relay_send(NWC_WH_FREQUENCY, self.pin_id, f)
-        self.main_panel.coms_interface.relay_send(NWC_FEED_DATE)
+        self.main_panel.coms_interface.relay_send(NWC_FEED_DATE, self.area)
 
     def change_off_time(self):
         t = self.tm_off.time()
@@ -2896,9 +2896,11 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
                               'LIMIT 3'.format(DB_PROCESS_TEMPERATURE, self.area, self.day_night, self.item))
         if self.process != 0:
             self.process.load_active_temperature_ranges()
+            self.main_panel.area_controller.sensors[self.s_id].load_range()
         else:
             self.main_panel.area_controller.sensor_load_manual_ranges(self.area, self.item)
         self.main_panel.coms_interface.relay_send(NWC_SENSOR_RELOAD, self.area, self.s_id)
+        self.main_panel.area_controller.sensors[self.s_id].update_status_ctrl()
 
     def change_set(self):
         # if self.sender().hasFocus():
@@ -2915,6 +2917,7 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self._check_low(nv)
         if self.process != 0:
             self.process.load_active_temperature_ranges()
+            self.main_panel.area_controller.sensors[self.s_id].load_range()
         else:
             self.main_panel.area_controller.sensor_load_manual_ranges(self.area, self.item)
         self.main_panel.coms_interface.relay_send(NWC_SENSOR_RELOAD, self.area, self.s_id)
@@ -2933,9 +2936,11 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self._check_low(self.set)
         if self.process != 0:
             self.process.load_active_temperature_ranges()
+            self.main_panel.area_controller.sensors[self.s_id].load_range()
         else:
             self.main_panel.area_controller.sensor_load_manual_ranges(self.area, self.item)
         self.main_panel.coms_interface.relay_send(NWC_SENSOR_RELOAD, self.area, self.s_id)
+        self.main_panel.area_controller.sensors[self.s_id].update_status_ctrl()
 
     def change_low(self):
         # if self.sender().hasFocus():
@@ -2950,9 +2955,11 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self._check_high(self.set)
         if self.process != 0:
             self.process.load_active_temperature_ranges()
+            self.main_panel.area_controller.sensors[self.s_id].load_range()
         else:
             self.main_panel.area_controller.sensor_load_manual_ranges(self.area, self.item)
         self.main_panel.coms_interface.relay_send(NWC_SENSOR_RELOAD, self.area, self.s_id)
+        self.main_panel.area_controller.sensors[self.s_id].update_status_ctrl()
 
     def _check_high(self, nv):
         if self.high < nv + 0.5:
@@ -3060,7 +3067,7 @@ class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
         self.main_panel.feed_controller.set_last_feed_date(self.area, new_feed_date)
         self.main_panel.update_next_feeds()
         self.main_panel.area_controller.output_controller.water_heater_update_info()
-        self.main_panel.coms_interface.relay_send(NWC_FEED_DATE)
+        self.main_panel.coms_interface.relay_send(NWC_FEED_DATE, self.area)
 
 
 class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):

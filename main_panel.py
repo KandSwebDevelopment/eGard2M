@@ -596,6 +596,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             # self.lbl_cover_lock.setStyleSheet("background-color: green; color: White")
             self.le_access_status_1.setStyleSheet("background-color: Green; color: White; border-radius: 6px;")
             self.le_access_status_1.setText(">><<")
+            self.lbl_cover_lock.setStyleSheet("")
             self.pb_cover_close.setEnabled(False)
             self.pb_cover.setEnabled(True)
         else:  # In open position or somewhere between
@@ -767,6 +768,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         if master_power == OFF:
             self.lefanspeed_1.setStyleSheet("background-color: red; color: White")
             self.lefanspeed_2.setStyleSheet("background-color: red; color: White")
+            self.lefanspeed_1.setText("")
+            self.lefanspeed_2.setText("")
         else:
             self.lefanspeed_1.setStyleSheet("")
             self.lefanspeed_2.setStyleSheet("")
