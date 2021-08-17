@@ -54,7 +54,7 @@ class FansController(QObject):
     def get_fan_sensor(self, area):
         return self.fans[area].sensor
 
-    def set_fan_sensor(self, area, sensor_id):
+    def set_fan_sensor(self, area, sensor_id, is_relay=False):
         current = self.fans[area].sensor
         # Remove old setting
         if sensor_id != current:
@@ -63,8 +63,10 @@ class FansController(QObject):
         # Apply new setting
         self.area_controller.sensors[sensor_id].is_fan = True
         self.area_controller.sensors[sensor_id].update_status_ctrl()
-        sql = 'UPDATE {} SET sensor = {} WHERE id = {}'.format(DB_FANS, sensor_id, area)
-        self.db.execute_write(sql)
+        if not is_relay:
+            # Don't do if acting on a relay command as this was done by sender
+            sql = 'UPDATE {} SET sensor = {} WHERE id = {}'.format(DB_FANS, sensor_id, area)
+            self.db.execute_write(sql)
         self.fans[area].sensor = sensor_id
 
     def set_master_power(self, state):

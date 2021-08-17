@@ -86,6 +86,7 @@ class FanClass(QThread):
             return
         self._mode = mode
         self.db.execute_write("UPDATE {} set mode = {} WHERE id = {}".format(DB_FANS, mode, self.id))
+        self.update_info()
 
     @property
     def sensor(self):
@@ -107,18 +108,19 @@ class FanClass(QThread):
         self._load_sensor_calibration()
         self.pid.clear()
         self.fan_controller.area_controller.sensors[self._sensor].is_fan = True
+        self.update_info()
 
-    def reload_sensor(self):
-        """ reload sensor when relay command indicates a sensor change"""
-        if self._sensor > 0:
-            self.fan_controller.area_controller.sensors[self._sensor].is_fan = False
-        row = self.db.execute_single("SELECT sensor FROM {} WHERE id = {}".format(DB_FANS, self.id))
-        self._sensor = row if row is not None else 0
-        self._load_set_point()
-        self._load_sensor_calibration()
-        self.pid.clear()
-        self.fan_controller.area_controller.sensors[self._sensor].is_fan = True
-        # self.fan_controller.update_fans_sensor()
+    # def reload_sensor(self):
+    #     """ reload sensor when relay command indicates a sensor change"""
+    #     if self._sensor > 0:
+    #         self.fan_controller.area_controller.sensors[self._sensor].is_fan = False
+    #     row = self.db.execute_single("SELECT sensor FROM {} WHERE id = {}".format(DB_FANS, self.id))
+    #     self._sensor = row if row is not None else 0
+    #     self._load_set_point()
+    #     self._load_sensor_calibration()
+    #     self.pid.clear()
+    #     self.fan_controller.area_controller.sensors[self._sensor].is_fan = True
+    #     # self.fan_controller.update_fans_sensor()
 
     def update_speed(self, speed):
         """ This updates the speed without switching and is used by slave to keep display up to date"""

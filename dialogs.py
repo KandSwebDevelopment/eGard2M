@@ -2999,10 +2999,8 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         msg.setDefaultButton(QMessageBox.Cancel)
         if msg.exec_() == QMessageBox.Cancel:
             return
-        self.sensors[self.fan_sensor_current].is_fan = False    # Remove current
-        self.sensors[self.s_id].is_fan = True                   # Set new
-        sql = 'UPDATE {} SET sensor = {} WHERE id = {}'.format(DB_FANS, self.s_id, self.area)
-        self.db.execute_write(sql)
+        self.main_panel.area_controller.fan_controller.set_fan_sensor(self.area, self.s_id)      # Set new
+        self.fan_sensor_current = self.s_id
         self.pb_set_fan.setEnabled(False)
         self.main_panel.coms_interface.send_data(CMD_SET_FAN_SENSOR, True, MODULE_IO, self.area, self.s_id)
         self.main_panel.coms_interface.relay_send(NWC_FAN_SENSOR, self.area, self.s_id)
@@ -3177,4 +3175,4 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         on = on - self.on
         off = off - self.off
         self.output_controller.change_range(self.pin_id, on, off)
-        # self.main_panel.coms_interface.relay_send(NWC_OUTPUT_RANGE, self.pin_id)
+        # self.main_panel.coms_interface.relay_send(NWC_OUTPUT_RANGE, self.pin_id) --- sent by above
