@@ -2896,10 +2896,8 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
                               'LIMIT 3'.format(DB_PROCESS_TEMPERATURE, self.area, self.day_night, self.item))
         if self.process != 0:
             self.process.load_active_temperature_ranges()
-            self.main_panel.area_controller.sensors[self.s_id].load_range()
-        else:
-            self.main_panel.area_controller.sensor_load_manual_ranges(self.area, self.item)
         self.main_panel.coms_interface.relay_send(NWC_SENSOR_RELOAD, self.area, self.s_id)
+        self.main_panel.area_controller.sensors[self.s_id].load_range()
         self.main_panel.area_controller.sensors[self.s_id].update_status_ctrl()
 
     def change_set(self):

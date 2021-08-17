@@ -864,7 +864,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
     def process_relay_command(self, cmd, data):
         """ For outputs use the actual output class and not the controller as it relays the action"""
         if cmd == NWC_SENSOR_RELOAD:
-            self.area_controller.load_sensor_ranges(data[0], data[1])
+            self.area_controller.sensors[data[1]].load_range()
+            self.area_controller.sensors[data[1]].update_status_ctrl()
         elif cmd == NWC_STAGE_ADJUST:
             self.area_controller.get_area_process(1).process_load_stage_info()
             self.update_duration_texts()

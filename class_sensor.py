@@ -58,6 +58,7 @@ class SensorClass(object):
             # Load process range values
             p = self.area_controller.get_area_process(self.area)
             if p != 0:
+                p.load_active_temperature_ranges()
                 r = p.temperature_ranges_active
                 if r is not None:
                     r = r[self.item]
