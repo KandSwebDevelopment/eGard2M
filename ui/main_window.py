@@ -80,10 +80,13 @@ class Ui_MainWindow(object):
         self.actionFinder.setObjectName("actionFinder")
         self.actionReconnect = QtWidgets.QAction(MainWindow)
         self.actionReconnect.setObjectName("actionReconnect")
+        self.actionSystem_Info = QtWidgets.QAction(MainWindow)
+        self.actionSystem_Info.setObjectName("actionSystem_Info")
         self.menuEngineer.addAction(self.actionI_O_Data)
         self.menuEngineer.addAction(self.actionSend_Command)
         self.menuSystem.addAction(self.menuEngineer.menuAction())
         self.menuSystem.addAction(self.actionReconnect)
+        self.menuSystem.addAction(self.actionSystem_Info)
         self.menuDispatch.addAction(self.actionCounter)
         self.menuDispatch.addAction(self.actionInternal)
         self.menuDispatch.addAction(self.actionOverview)
@@ -144,6 +147,7 @@ class Ui_MainWindow(object):
         self.actionPreformance.setText(_translate("MainWindow", "Preformance"))
         self.actionFinder.setText(_translate("MainWindow", "Finder"))
         self.actionReconnect.setText(_translate("MainWindow", "Reconnect"))
+        self.actionSystem_Info.setText(_translate("MainWindow", "System Info"))
 
 
 if __name__ == "__main__":

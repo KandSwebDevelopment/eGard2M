@@ -63,9 +63,10 @@ class FeedControl(QThread):
 
     def feed_due_today(self):
         """ Returns true if either area is due today"""
-        for f in self.feeds:
-            if f.nfd is not None and f.nfd.date() == datetime.now().date():
-                return True
+        if self.days_till_feed(1) > 0:
+            return True
+        if self.days_till_feed(2) > 0:
+            return True
         return False
 
     def check_item_included(self, area, item) -> int:

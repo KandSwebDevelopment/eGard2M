@@ -12,7 +12,7 @@ from controller_feeding import FeedControl
 from controller_windows import WindowsController
 from dbController import MysqlDB
 from dialogs import DialogEngineerCommandSender, DialogEngineerIo, DialogDispatchInternal, DialogDispatchCounter, \
-    DialogDispatchReports, DialogStrainFinder, DialogDispatchStorage, DialogDispatchOverview
+    DialogDispatchReports, DialogStrainFinder, DialogDispatchStorage, DialogDispatchOverview, DialogSysInfo
 from functions import multi_status_bar, get_last_friday
 from functions_colors import get_css_colours
 from status_codes import *
@@ -82,6 +82,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionI_O_Data.triggered.connect(lambda: self.wc.show(DialogEngineerIo(self)))
         self.actionSend_Command.triggered.connect(lambda: self.wc.show(DialogEngineerCommandSender(self)))
         self.actionReconnect.triggered.connect(self.reconnect)
+        self.actionSystem_Info.triggered.connect(lambda: self.wc.show(DialogSysInfo(self)))
 
         # Dispatch
         self.actionCounter.triggered.connect(lambda: self.wc.show(DialogDispatchCounter(self.main_panel)))

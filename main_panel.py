@@ -13,6 +13,7 @@ from class_soil_sensors import SoilSensorClass
 from defines import *
 from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan, DialogOutputSettings, \
     DialogSensorSettings, DialogProcessAdjustments, DialogWaterHeaterSettings, DialogWorkshopSettings
+from functions import play_sound
 from scales_com import ScalesComs
 from ui.main import Ui_Form
 
@@ -138,6 +139,9 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         if self.timer_counter > 360:
             self.timer_counter = 1
 
+        if self.timer_counter % 180 == 0:
+            self.loop_15()
+
         # Every 60
         if self.timer_counter % 60 == 0:
             self.loop_5()
@@ -182,15 +186,22 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.area_controller.output_controller.check_water_heaters()
 
     def loop_5(self):  # 60 secs
-        # if NWC_SOIL_READ in self.current_data:
-        #     self.logger.save_log(NWC_SOIL_READ + " " + self.current_data[NWC_SOIL_READ])
-        # if NWC_US_READ in self.current_data:
-        #     self.logger.save_log(NWC_US_READ + self.current_data[NWC_US_READ])
         self.update_next_feeds()
         # Check for new day
         if datetime.now().day != self.today:
             self.new_day()
         self.db.execute("select name from " + DB_NUTRIENTS_NAMES)  # This is only to keep the database connection alive
+
+    def loop_15(self):  # 3 Min
+        if self.loop_15_flag:
+            if self.feed_controller.feed_due_today():
+                if datetime.now().time() > (
+                        datetime.strptime(self.feed_controller.feed_time, "%H:%M") - timedelta(hours=2)).time():
+                    play_sound(SND_ATTENTION)
+        else:
+            if self.access_open_time > 0 and _time.time() > self.access_open_time + 30:
+                play_sound(SND_ACCESS_WARN)
+        self.loop_15_flag = not self.loop_15_flag
 
     def connect_to_main_window(self):
         self.area_controller = self.main_window.area_controller
@@ -205,6 +216,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.scales.connect()
         self.update_duration_texts()
         self.area_controller.output_controller.water_heater_update_info()   # Required here it init things
+        self.loop_15()  # Instant feed due check
 
     def connect_signals(self):
         self.pb_cover.clicked.connect(lambda: self.access.open())
@@ -595,7 +607,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         if self.access.has_status(ACS_COVER_CLOSED):    # Closed limit sw
             # self.lbl_cover_lock.setStyleSheet("background-color: green; color: White")
             self.le_access_status_1.setStyleSheet("background-color: Green; color: White; border-radius: 6px;")
-            self.le_access_status_1.setText(">><<")
+            # self.le_access_status_1.setText(">><<")
             self.lbl_cover_lock.setStyleSheet("")
             self.pb_cover_close.setEnabled(False)
             self.pb_cover.setEnabled(True)

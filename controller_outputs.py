@@ -81,6 +81,7 @@ class OutputController(QObject):
         sid = self.outputs[op_id].input_sensor
         s, hi, lo = self.areas_controller.sensors[sid].get_set_temperatures()
         self.set_limits(op_id, lo, s)
+        self.outputs[op_id].update_info()
 
     def change_trigger(self, op_id, mode):
         self.outputs[op_id].set_detection(mode)

@@ -1,4 +1,5 @@
 import collections
+import socket
 from datetime import *
 
 from PyQt5 import QtCore, QtGui
@@ -9,6 +10,7 @@ from PyQt5.QtWidgets import QWidget, QDialog, QMessageBox, QListWidgetItem
 from class_process import ProcessClass
 from defines import *
 from plotter import *
+from status_codes import FC_MESSAGE
 from ui.dialogDispatchCounter import Ui_DialogDispatchCounter
 from ui.dialogDispatchInternal import Ui_DialogDispatchInternal
 from functions import string_to_float, m_box, play_sound, auto_capital, sound_click, minutes_to_hhmm
@@ -29,6 +31,7 @@ from ui.dialogSensorSettings import Ui_DialogSensorSettings
 from ui.dialogStrainFinder import Ui_DialogStrainFinder
 from ui.dialogWaterHeaterSettings import Ui_DialogWaterHeatertSetting
 from ui.dialogWorkshopSettings import Ui_DialogWorkshopSetting
+from ui.dialogsysInfo import Ui_DialogSysInfo
 
 
 class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
@@ -1826,6 +1829,55 @@ class DialogAreaManual(QWidget, Ui_frm_area_manual):
             self.pb_light.setText("Switch On")
 
 
+class DialogSysInfo(QDialog, Ui_DialogSysInfo):
+    def __init__(self, parent):
+        super(DialogSysInfo, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.sub = None
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.main_panel = parent
+        self.coms_interface = self.main_panel.coms_interface
+
+        if self.main_panel.master_mode == MASTER:
+            text = "Master"
+        else:
+            text = "Slave"
+        text = "<table cellpadding='3' border='0'><tr><td width='30%'>Operation Mode</td><td>{}</td></tr>".format(text)
+        text += "<tr><td>PC Name</td><td>{}</td></tr>".format(socket.gethostname())
+        text += "<tr><td>IP Address</td><td>{}</td></tr>"   # .format(self.server.server_ip_str)
+        text += "<tr><td>Server Status</td><td>{}</td></tr>"    # .format(FC_MESSAGE[self.server.server_status]['message'])
+        text += "<tr><td>Port</td><td>{}</td></tr>" # .format(self.server.port)
+        text += "<tr><td colspan='2'>Interface Units</td></tr>"
+        text += "<tr><td>UPD Server</td><td></td></tr>"
+        text += "<tr><td>IP</td><td>{}</td></tr>".format(self.coms_interface.udp_server.remote_ip)
+        text += "<tr><td>Port</td><td>{}</td></tr>".format(self.coms_interface.udp_server.remote_port)
+        text += "<tr><td>UPD Client</td><td></td></tr>"
+        text += "<tr><td>IP</td><td>{}</td></tr>".format(self.coms_interface.this_ip)
+        text += "<tr><td>Port</td><td>{}</td></tr>".format(
+            self.coms_interface.this_port + self.coms_interface.udp_client.id - 1)
+        text += "<tr><td>UPD Relay</td><td></td></tr>"
+        text += "<tr><td>IP</td><td>{}</td></tr>".format(self.coms_interface.this_ip)
+        text += "<tr><td>Port</td><td>{}</td></tr>".format(
+            self.coms_interface.this_port + self.coms_interface.udp_relay.id - 1)
+        text += "<tr><td>I/O Module</td><td></td></tr>"
+        text += "<tr><td>IP</td><td>{}</td></tr>".format(self.coms_interface.io_ip)
+        text += "<tr><td>Port</td><td>{}</td></tr>".format(self.coms_interface.io_port)
+        text += "<tr><td>D/E Module</td><td></td></tr>"
+        text += "<tr><td>IP</td><td>{}</td></tr>".format(self.coms_interface.de_ip)
+        text += "<tr><td>Port</td><td>{}</td></tr>".format(self.coms_interface.de_port)
+        text += "<tr><td>Other PC</td><td></td></tr>"
+        text += "<tr><td>IP</td><td>{}</td></tr>".format(self.coms_interface.slave_ip)
+        text += "<tr><td>Port</td><td>{}</td></tr>".format(self.coms_interface.slave_port)
+        text += "<tr><td>Other Relay</td><td></td></tr>"
+        text += "<tr><td>IP</td><td>{}</td></tr>".format(self.coms_interface.slave_ip)
+        text += "<tr><td>Port</td><td>{}</td></tr>".format(self.coms_interface.pc_relay_port)
+        # text += "<tr><td>D/E</td><td>{}</td></tr>".format(self.client.de_ip)
+        # text += "<tr><td>Client Status</td><td>{}</td></tr>".format(FC_MESSAGE[self.server.client_status]['message'])
+        text += "</table>"
+        self.te_info.setHtml(text)
+
+
 class DialogJournal(QDialog, Ui_DialogJournal):
     def __init__(self, process, parent):
         super(DialogJournal, self).__init__()
@@ -1833,7 +1885,7 @@ class DialogJournal(QDialog, Ui_DialogJournal):
         self.setupUi(self)
         self.sub = None
         self.pbsave.clicked.connect(self.add)
-        self.pbclose.clicked.connect(self.close_)
+        self.pbclose.clicked.connect(lambda: self.sub.close())
         self.my_parent = parent
         self.process = process
         self.new_line = '\n'
@@ -1855,9 +1907,6 @@ class DialogJournal(QDialog, Ui_DialogJournal):
         self.temessage.setText(self.process.journal_read())
         self.my_parent.my_parent.coms_interface.send_command(NWC_JOURNAL_ADD, self.process.location, entry)
         self.tenew.setText("")
-
-    def close_(self):
-        self.sub.close()
 
 
 class DialogEngineerCommandSender(QDialog, Ui_DialogEngineerCommandSender):
@@ -2154,6 +2203,7 @@ class DialogAccessModule(QDialog, Ui_DialogDEmodule):
         self.my_parent.coms_interface.send_data(COM_KWH_DIF, True, MODULE_DE)
         self.my_parent.coms_interface.send_data(COM_READ_KWH, True, MODULE_DE)
         self.my_parent.coms_interface.send_data(COM_PULSES, True, MODULE_DE)
+        self.le_pp_kw.setToolTip("Increase this value if software is ahead of actual meter, otherwise decrease")
 
     @pyqtSlot(str, float)
     def setting_received(self, cmd, value):
