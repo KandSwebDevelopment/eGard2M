@@ -102,9 +102,10 @@ class MessageSystem(QObject):
         self.remove(mid)
 
     def remove(self, mid):
-        self._delete(mid)
-        self.load()
-        self.my_parent.coms_interface.relay_send(NWC_MESSAGE)
+        if not self.has_msg_id(mid):
+            self._delete(mid)
+            self.load()
+            self.my_parent.coms_interface.relay_send(NWC_MESSAGE)
 
     def _get(self, mid):
         """ Query's db and returns message with Id = mid or None"""

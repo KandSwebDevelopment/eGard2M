@@ -21,11 +21,12 @@ class Logger(QObject):
         self.available = True       # Set False if unable to connect to file system
         doc_folder = self.db.get_config(CFT_LOGGER, "doc path")
         try:
-            if self.my_parent.master_mode == MASTER:
-                # self.doc_folder = shell.SHGetFolderPath(0, shellcon.CSIDL_PERSONAL, None, 0) + doc_folder
-                self.doc_folder = os.path.expanduser("~\\Documents") + doc_folder
-            else:
-                self.doc_folder = doc_folder
+            # if self.my_parent.master_mode == MASTER:
+            #     pass
+            #     # self.doc_folder = os.path.expanduser("~\\Documents") + doc_folder
+            #     self.doc_folder = doc_folder
+            # else:
+            self.doc_folder = doc_folder
             if not os.path.exists(self.doc_folder):
                 os.makedirs(self.doc_folder)
             self.log_path = self.doc_folder + "\\Logs"

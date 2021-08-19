@@ -90,8 +90,11 @@ class CommunicationInterface(QObject):
         self.this_relay_port = int(self.main_window.db.get_config(CFT_NETWORK, "relay port"))
         self.pc_relay_port = int(self.main_window.db.get_config_alt(CFT_NETWORK, "relay port"))   # Note use of _alt to get other value
         self.this_pc_name = socket.gethostname()
-        self.this_ip = self.this_ip_str = socket.gethostbyname(self.this_pc_name)
-        self.this_ip2 = QHostAddress(self.this_ip_str)
+        # self.this_ip2 = QHostAddress(self.this_ip_str)
+
+        self.this_ip = socket.gethostbyname(self.this_pc_name)
+        if self.main_window.master_mode == MASTER:
+            pass
 
         if self.ip_broadcast != "":
             self.io_address = (self.ip_broadcast, self.io_port)
@@ -231,6 +234,8 @@ class CommunicationInterface(QObject):
             module = MODULE_DE
         elif sender[1] == self.pc_relay_port:
             module = MODULE_SL
+        else:
+            module = 999
         self.process_command(command, data_list, relay_command, module)
 
         # if CMD_SWITCH in self.last_communication and self.last_communication != "":
