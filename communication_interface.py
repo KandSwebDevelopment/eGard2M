@@ -350,12 +350,12 @@ class CommunicationInterface(QObject):
                 command == NWC_SLAVE_START or \
                 command == NWC_MESSAGE or \
                 command == NWC_STAGE_ADJUST or \
-                command == NWC_FEED or \
                 command == NWC_ACCESS_BOOST or \
                 command == NWC_SOIL_LOAD:
             self.update_from_relay.emit(command, [])
         # 1 pram
         elif command == NWC_FEED_DATE or \
+                command == NWC_FEED or \
                 command == NWC_PROCESS_MIX_CHANGE or \
                 command == NWC_PROCESS_FEED_MODE or \
                 command == NWC_SWITCH_REQUEST or \

@@ -64,10 +64,10 @@ class FeedControl(QThread):
     def feed_due_today(self):
         """ Returns true if either area is due today"""
         if self.days_till_feed(1) > 0:
-            return True
+            return False
         if self.days_till_feed(2) > 0:
-            return True
-        return False
+            return False
+        return True
 
     def check_item_included(self, area, item) -> int:
         """ Check to ensure the item is included in some feed and only once in all the feeds

@@ -2004,33 +2004,31 @@ class DialogEngineerIo(QDialog, Ui_DialogMessage):
         self.sub = None
         self.my_parent = parent
         self.mode = 0
-        self.show_m_server = True
-        self.show_m_server_out = True
-        self.show_m_relay = True
-        self.show_m_client = True
-        self.show_m_client_to = True
         self.show_io = True
         self.show_io_to = True
         self.show_de = True
         self.show_de_to = True
         self.show_relay = True
-        self.show_this_to = True
         self.show_relay_to = True
+        self.show_relay_to = True
+        self.show_fu = True
+        self.show_fu_to = True
 
-        self.ckb_io.clicked.connect(self.change_show)
-        self.ckb_de.clicked.connect(self.change_show)
-        self.ckb_other.clicked.connect(self.change_show)
-        self.ckb_this.clicked.connect(self.change_show)
-        self.ckb_io_2.clicked.connect(self.change_show)
-        self.ckb_de_2.clicked.connect(self.change_show)
-        self.ckb_other_2.clicked.connect(self.change_show)
-        self.ckb_this_2.clicked.connect(self.change_show)
+        self.ck_from_io.clicked.connect(self.check_to_show)
+        self.ck_from_de.clicked.connect(self.check_to_show)
+        self.ck_from_fu.clicked.connect(self.check_to_show)
+        self.ck_from_rl.clicked.connect(self.check_to_show)
+        self.ck_to_de.clicked.connect(self.check_to_show)
+        self.ck_to_fu.clicked.connect(self.check_to_show)
+        self.ck_to_io.clicked.connect(self.check_to_show)
+        self.ck_to_rl.clicked.connect(self.check_to_show)
         self.pb_close.clicked.connect(lambda: self.sub.close())
         self.pb_clear.clicked.connect(lambda: self.te_message.clear())
 
-        self.my_parent.coms_interface.update_received.connect(self.raw_update_a)
+        self.my_parent.coms_interface.update_received.connect(self.incoming)
         self.my_parent.coms_interface.update_cmd_issued.connect(self.outgoing)
         self.setWindowTitle("I/O Data")
+        self.te_message.append("  ")
 
     def set_kwargs(self, **kwargs):
         if 'mode' in kwargs.keys():
@@ -2047,17 +2045,15 @@ class DialogEngineerIo(QDialog, Ui_DialogMessage):
         self.te_message.setText(message)
         self.setWindowTitle(title)
 
-    def check_show(self, sender) -> bool:
+    def check_incoming(self, sender) -> bool:
         port = sender[1]
         if port == self.my_parent.coms_interface.io_port and not self.show_io:
             return False
         if port == self.my_parent.coms_interface.de_port and not self.show_de:
             return False
-        if port == self.my_parent.coms_interface.slave_port and not self.show_m_client:
-            return False
         if port == self.my_parent.coms_interface.pc_relay_port and not self.show_relay:
             return False
-        if port == self.my_parent.coms_interface.this_port and not self.show_m_relay:
+        if port == self.my_parent.coms_interface.fu_port and not self.show_fu:
             return False
         return True
 
@@ -2068,87 +2064,94 @@ class DialogEngineerIo(QDialog, Ui_DialogMessage):
             return False
         if port == self.my_parent.coms_interface.de_port and not self.show_de_to:
             return False
-        if port == self.my_parent.coms_interface.slave_port and not self.show_m_client_to:
+        if port == self.my_parent.coms_interface.fu_port and not self.show_fu_to:
             return False
-            # if port == self.my_parent.coms_interface.this_relay_port and not self.show_relay:
-            #     return False
-        if port == self.my_parent.coms_interface.pc_relay_port and not self.show_relay_to:
-            return False
-        if port == self.my_parent.coms_interface.this_port and not self.show_this_to:
+        if port == self.my_parent.coms_interface.slave_port and not self.show_relay_to:
             return False
         return True
 
-    def change_show(self):
-        if self.ckb_this.isChecked():
-            self.show_m_server = True
-        else:
-            self.show_m_server = False
-        if self.ckb_this_2.isChecked():
-            self.show_m_server_out = True
-        else:
-            self.show_m_server = False
-
-        if self.ckb_relay.isChecked():
-            self.show_relay = True
-        else:
-            self.show_relay = False
-        if self.ckb_relay_2.isChecked():
+    def check_to_show(self):
+        print(self.sender().isChecked())
+        if self.ck_to_rl.isChecked():
             self.show_relay_to = True
         else:
             self.show_relay_to = False
+        if self.ck_from_rl.isChecked():
+            self.show_relay = True
+        else:
+            self.show_relay = False
 
-        if self.ckb_other.isChecked():
-            self.show_m_client = True
-        else:
-            self.show_m_client = False
-        if self.ckb_other_2.isChecked():
-            self.show_m_client_to = True
-        else:
-            self.show_m_client_to = False
-
-        if self.ckb_io.isChecked():
-            self.show_io = True
-        else:
-            self.show_io = False
-        if self.ckb_io_2.isChecked():
+        if self.ck_to_io.isChecked():
             self.show_io_to = True
         else:
             self.show_io_to = False
 
-        if self.ckb_de.isChecked():
+        if self.ck_to_de.isChecked():
+            self.show_de_to = True
+        else:
+            self.show_de = False
+        if self.ck_from_de.isChecked():
             self.show_de = True
         else:
             self.show_de = False
-        if self.ckb_de_2.isChecked():
-            self.show_de_to = True
+
+        if self.ck_to_fu.isChecked():
+            self.show_fu_to = True
         else:
-            self.show_de_to = False
+            self.show_fu = False
+        if self.ck_from_fu.isChecked():
+            self.show_fu = True
+        else:
+            self.show_fu = False
+
+        if self.ck_from_io.isChecked():
+            self.show_io = True
+        else:
+            self.show_io = False
+
 
     @pyqtSlot(str, tuple)
-    def raw_update_a(self, data, sender):
-        if self.check_show(sender):
+    def incoming(self, data, sender):
+        if self.check_incoming(sender):
             data = data.replace("<", "")
             data = data.replace(">", "")
+            if sender[1] == self.my_parent.coms_interface.io_port:
+                colour = "background-color: #29A329;"
+            elif sender[1] == self.my_parent.coms_interface.de_port:
+                colour = "background-color: #FF5050;"
+            elif sender[1] == self.my_parent.coms_interface.fu_port:
+                colour = "background-color: #0066FF;"
+            elif sender[1] == self.my_parent.coms_interface.pc_relay_port:
+                colour = "background-color: #E6E600;"
+            else:
+                colour = "background-color: #999966;"
             self.te_message.append(
-                "<p style='background-color: tan;'>" + str(data) + " (" + str(sender[1]) + ")</p>")
+                "<p style='" + colour + "'>" + str(data) + " <b>from</b> " + str(sender) + "</p>")
 
     @pyqtSlot(str, tuple)
-    def outgoing(self, data, sender):
-        if self.check_outgoing(sender):
+    def outgoing(self, data, destination):
+        if self.check_outgoing(destination):
             if len(data) > 0:
-                colour = "LightSkyBlue"
-                if sender[1] == self.my_parent.coms_interface.slave_port:
-                    colour = "LightGreen"
+                if destination[1] == self.my_parent.coms_interface.io_port:
+                    colour = "background-color: #85E085;"
+                elif destination[1] == self.my_parent.coms_interface.de_port:
+                    colour = "background-color: #FFB3B3;"
+                elif destination[1] == self.my_parent.coms_interface.fu_port:
+                    colour = "background-color: #80B3FF;"
+                elif destination[1] == self.my_parent.coms_interface.slave_port:
+                    colour = "background-color: #FFFF80;"
+                else:
+                    colour = "background-color: #C2C2A3;"
                 data = data.replace('>', '')
                 data = data.replace('<', '')
                 self.te_message.append(
-                    "<p style='background-color: " + colour + ";'>" + str(data) + " (" + str(sender) + ")</p>")
+                    "<p style='" + colour + ";'>" + str(data) + " <b>to</b> " + str(destination) + "</p>")
 
     @pyqtSlot(list, list)
     def raw_update_c(self, priorities, commands):
         if len(priorities) > 0:
             self.te_message.append(
-                "<p style='background-color: LightGreen;'>P > " + self.split_commands(priorities) + "</p>")
+                "<p style='background-color: LightYellow;'>P > " + self.split_commands(priorities) + "</p>")
         if len(commands) > 0:
             self.te_message.append(
                 "<p style='background-color: Lime;'>C > " + self.split_commands(commands) + "</p>")
@@ -3104,7 +3107,7 @@ class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
         self.main_panel.feed_controller.set_last_feed_date(
             self.area, self.main_panel.feed_controller.get_last_feed_date(self.area) + timedelta(days=1))
         self.main_panel.update_next_feeds()
-        self.main_panel.area_controller.output_controller.water_heater_update_info()
+        # self.main_panel.area_controller.output_controller.water_heater_update_info()
         self.de_feed_date.setDate(self.main_panel.feed_controller.get_last_feed_date(self.area))
         self.main_panel.coms_interface.relay_send(NWC_FEED, self.area)  # Just send feed as it is only the feed date that is changed
 
