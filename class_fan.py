@@ -81,7 +81,6 @@ class FanClass(QThread):
         @param mode: Fan operation mode
         @type mode: int
         """
-        # self.fan_controller.main_panel.update_fan_mode(self.id, mode, self.fan_controller.master_power)
         if mode == self._mode:
             return
         self._mode = mode
@@ -235,6 +234,7 @@ class FanClass(QThread):
         self._speed = speed
         print("Fan {} switched to speed {} at temperature {}".format(self.id, self._speed, self.input))
         self.fan_controller.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, self.id, speed)
+        self.fan_controller.coms_interface.relay_send(NWC_FAN_SPEED, self.id, speed)
         self.last_speed = self._speed
 
     def _load_set_point(self):

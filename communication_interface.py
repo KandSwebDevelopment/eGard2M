@@ -347,6 +347,7 @@ class CommunicationInterface(QObject):
                 command == NWC_DRYING_AREA or \
                 command == NWC_WH_DURATION or \
                 command == NWC_MOVE_TO_FINISHING or \
+                command == NWC_CHANGE_TO_FLUSHING or \
                 command == NWC_SLAVE_START or \
                 command == NWC_MESSAGE or \
                 command == NWC_STAGE_ADJUST or \

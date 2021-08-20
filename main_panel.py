@@ -254,14 +254,14 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.pb_output_mode_5.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 2, 2)))
         self.pb_output_mode_6.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 2, 3)))
         self.pb_output_mode_10.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 2, 4)))
-        self.pb_pm_1.clicked.connect(lambda: self.advance_finishing(1))
-        self.pb_pm_2.clicked.connect(lambda: self.advance_finishing(2))
-        self.pb_pm_3.clicked.connect(lambda: self.advance_finishing(3))
-        self.pb_pm_4.clicked.connect(lambda: self.advance_finishing(4))
-        self.pb_pm_5.clicked.connect(lambda: self.advance_finishing(5))
-        self.pb_pm_6.clicked.connect(lambda: self.advance_finishing(6))
-        self.pb_pm_7.clicked.connect(lambda: self.advance_finishing(7))
-        self.pb_pm_8.clicked.connect(lambda: self.advance_finishing(8))
+        self.pb_pm_1.clicked.connect(lambda: self.change_to_flushing(1))
+        self.pb_pm_2.clicked.connect(lambda: self.change_to_flushing(2))
+        self.pb_pm_3.clicked.connect(lambda: self.change_to_flushing(3))
+        self.pb_pm_4.clicked.connect(lambda: self.change_to_flushing(4))
+        self.pb_pm_5.clicked.connect(lambda: self.change_to_flushing(5))
+        self.pb_pm_6.clicked.connect(lambda: self.change_to_flushing(6))
+        self.pb_pm_7.clicked.connect(lambda: self.change_to_flushing(7))
+        self.pb_pm_8.clicked.connect(lambda: self.change_to_flushing(8))
         # Area 3
         self.pbjournal_3.clicked.connect(lambda: self.wc.show_journal(3))
         self.pbinfo_3.clicked.connect(lambda: self.wc.show_process_info(3))
@@ -481,7 +481,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 self.frmstagechange_2.setEnabled(False)
                 return None
 
-    def advance_finishing(self, item):
+    def change_to_flushing(self, item):
         sql = "SELECT start FROM {} WHERE item = {}".format(DB_FLUSHING, item)
         row = self.db.execute_one_row(sql)
         if row is None:
@@ -497,6 +497,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.db.execute_write(sql)
             # self.feed_control.check_flushes(2)
             self.check_stage(2)
+            self.coms_interface.relay_send(NWC_CHANGE_TO_FLUSHING)
         else:
             self.move_to_finishing(item)
 
@@ -897,9 +898,14 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         elif cmd == NWC_FAN_MODE:
             self.area_controller.fan_controller.set_mode(data[0], data[1])
         elif cmd == NWC_FAN_SPEED:
-            self.area_controller.fan_controller.update_speed(data[0], data[1])
+            self.area_controller.fan_controller.speed_update(data[0], data[1])
         elif cmd == NWC_FAN_SENSOR:
             self.area_controller.fan_controller.set_fan_sensor(data[0], data[1])
+        elif cmd == NWC_CHANGE_TO_FLUSHING:
+            self.check_stage(2)
+        elif cmd == NWC_MOVE_TO_FINISHING:
+            self.area_controller.reload_area(2)
+            self.area_controller.reload_area(3)
         elif cmd == NWC_RELOAD_PROCESSES:
             self.area_controller.load_processes()
             self.update_duration_texts()

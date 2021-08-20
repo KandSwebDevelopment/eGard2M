@@ -306,6 +306,7 @@ NWC_FAN_UPDATE = "fan update"               # Update slaves fan speeds, fan 1 sp
 NWC_MESSAGE = "message"                     # Refresh msg sys
 NWC_MODULES_STATUS = "modules_status"       # I/O D/E modules on/off line
 NWC_MOVE_TO_FINISHING = "move_finishing"    # Plant has moved to finishing
+NWC_CHANGE_TO_FLUSHING = "move_flushing"      # Plant has changed to flushing
 NWC_OUTPUT = "output"                       # An output has operated, which output, state
 NWC_OUTPUT_MODE = "output mode"             # An output mode has changed, send output id, mode
 NWC_OUTPUT_SENSOR = "output sensor"         # An output sensor has changed, send area
