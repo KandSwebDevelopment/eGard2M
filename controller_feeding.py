@@ -56,7 +56,7 @@ class FeedControl(QThread):
         if feed_time == self.feed_time:
             return
         self.feed_time = feed_time
-        self.db.set_config(CFT_FEEDER, "feed time", feed_time)
+        self.db.set_config_both(CFT_FEEDER, "feed time", feed_time)
 
     def days_till_feed(self, area):
         return self.feeds[area].get_days_till_feed()

@@ -1804,7 +1804,7 @@ class DialogAreaManual(QWidget, Ui_frm_area_manual):
             self.my_parent.coms_interface.send_switch(OUT_LIGHT_1 - 1 + self.area, 0, MODULE_IO)
         else:
             self.manual = 1
-        self.db.set_config(CFT_AREA, "mode {}".format(self.area), self.manual)
+        self.db.set_config_both(CFT_AREA, "mode {}".format(self.area), self.manual)
         self.my_parent.area_controller.load_areas()
         self.my_parent.area_controller.load_sensors(self.area)
         self.set_buttons()
@@ -2277,9 +2277,9 @@ class DialogAccessModule(QDialog, Ui_DialogDEmodule):
             self.my_parent.coms_interface.send_data(CMD_SET_PULSES, False, MODULE_DE, int(v))
 
     def save(self):
-        self.my_parent.db.set_config(CFT_ACCESS, "cover time", self.le_cover_dur.text())
+        self.my_parent.db.set_config_both(CFT_ACCESS, "cover time", self.le_cover_dur.text())
         self.my_parent.access.cover_duration = int(self.le_cover_dur.text())
-        self.my_parent.db.set_config(CFT_ACCESS, "auto delay", self.le_auto_delay.text())
+        self.my_parent.db.set_config_both(CFT_ACCESS, "auto delay", self.le_auto_delay.text())
         self.my_parent.access.auto_close_duration = int(self.le_auto_delay.text())
 
     def store(self):
@@ -2773,7 +2773,6 @@ class DialogWaterHeaterSettings(QWidget, Ui_DialogWaterHeatertSetting):
 
     def change_frequency(self):
         f = self.cb_frequency.currentData()
-        self.db.set_config(CFT_WATER_HEATER,"frequency {}".format(self.tank), f)
         self.output_controller.outputs[self.pin_id].set_frequency(f)
         self.output_controller.water_heater_update_info()
         self.main_panel.coms_interface.relay_send(NWC_WH_FREQUENCY, self.pin_id, f)

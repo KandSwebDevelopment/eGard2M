@@ -125,7 +125,7 @@ class OutputController(QObject):
             d = ((duration.hour() * 60) + duration.minute())
         else:
             d = duration
-        self.db.set_config(CFT_WATER_HEATER, 'heater duration', d)
+        self.db.set_config_both(CFT_WATER_HEATER, 'heater duration', d)
         self.outputs[OUT_WATER_HEATER_1].set_duration(d)
         self.outputs[OUT_WATER_HEATER_2].set_duration(d)
 
@@ -136,4 +136,4 @@ class OutputController(QObject):
 
     def water_heater_set_frequency(self, output_pin, frequency):
         self.outputs[output_pin].set_frequency(frequency)
-        self.db.set_config(CFT_WATER_HEATER, "frequency {}".format(self.outputs[output_pin].heater_id), frequency)
+        self.db.set_config_both(CFT_WATER_HEATER, "frequency {}".format(self.outputs[output_pin].heater_id), frequency)

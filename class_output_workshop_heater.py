@@ -26,14 +26,14 @@ class OutputWorkshopHeater(OutputClass):
         if frost == self.frost:
             return
         self.frost = frost
-        self.db.set_config(CFT_WORKSHOP_HEATER, "frost", frost)
+        self.db.set_config_both(CFT_WORKSHOP_HEATER, "frost", frost)
         self.update_info()
 
     def change_boost(self, boost):
         if boost == self.auto_boost:
             return
         self.auto_boost = boost
-        self.db.set_config(CFT_WORKSHOP_HEATER, "auto boost", boost)
+        self.db.set_config_both(CFT_WORKSHOP_HEATER, "auto boost", boost)
         self.update_info()
 
     def set_limits(self, on_temp, off_temp):
@@ -48,12 +48,28 @@ class OutputWorkshopHeater(OutputClass):
 
         getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.ctrl_id).setText(str(self.max))
         getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.ctrl_id).setText(str(self.min))
-        if self.auto_boost:
+        if self.auto_boost and self.mode > 0:
             getattr(self.output_controller.main_panel, "lbl_output_sensor_%i" % self.ctrl_id).setPixmap(QtGui.QPixmap(":/normal/029-hot-thermometer.png"))
             getattr(self.output_controller.main_panel, "lbl_output_sensor_%i" % self.ctrl_id).setToolTip("Auto boost is enabled")
         else:
             getattr(self.output_controller.main_panel, "lbl_output_sensor_%i" % self.ctrl_id).setPixmap(QtGui.QPixmap(""))
             getattr(self.output_controller.main_panel, "lbl_output_sensor_%i" % self.ctrl_id).setToolTip("Auto boost is Disabled")
 
+        if self.mode > 0:
+            getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.ctrl_id).setText(str(self.temp_on))
+            getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.ctrl_id).setText(
+                str(self.temp_off))
+        else:
+            getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.ctrl_id).clear()
+            getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.ctrl_id).clear()
+
+        if self.frost:
+            getattr(self.output_controller.main_panel, "lbl_frost").setPixmap(QtGui.QPixmap(":/normal/drying_1.png"))
+            if self.mode == 0:
+                getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.ctrl_id).setText(str(self.min_frost))
+                getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.ctrl_id).setText(
+                    str(self.max_frost))
+        else:
+            getattr(self.output_controller.main_panel, "lbl_frost").setPixmap(QtGui.QPixmap(""))
 
 

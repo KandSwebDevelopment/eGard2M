@@ -32,7 +32,7 @@ class OutputWaterHeater(OutputClass):
         self.use_float = in_use
         if not self.use_float:
             self.float = FLOAT_UP
-        self.db.set_config(CFT_WATER_HEATER, "float {}".format(self.heater_id), in_use)
+        self.db.set_config_both(CFT_WATER_HEATER, "float {}".format(self.heater_id), in_use)
 
     def set_duration(self, duration):   # Only for timer
         """ Set timer duration and update display """
@@ -189,6 +189,6 @@ class OutputWaterHeater(OutputClass):
         self.days_since += 1
         if self.frequency != 0:  # Set days freq, call this to update
             self.set_days_till_feed(0)
-        self.db.set_config(CFT_WATER_HEATER, "days since {}".format(self.heater_id), self.days_since)
+        self.db.set_config_both(CFT_WATER_HEATER, "days since {}".format(self.heater_id), self.days_since)
         self.update_info()
 

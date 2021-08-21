@@ -98,7 +98,7 @@ class FansController(QObject):
             return
         if sw == SW_FANS_POWER:
             self.master_power = state
-            self.db.set_config(CFT_FANS, "master", state)
+            self.db.set_config_both(CFT_FANS, "master", state)
             if state == OFF:
                 self.fans[1].stop_fan()
                 self.fans[2].stop_fan()
