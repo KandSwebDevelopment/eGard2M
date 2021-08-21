@@ -33,7 +33,7 @@ class AreaController(QObject):
         self.area_manual = collections.defaultdict(int)      # Area is in manual mode
         self.output_controller = OutputController(self)
         self.soil_sensors = SoilSensorClass(self)
-        self.light_relay_1 = UNSET        # Hold the actual position of the relay, this is only changed by switch updates
+        self.light_relay_1 = UNSET      # Hold the actual position of the relay, this is only changed by switch updates
         self.light_relay_2 = UNSET
 
         self.main_panel.timer.start()

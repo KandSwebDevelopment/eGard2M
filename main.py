@@ -12,7 +12,8 @@ from controller_feeding import FeedControl
 from controller_windows import WindowsController
 from dbController import MysqlDB
 from dialogs import DialogEngineerCommandSender, DialogEngineerIo, DialogDispatchInternal, DialogDispatchCounter, \
-    DialogDispatchReports, DialogStrainFinder, DialogDispatchStorage, DialogDispatchOverview, DialogSysInfo
+    DialogDispatchReports, DialogStrainFinder, DialogDispatchStorage, DialogDispatchOverview, DialogSysInfo, \
+    DialogSettings
 from functions import multi_status_bar, get_last_friday
 from functions_colors import get_css_colours
 from status_codes import *
@@ -79,6 +80,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def connect_signals(self):
         # System
+        self.actionSettings.triggered.connect(lambda: self.wc.show(DialogSettings(self)))
         self.actionI_O_Data.triggered.connect(lambda: self.wc.show(DialogEngineerIo(self)))
         self.actionSend_Command.triggered.connect(lambda: self.wc.show(DialogEngineerCommandSender(self)))
         self.actionReconnect.triggered.connect(self.reconnect)

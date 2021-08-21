@@ -495,6 +495,10 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 return
             sql = "INSERT into {} (item, start) VALUES ({}, '{}')".format(DB_FLUSHING, item, datetime.now().date())
             self.db.execute_write(sql)
+            p = self.area_controller.get_area_process(2)
+            dt = datetime.strftime(datetime.now(), '%d/%m/%y %H:%M')
+            p.journal_write("{}  Number {} started flush. Day {} flowering".format(dt, item, p.stage_days_elapsed))
+
             # self.feed_control.check_flushes(2)
             self.check_stage(2)
             self.coms_interface.relay_send(NWC_CHANGE_TO_FLUSHING)

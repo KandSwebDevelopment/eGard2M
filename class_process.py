@@ -951,7 +951,9 @@ class ProcessClass(QObject):
         ret_val = msg.exec_()
         if ret_val == QMessageBox.Yes:
             next_stage_name = self.db.execute_single("SELECT name FROM {} WHERE id = {}".
-                                                     format(DB_STAGE_NAMES, self.current_stage))
+                                                     format(DB_STAGE_NAMES, self.current_stage + 1))
+            if next_stage_name is None:
+                next_stage_name = "Unknown"
             if self.stage_location is not self.stage_next_location:
                 msg.setText("This change requires this process to be moved")
                 msg.setWindowTitle("Confirm Location Change")

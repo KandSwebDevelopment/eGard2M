@@ -28,6 +28,7 @@ from ui.dialogOutputSettings import Ui_DialogOutputSetting
 from ui.dialogProcessAdjustments import Ui_DialogProcessAdjust
 from ui.dialogProcessInfo import Ui_DialogProcessInfo
 from ui.dialogSensorSettings import Ui_DialogSensorSettings
+from ui.dialogSettings import Ui_DialogSettings
 from ui.dialogStrainFinder import Ui_DialogStrainFinder
 from ui.dialogWaterHeaterSettings import Ui_DialogWaterHeatertSetting
 from ui.dialogWorkshopSettings import Ui_DialogWorkshopSetting
@@ -2023,12 +2024,12 @@ class DialogEngineerIo(QDialog, Ui_DialogMessage):
         self.ck_to_io.clicked.connect(self.check_to_show)
         self.ck_to_rl.clicked.connect(self.check_to_show)
         self.pb_close.clicked.connect(lambda: self.sub.close())
-        self.pb_clear.clicked.connect(lambda: self.te_message.clear())
+        self.pb_clear.clicked.connect(self.clear)
 
         self.my_parent.coms_interface.update_received.connect(self.incoming)
         self.my_parent.coms_interface.update_cmd_issued.connect(self.outgoing)
         self.setWindowTitle("I/O Data")
-        self.te_message.append("  ")
+        self.te_message.append("")
 
     def set_kwargs(self, **kwargs):
         if 'mode' in kwargs.keys():
@@ -2109,43 +2110,56 @@ class DialogEngineerIo(QDialog, Ui_DialogMessage):
         else:
             self.show_io = False
 
+    def clear(self):
+        self.te_message.clear()
+        self.te_message.append("")
+
+    def check_for_reg(self, data) -> bool:
+        if not self.ck_hide_reg.isChecked():
+            return True
+        for cmd in [COM_SENSOR_READ, COM_SOIL_READ, COM_OTHER_READINGS, COM_READ_KWH, COM_WATTS, COM_FANS, NWC_MESSAGE]:
+            if cmd in data:
+                return False
+        return True
 
     @pyqtSlot(str, tuple)
     def incoming(self, data, sender):
-        if self.check_incoming(sender):
-            data = data.replace("<", "")
-            data = data.replace(">", "")
-            if sender[1] == self.my_parent.coms_interface.io_port:
-                colour = "background-color: #29A329;"
-            elif sender[1] == self.my_parent.coms_interface.de_port:
-                colour = "background-color: #FF5050;"
-            elif sender[1] == self.my_parent.coms_interface.fu_port:
-                colour = "background-color: #0066FF;"
-            elif sender[1] == self.my_parent.coms_interface.pc_relay_port:
-                colour = "background-color: #E6E600;"
-            else:
-                colour = "background-color: #999966;"
-            self.te_message.append(
-                "<p style='" + colour + "'>" + str(data) + " <b>from</b> " + str(sender) + "</p>")
+        if self.check_for_reg(data):
+            if self.check_incoming(sender):
+                data = data.replace("<", "")
+                data = data.replace(">", "")
+                if sender[1] == self.my_parent.coms_interface.io_port:
+                    colour = "background-color: #29A329;"
+                elif sender[1] == self.my_parent.coms_interface.de_port:
+                    colour = "background-color: #FF5050;"
+                elif sender[1] == self.my_parent.coms_interface.fu_port:
+                    colour = "background-color: #0066FF;"
+                elif sender[1] == self.my_parent.coms_interface.pc_relay_port:
+                    colour = "background-color: #E6E600;"
+                else:
+                    colour = "background-color: #999966;"
+                self.te_message.append(
+                    "<p style='" + colour + "'>" + str(data) + " <b>from</b> " + str(sender) + "</p>")
 
     @pyqtSlot(str, tuple)
     def outgoing(self, data, destination):
-        if self.check_outgoing(destination):
-            if len(data) > 0:
-                if destination[1] == self.my_parent.coms_interface.io_port:
-                    colour = "background-color: #85E085;"
-                elif destination[1] == self.my_parent.coms_interface.de_port:
-                    colour = "background-color: #FFB3B3;"
-                elif destination[1] == self.my_parent.coms_interface.fu_port:
-                    colour = "background-color: #80B3FF;"
-                elif destination[1] == self.my_parent.coms_interface.slave_port:
-                    colour = "background-color: #FFFF80;"
-                else:
-                    colour = "background-color: #C2C2A3;"
-                data = data.replace('>', '')
-                data = data.replace('<', '')
-                self.te_message.append(
-                    "<p style='" + colour + ";'>" + str(data) + " <b>to</b> " + str(destination) + "</p>")
+        if self.check_for_reg(data):
+            if self.check_outgoing(destination):
+                if len(data) > 0:
+                    if destination[1] == self.my_parent.coms_interface.io_port:
+                        colour = "background-color: #85E085;"
+                    elif destination[1] == self.my_parent.coms_interface.de_port:
+                        colour = "background-color: #FFB3B3;"
+                    elif destination[1] == self.my_parent.coms_interface.fu_port:
+                        colour = "background-color: #80B3FF;"
+                    elif destination[1] == self.my_parent.coms_interface.slave_port:
+                        colour = "background-color: #FFFF80;"
+                    else:
+                        colour = "background-color: #C2C2A3;"
+                    data = data.replace('>', '')
+                    data = data.replace('<', '')
+                    self.te_message.append(
+                        "<p style='" + colour + ";'>" + str(data) + " <b>to</b> " + str(destination) + "</p>")
 
     @pyqtSlot(list, list)
     def raw_update_c(self, priorities, commands):
@@ -3229,3 +3243,206 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         off = off - self.off
         self.output_controller.change_range(self.pin_id, on, off)
         # self.main_panel.coms_interface.relay_send(NWC_OUTPUT_RANGE, self.pin_id) --- sent by above
+
+
+class DialogSettings(QDialog, Ui_DialogSettings):
+    my_parent = ...  # type: MainWindow
+
+    def __init__(self, parent):
+        super(DialogSettings, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.main_panel = parent
+        self.db = parent.db
+        self.sub = None
+        self.mode = self.main_panel.master_mode  # 1=Master, arduino and server  2=Slave, client only
+        self.running = False  # True when running an action
+        self.us_tank = 1  # Tank number to operate us sensor
+        self.servo_valve = 0
+        self.rbustank_1.setChecked(True)
+
+        self.pb_close.clicked.connect(lambda: self.close())
+
+        self.pbusoperate.clicked.connect(self.us_test)
+        self.rbustank_1.clicked.connect(self.us_set_tank)
+        self.rbustank_2.clicked.connect(self.us_set_tank)
+        self.rbustank_3.clicked.connect(self.us_set_tank)
+
+        self.rsservovalve_1.clicked.connect(self.sv_set_valve)
+        self.rsservovalve_2.clicked.connect(self.sv_set_valve)
+        self.rsservovalve_3.clicked.connect(self.sv_set_valve)
+        self.rsservovalve_4.clicked.connect(self.sv_set_valve)
+        self.rsservovalve_5.clicked.connect(self.sv_set_valve)
+        self.rsservovalve_6.clicked.connect(self.sv_set_valve)
+        self.pbsvmove.clicked.connect(self.sv_move)
+
+        self.pbsoilread.clicked.connect(self.soil_read)
+        # self.main_panel.water_control.new_data.connect(self.update_us_display)
+        self.main_panel.coms_interface.update_soil_reading.connect(self.update_soil)
+
+        # Mode
+        self.cb_system_mode.addItem("Master", 1)
+        self.cb_system_mode.addItem("Slave", 2)
+        self.cb_system_mode.setCurrentIndex(self.main_panel.mode - 1)
+        self.cb_system_mode.currentIndexChanged.connect(self.system_mode_change)
+
+        # Database
+        self.settings = QSettings(FN_SETTINGS, QSettings.IniFormat)
+        # if self.mode == MASTER:
+        self.host = self.settings.value("Database/host")
+        self.db_user = self.settings.value("Database/user")
+        self.db_password = self.settings.value("Database/password")
+        self.db_name = self.settings.value("Database/database")
+        self.pb_back_up.clicked.connect(self.db_backup)
+        # else:
+        #     self.host = "192.168.0.20"  # self.main_panel.server.remote_ip_str
+        self.le_db_host.setText(self.host)
+        self.le_db_user_name.setText(self.db_user)
+        self.le_db_password.setText(self.db_password)
+        self.le_db_name.setText(self.db_name)
+
+        # Com ports
+        self.pb_rescan_ports.clicked.connect(self.get_ports)
+        self.le_ss_port.setText(self.db.get_config(CFT_SS_UNIT, "com", ""))
+        self.pb_ss_update.clicked.connect(self.save_ss_port)
+        self.le_ss_port.textChanged.connect(lambda: auto_capital(self.le_ss_port))
+        self.get_ports()
+
+        # Fans
+        row = self.db.execute_one_row("SELECT sensor, mode, Kp, Ki, Kd FROM {} WHERE id = {}".format(DB_FANS, 1))
+        self._sensor_1 = row[0]
+        self.le_kp_1.setText(str(row[2]))
+        self.le_ki_1.setText(str(row[3]))
+        self.le_kd_1.setText(str(row[4]))
+        row = self.db.execute_one_row("SELECT sensor, mode, Kp, Ki, Kd FROM {} WHERE id = {}".format(DB_FANS, 2))
+        self._sensor_2 = row[0]
+        self.le_kp_2.setText(str(row[2]))
+        self.le_ki_2.setText(str(row[3]))
+        self.le_kd_2.setText(str(row[4]))
+
+        self.pb_save_fans_1.clicked.connect(lambda: self.save_fans(1))
+        self.pb_reset_fan_1.clicked.connect(lambda: self.main_panel.fans[1].reset())
+        self.pb_save_fans_2.clicked.connect(lambda: self.save_fans(2))
+        self.pb_reset_fan_2.clicked.connect(lambda: self.main_panel.fans[2].reset())
+        self.pb_show_log_1.clicked.connect(lambda: self.main_panel.dialog_control("Fan 1 Log", DialogFanLog, 1))
+        self.pb_show_log_2.clicked.connect(lambda: self.main_panel.dialog_control("Fan 2 Log", DialogFanLog, 2))
+
+        self.ck_test.clicked.connect(lambda: self.logging(1))
+        self.ck_test_2.clicked.connect(lambda: self.logging(2))
+
+    @pyqtSlot(int, int, int)
+    def update_us_display(self, tank, litres, reading):
+        self.leusliters.setText(str(litres))
+        self.leusreading.setText(str(reading))
+        self.lblusoperate.setStyleSheet("background-color: light gray;  color: white;")
+
+    def get_ports(self):
+        self.te_ports.clear()
+        port_list = serial.tools.list_ports.comports()
+        for port, desc, h_wid in sorted(port_list):
+            print("{}: {}".format(port, desc))
+            self.te_ports.append(port + ":" + desc)
+
+    def save_ss_port(self):
+        self.db.set_config(CFT_SS_UNIT, "com", self.le_ss_port.text())
+        self.main_panel.scales.get_port()
+        self.main_panel.scales.coms_disconnect()
+        self.main_panel.scales.connect()
+        play_sound(SND_OK)
+
+    def us_set_tank(self):
+        rb = self.sender()
+        if rb.text().find("1") != -1:
+            self.us_tank = 1
+        elif rb.text().find("2") != -1:
+            self.us_tank = 2
+        else:
+            self.us_tank = 3
+
+    def us_test(self):
+        if self.running:
+            return
+        self.lblusoperate.setStyleSheet("background-color: red;  color: white;")
+        self.main_panel.coms_interface.send_command(COM_US_READ, self.us_tank, None, True)
+
+    def sv_set_valve(self):
+        rb = self.sender()
+        if rb.text().find("Tank 1") != -1:
+            self.servo_valve = SV_TANK_1
+        elif rb.text().find("Tank 2") != -1:
+            self.servo_valve = SV_TANK_2
+        elif rb.text().find("Feed 1") != -1:
+            self.servo_valve = SV_FEED_1
+        elif rb.text().find("Feed 2") != -1:
+            self.servo_valve = SV_FEED_2
+        elif rb.text().find("Drain 1") != -1:
+            self.servo_valve = SV_DRAIN_1
+        elif rb.text().find("Drain 2") != -1:
+            self.servo_valve = SV_DRAIN_2
+
+    def sv_move(self):
+        pos = int(self.lesvposition.text())
+        self.main_panel.coms_interface.send_data(CMD_VALVE, True, MODULE_IO, self.servo_valve, pos)
+
+    def soil_read(self):
+        self.main_panel.coms_interface.send_command(COM_SOIL_READ)
+        self.running = True
+        self.lblsoiloperate.setStyleSheet("background-color: red;  color: white;")
+
+    @pyqtSlot(list)
+    def update_soil(self, data):
+        if not self.running:
+            return
+        try:
+            for x in range(2, len(data)):
+                var_name = "lesoil_%i" % (x - 1)
+                ctrl = getattr(self, var_name)
+                ctrl.setText(str(data[x]))
+                self.running = False
+                self.lblsoiloperate.setStyleSheet("background-color: light gray;  color: white;")
+        except Exception as e:
+            print(e.args)
+
+    # System
+    def system_mode_change(self):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Warning)
+        msg.setText("Confirm you wish to change the mode of operation for this computer")
+        msg.setInformativeText("The program will restart")
+        msg.setWindowTitle("Confirm Mode Change")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        msg.setDefaultButton(QMessageBox.Cancel)
+        if msg.exec_() == QMessageBox.Cancel:
+            return
+        self.settings.setValue('mode', str(self.cb_system_mode.currentData()))
+        self.settings.sync()
+        os.execl(sys.executable, os.path.abspath(__file__), *sys.argv)
+
+    # database
+    def scan_ip(self):
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("192.168.0.1", 80))
+        print(s.getsockname()[0])
+        s.close()
+
+    def db_backup(self):
+        self.main_panel.db.backup()
+
+    # Fans
+    def logging(self, fan):
+        if fan == 1:
+            self.main_panel.fans[fan].logging = self.ck_test.isChecked()
+        else:
+            self.main_panel.fans[fan].logging = self.ck_test_2.isChecked()
+
+    def save_fans(self, fan):
+        kp = string_to_float(getattr(self, "le_kp_{}".format(fan)).text())
+        ki = string_to_float(getattr(self, "le_ki_{}".format(fan)).text())
+        kd = string_to_float(getattr(self, "le_kd_{}".format(fan)).text())
+        self.db.execute_write("UPDATE {} set Kp = {}, Ki = {}, Kd = {} WHERE id = {} LIMIT 1".
+                              format(DB_FANS, kp, ki, kd, fan))
+        self.main_panel.fans[fan].set_pid(kp, ki, kd)
+        self.main_panel.fans[fan].reset()
+
+
