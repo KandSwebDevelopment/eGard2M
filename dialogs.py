@@ -2029,7 +2029,7 @@ class DialogEngineerIo(QDialog, Ui_DialogMessage):
         self.my_parent.coms_interface.update_received.connect(self.incoming)
         self.my_parent.coms_interface.update_cmd_issued.connect(self.outgoing)
         self.setWindowTitle("I/O Data")
-        self.te_message.append("")
+        self.te_message.append(" ")
 
     def set_kwargs(self, **kwargs):
         if 'mode' in kwargs.keys():

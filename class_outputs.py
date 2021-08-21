@@ -7,7 +7,7 @@ from PyQt5.QtGui import QIcon, QPixmap
 from defines import *
 from winsound import Beep
 
-from functions import play_sound
+from functions import play_sound, string_to_float
 
 
 class OutputClass(QObject):
@@ -82,11 +82,15 @@ class OutputClass(QObject):
         self.update_control(self.status)
 
     def load_ranges(self):
-        s, hi, lo = self.output_controller.area_controller.sensors[self.input_sensor].get_set_temperatures()
-        range = self.db.execute_single('SELECT `range` FROM {} WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
+        s, hi, lo = self.output_controller.areas_controller.sensors[self.input_sensor].get_set_temperatures()
+        range_ = self.db.execute_single('SELECT `range` FROM {} WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
         self.temp_on = lo
         self.temp_off = s
-        self.set_range(range[0], range[1])
+        range_ = range_.split(",")
+        self.range[0] = string_to_float(range_[0])
+        self.range[1] = string_to_float(range_[1])
+        self.calculate_limits()
+        self.update_info()
 
     def set_mode(self, mode):
         """ Updates the outputs mode and saves it to the db and updates the outputs info control """

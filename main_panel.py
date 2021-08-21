@@ -291,8 +291,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.area_controller.fan_controller.update_fans_mode.connect(self.update_fan_mode)
 
     def test(self):
-        print(self.main_window.mdiArea.subWindowList())
-        # self.main_window.mdiArea.cascadeSubWindows()
+        se
 
     def update_next_feeds(self):
         """
@@ -735,6 +734,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
     def update_switch(self, sw, state, module):
         if module == MODULE_IO or module == MODULE_SL:
             if sw == OUT_LIGHT_1:
+                self.area_controller.reload_sensor_ranges(1)
                 if state == 0:
                     self.lbl_light_status_1.setPixmap(QtGui.QPixmap(":/normal/light_off.png"))
                     self.area_controller.light_relay_1 = state
@@ -744,6 +744,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 if self.area_controller.area_is_manual(1):
                     self.db.set_config(CFT_AREA, "mode {}".format(1), state + 1)
             if sw == OUT_LIGHT_2:
+                self.area_controller.reload_sensor_ranges(2)
                 if state == 0:
                     self.lbl_light_status_2.setPixmap(QtGui.QPixmap(":/normal/light_off.png"))
                     self.area_controller.light_relay_2 = state

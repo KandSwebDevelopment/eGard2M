@@ -78,9 +78,7 @@ class OutputController(QObject):
         self.main_panel.coms_interface.relay_send(NWC_OUTPUT_RANGE, op_id)
 
     def reload_range(self, op_id):
-        sid = self.outputs[op_id].input_sensor
-        s, hi, lo = self.areas_controller.sensors[sid].get_set_temperatures()
-        self.set_limits(op_id, lo, s)
+        self.outputs[op_id].load_ranges()
         self.outputs[op_id].update_info()
 
     def change_trigger(self, op_id, mode):

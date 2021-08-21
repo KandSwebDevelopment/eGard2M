@@ -154,7 +154,7 @@ class SensorClass(object):
             tv = "<i>{}</i>".format(self.low)
         else:
             tv = self.low
-        t += "<tr><td style='font-size:12px; padding:2px 0px 0px 0px;'>{}</td>".format(tv)
+        t += "<tr><td style='font-size:12px; vertical-align:bottom; padding:2px 0px 0px 0px;'>{}</td>".format(tv)
 
         #  set value
         if self.set_org != 999 and self.set != self.set_org:
@@ -165,7 +165,7 @@ class SensorClass(object):
             t += "<td style='padding:0px 12px 0px 12px;' rowspan='2' style='text-align:center; vertical-align:middle;" \
                  " color:blue'>{}</td>".format(tv)
         else:
-            t += "<td style='padding:0px 12px 0px 12px;' style='text-align:center; vertical-align:middle'>{}</td>". \
+            t += "<td style='padding:0px 10px 0px 10px;' style='text-align:center; vertical-align:middle'>{}</td>". \
                 format(tv)
 
         #      high value
@@ -173,7 +173,7 @@ class SensorClass(object):
             tv = "<i>{}</i>".format(self.high)
         else:
             tv = self.high
-        t += "<td style='padding:2px 0px 0px 0px;' style='font-size:12px;'>{}</td>".format(tv)
+        t += "<td style='padding:0px 0px 0px 0px; vertical-align:top; font-size:12px;'>{}</td>".format(tv)
         t += "</tr></table>"
         self.status_ctrl.setText(t)
 

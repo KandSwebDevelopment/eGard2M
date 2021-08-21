@@ -165,6 +165,20 @@ class AreaController(QObject):
                 self.sensors[sid].load_profile()
             self.sensors[sid].load_range()
 
+    def reload_sensor_ranges(self, area):
+        """ This is called when the light switches state, this will load in new temperature ranges for the sensors in
+            the area"""
+        if area == 1:
+            self.sensors[3].load_range()
+            self.sensors[4].load_range()
+            self.sensors[10].load_range()
+            self.sensors[11].load_range()
+        if area == 2:
+            self.sensors[5].load_range()
+            self.sensors[6].load_range()
+            self.sensors[12].load_range()
+            self.sensors[13].load_range()
+
     def load_sensor_ranges(self, area, sid):
         if self.area_has_process(area):
             p = self.areas_processes[area]
