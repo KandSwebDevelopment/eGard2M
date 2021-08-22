@@ -196,14 +196,13 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.db.execute("select name from " + DB_NUTRIENTS_NAMES)  # This is only to keep the database connection alive
 
     def loop_15(self):  # 3 Min
-        if self.loop_15_flag:
+        if self.main_window.access.has_status(ACS_COVER_OPEN):
+            play_sound(SND_ACCESS_WARN)
+        else:
             if self.feed_controller.feed_due_today():
                 if datetime.now().time() > (
                         datetime.strptime(self.feed_controller.feed_time, "%H:%M") - timedelta(hours=2)).time():
                     play_sound(SND_ATTENTION)
-        else:
-            if self.access_open_time > 0 and _time.time() > self.access_open_time + 30:
-                play_sound(SND_ACCESS_WARN)
         self.loop_15_flag = not self.loop_15_flag
 
     def connect_to_main_window(self):
@@ -645,16 +644,10 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.le_access_status_1.setStyleSheet("background-color: Orange; color: Red")
 
         if status_code & ACS_OPENING == ACS_OPENING and not status_code & ACS_STOPPED == ACS_STOPPED:
-            # self.le_access_status_1.setText("Opening")
-            # self.le_cover_duration.show()
             self.access_open_time = _time.time()
-            # self.pb_cover_rev.hide()
             self.le_access_status_1.setStyleSheet("background-color: Yellow; color: Black")
         if status_code & ACS_CLOSING == ACS_CLOSING and \
                 not status_code & ACS_STOPPED == ACS_STOPPED:
-            # self.le_access_status_1.setText("Closing")
-            # self.le_cover_duration.show()
-            # self.pb_cover_rev.hide()
             self.le_access_status_1.setStyleSheet("background-color: Yellow; color: Black")
 
     @pyqtSlot(int)
