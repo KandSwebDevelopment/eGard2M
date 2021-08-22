@@ -12,7 +12,7 @@ from class_fan import FanClass
 from class_soil_sensors import SoilSensorClass
 from defines import *
 from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan, DialogOutputSettings, \
-    DialogSensorSettings, DialogProcessAdjustments, DialogWaterHeaterSettings, DialogWorkshopSettings
+    DialogSensorSettings, DialogProcessAdjustments, DialogWaterHeaterSettings, DialogWorkshopSettings, DialogElectMeter
 from functions import play_sound
 from scales_com import ScalesComs
 from ui.main import Ui_Form
@@ -40,6 +40,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.lbl_access_2.installEventFilter(self)
         self.lbl_fan_1.installEventFilter(self)
         self.lbl_fan_2.installEventFilter(self)
+        self.lbl_access.installEventFilter(self)
 
         self.tesstatus_2.viewport().installEventFilter(self)
         self.tesstatus_3.viewport().installEventFilter(self)
@@ -80,7 +81,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.has_scales = int(self.db.get_config(CFT_MODULES, "ss unit", 0))
         self.scales = ScalesComs(self)
         if not self.has_scales:
-            self.panel_9.hide()
+            # self.panel_9.hide()
             self.main_window.actionCounter.setEnabled(False)
             self.main_window.actionInternal.setEnabled(False)
             self.main_window.actionScales.setEnabled(False)
@@ -104,6 +105,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 self.wc.show(DialogFan(self, 1))
             elif source is self.lbl_fan_2:
                 self.wc.show(DialogFan(self, 2))
+            elif source is self.lbl_access:
+                self.wc.show(DialogElectMeter(self))
             # Area 1
             elif source is self.tesstatus_2.viewport():
                 self.wc.show(DialogSensorSettings(self, 1, 3))

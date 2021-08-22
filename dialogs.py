@@ -18,6 +18,7 @@ from ui.dialogAccess import Ui_DialogDEmodule
 from ui.dialogDispatchOverview import Ui_DialogLogistics
 from ui.dialogDispatchReports import Ui_DialogDispatchReport
 from ui.dialogDispatchStorage import Ui_Form
+from ui.dialogElectMeter import Ui_DialogElectMeter
 from ui.dialogEngineerCommandSender import Ui_DialogEngineerCommandSender
 from ui.dialogEngineerIO import Ui_DialogMessage
 from ui.dialogFan import Ui_DialogFan
@@ -2190,17 +2191,9 @@ class DialogAccessModule(QDialog, Ui_DialogDEmodule):
         self.sub = None
         self.my_parent = parent
         self.db = self.my_parent.db
-        self.watt_dif_org = 0
-        self.send_org = 0
-        self.pulses_pkw = 0
         self.pb_close.clicked.connect(lambda: self.sub.close())
         self.pb_reboot.clicked.connect(self.reboot)
-        self.pb_update_freq.clicked.connect(self.update)
-        self.pb_update_diff.clicked.connect(self.update_diff)
-        self.pb_update_pulses.clicked.connect(self.update_pulses)
-        self.pb_scan.clicked.connect(self.re_scan)
         self.p_save.clicked.connect(self.save)
-        self.pb_store.clicked.connect(self.store)
         self.pb_query.clicked.connect(self.query)
         self.pb_cover_open.clicked.connect(self.cover_open)
         self.pb_cover_close.clicked.connect(self.cover_close)
@@ -2212,27 +2205,20 @@ class DialogAccessModule(QDialog, Ui_DialogDEmodule):
             lambda: self.my_parent.coms_interface.send_switch(SW_COVER_LOCK, OFF_RELAY, MODULE_DE))
         self.le_cover_dur.setText(str(self.my_parent.db.get_config(CFT_ACCESS, "cover time", 30)))
         self.le_auto_delay.setText(str(self.my_parent.db.get_config(CFT_ACCESS, "auto delay", 15)))
-        self.le_kwh_total.setText(self.my_parent.le_pwr_total_1.text())
 
-        self.my_parent.coms_interface.update_access_settings.connect(self.setting_received)
-
-        self.my_parent.coms_interface.send_data(COM_SEND_FREQ, True, MODULE_DE)
-        self.my_parent.coms_interface.send_data(COM_KWH_DIF, True, MODULE_DE)
-        self.my_parent.coms_interface.send_data(COM_READ_KWH, True, MODULE_DE)
-        self.my_parent.coms_interface.send_data(COM_PULSES, True, MODULE_DE)
-        self.le_pp_kw.setToolTip("Increase this value if software is ahead of actual meter, otherwise decrease")
-
-    @pyqtSlot(str, float)
-    def setting_received(self, cmd, value):
-        if cmd == COM_KWH_DIF:
-            self.le_watts.setText(str(value * 1000))
-            self.watt_dif_org = value * 1000
-        elif cmd == COM_SEND_FREQ:
-            self.le_seconds.setText(str(value / 1000))
-            self.send_org = value / 1000
-        elif cmd == COM_PULSES:
-            self.pulses_pkw = int(value)
-            self.le_pp_kw.setText(str(self.pulses_pkw))
+    #     self.my_parent.coms_interface.update_access_settings.connect(self.setting_received)
+    #
+    # @pyqtSlot(str, float)
+    # def setting_received(self, cmd, value):
+    #     if cmd == COM_KWH_DIF:
+    #         self.le_watts.setText(str(value * 1000))
+    #         self.watt_dif_org = value * 1000
+    #     elif cmd == COM_SEND_FREQ:
+    #         self.le_seconds.setText(str(value / 1000))
+    #         self.send_org = value / 1000
+    #     elif cmd == COM_PULSES:
+    #         self.pulses_pkw = int(value)
+    #         self.le_pp_kw.setText(str(self.pulses_pkw))
 
     def query(self):
         self.my_parent.coms_interface.send_data(COM_COVER_CLOSED, True, MODULE_DE)
@@ -2281,6 +2267,87 @@ class DialogAccessModule(QDialog, Ui_DialogDEmodule):
         self.my_parent.access.cover_duration = int(self.le_cover_dur.text())
         self.my_parent.db.set_config_both(CFT_ACCESS, "auto delay", self.le_auto_delay.text())
         self.my_parent.access.auto_close_duration = int(self.le_auto_delay.text())
+
+    def store(self):
+        v = string_to_float(self.le_kwh_total.text())
+        fp = int(v)
+        sp = v - fp  # has to be split into 2 ints as network code does not pass floats
+        sp *= 1000
+        self.my_parent.coms_interface.send_data(CMD_SET_KWH, False, MODULE_DE, fp, int(sp))
+
+    def reboot(self):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Question)
+        msg.setText("Confirm you wish to reboot the D/E Module")
+        msg.setWindowTitle("Confirm Reboot")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        msg.setDefaultButton(QMessageBox.Cancel)
+        if msg.exec_() == QMessageBox.Yes:
+            self.my_parent.coms_interface.send_data(CMD_REBOOT, False, MODULE_DE)
+
+
+class DialogElectMeter(QDialog, Ui_DialogElectMeter):
+    def __init__(self, parent):
+        """ :type parent: MainWindow """
+        super(DialogElectMeter, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.sub = None
+        self.my_parent = parent
+        self.db = self.my_parent.db
+        self.watt_dif_org = 0
+        self.send_org = 0
+        self.pulses_pkw = 0
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.pb_reboot.clicked.connect(self.reboot)
+        self.pb_update_freq.clicked.connect(self.update_freq)
+        self.pb_update_diff.clicked.connect(self.update_diff)
+        self.pb_update_pulses.clicked.connect(self.update_pulses)
+        self.pb_scan.clicked.connect(self.re_scan)
+        self.pb_store.clicked.connect(self.store)
+        self.le_kwh_total.setText(self.my_parent.le_pwr_total_1.text())
+
+        self.my_parent.coms_interface.send_data(COM_SEND_FREQ, True, MODULE_DE)
+        self.my_parent.coms_interface.send_data(COM_KWH_DIF, True, MODULE_DE)
+        self.my_parent.coms_interface.send_data(COM_READ_KWH, True, MODULE_DE)
+        self.my_parent.coms_interface.send_data(COM_PULSES, True, MODULE_DE)
+        self.le_pp_kw.setToolTip("Increase this value if software is ahead of actual meter, otherwise decrease")
+        self.my_parent.coms_interface.update_access_settings.connect(self.setting_received)
+
+    @pyqtSlot(str, float)
+    def setting_received(self, cmd, value):
+        if cmd == COM_KWH_DIF:
+            self.le_watts.setText(str(value * 1000))
+            self.watt_dif_org = value * 1000
+        elif cmd == COM_SEND_FREQ:
+            self.le_seconds.setText(str(value / 1000))
+            self.send_org = value / 1000
+        elif cmd == COM_PULSES:
+            self.pulses_pkw = int(value)
+            self.le_pp_kw.setText(str(self.pulses_pkw))
+
+    def re_scan(self):
+        self.my_parent.coms_interface.send_data(COM_SEND_FREQ, True, MODULE_DE)
+        self.my_parent.coms_interface.send_data(COM_KWH_DIF, True, MODULE_DE)
+        self.my_parent.coms_interface.send_data(COM_PULSES, True, MODULE_DE)
+
+    def update_freq(self):
+        v = float(self.le_seconds.text())
+        if v != self.send_org:
+            self.my_parent.coms_interface.send_data(CMD_SEND_FREQ, False, MODULE_DE, v * 1000)
+
+    def update_diff(self):
+        v = string_to_float(self.le_watts.text())
+        if v != self.watt_dif_org:
+            v /= 1000  # has to be split into 2 ints as network code does not pass floats
+            i = int(v)
+            d = int((v - i) * 1000)
+            self.my_parent.coms_interface.send_data(CMD_KWH_DIF, False, MODULE_DE, i, d)
+
+    def update_pulses(self):
+        v = string_to_float(self.le_pp_kw.text())
+        if v != self.pulses_pkw:
+            self.my_parent.coms_interface.send_data(CMD_SET_PULSES, False, MODULE_DE, int(v))
 
     def store(self):
         v = string_to_float(self.le_kwh_total.text())
