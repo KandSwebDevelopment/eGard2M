@@ -2723,7 +2723,7 @@ class DialogWorkshopSettings(QWidget, Ui_DialogWorkshopSetting):
     def change_duration(self):
         d = self.tm_duration.time()
         duration = ((d.hour() * 60) + d.minute())
-        self.output_controller.outputs[OUT_HEATER_ROOM].set_duration(duration)
+        self.output.set_duration(duration)
         self.main_panel.coms_interface.relay_send(NWC_WORKSHOP_DURATION)
 
 
@@ -2783,7 +2783,7 @@ class DialogWaterHeaterSettings(QWidget, Ui_DialogWaterHeatertSetting):
         self.output_controller.outputs[self.pin_id].set_frequency(f)
         self.output_controller.water_heater_update_info()
         self.main_panel.coms_interface.relay_send(NWC_WH_FREQUENCY, self.pin_id, f)
-        self.main_panel.coms_interface.relay_send(NWC_FEED_DATE, self.area)
+        # self.main_panel.coms_interface.relay_send(NWC_FEED_DATE, self.area)
 
     def change_off_time(self):
         t = self.tm_off.time()

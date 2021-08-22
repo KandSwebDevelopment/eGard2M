@@ -48,7 +48,7 @@ class OutputWorkshopHeater(OutputClass):
         if duration == self.duration:
             return
         self.duration = duration
-        self.db.set_config(CFT_WORKSHOP_HEATER, "duration", duration)
+        self.db.set_config_both(CFT_WORKSHOP_HEATER, "duration", duration)
 
     def switch_manual(self):
         if self.status == ON:
@@ -66,7 +66,7 @@ class OutputWorkshopHeater(OutputClass):
             else:
                 self.switch(OFF)
         if self.mode == 2:  # Auto with auto boost
-            if value >= self.max and self.remaining > 0:
+            if value <= self.max and self.remaining > 0:
                 self.switch(ON)
             else:
                 self.switch(OFF)

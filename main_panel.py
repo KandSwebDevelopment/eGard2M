@@ -85,7 +85,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.main_window.actionInternal.setEnabled(False)
             self.main_window.actionScales.setEnabled(False)
             self.main_window.actionStorage.setEnabled(False)
-            self.main_window.actionReconciliation.setEnabled(False)
+            self.main_window.actionReconcilation.setEnabled(False)
             self.main_window.actionLoading.setEnabled(False)
 
     def eventFilter(self, source, event):
@@ -928,7 +928,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         elif cmd == NWC_WH_FREQUENCY:
             self.area_controller.output_controller.water_heater_set_frequency(data[0], data[1])
         elif cmd == NWC_WORKSHOP_DURATION:
-            self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].set.duration()
+            self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].set_duration()
         elif cmd == NWC_WORKSHOP_BOOST:
             self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].auto_boost = data[0]
             self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].update_info()
