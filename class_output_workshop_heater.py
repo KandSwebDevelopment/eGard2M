@@ -19,10 +19,11 @@ class OutputWorkshopHeater(OutputClass):
         self.min = 0
         self.max_frost = 0
         self.min_frost = 0
-        self.auto_boost = int(self.db.get_config(CFT_WORKSHOP_HEATER, "auto boost", 1))
+        self.auto_boost = 0
         self.duration = int(self.db.get_config(CFT_WORKSHOP_HEATER, "duration", 30))
-        self.frost = int(self.db.get_config(CFT_WORKSHOP_HEATER, "frost", 1))
+        self.frost = 0
         self.load_ranges()
+        self.load_settings()
         self.boost_timer = QTimer()
         self.boost_timer.timeout.connect(self.boost_timer_update)
         self.remaining = 0
@@ -36,6 +37,10 @@ class OutputWorkshopHeater(OutputClass):
         else:
             self.boost_timer.stop()
             self.remaining = 0
+
+    def load_settings(self):
+        self.auto_boost = int(self.db.get_config(CFT_WORKSHOP_HEATER, "auto boost", 1))
+        self.frost = int(self.db.get_config(CFT_WORKSHOP_HEATER, "frost", 1))
 
     def load_ranges(self):
         self.max = string_to_float(self.db.get_config(CFT_WORKSHOP_HEATER, "high", 19.5))

@@ -2789,7 +2789,7 @@ class DialogWorkshopSettings(QWidget, Ui_DialogWorkshopSetting):
             return
         self.output.max_frost = m
         self.output.update_info()
-        self.db.set_config_both(CFT_WORKSHOP_HEATER, "frost_max", m)
+        self.db.set_config_both(CFT_WORKSHOP_HEATER, "frost max", m)
         self.main_panel.coms_interface.relay_send(NWC_WORKSHOP_RANGES)
 
     def change_min_frost(self):
@@ -2798,12 +2798,13 @@ class DialogWorkshopSettings(QWidget, Ui_DialogWorkshopSetting):
             return
         self.output.min_frost = m
         self.output.update_info()
-        self.db.set_config_both(CFT_WORKSHOP_HEATER, "frost_min", m)
+        self.db.set_config_both(CFT_WORKSHOP_HEATER, "frost min", m)
         self.main_panel.coms_interface.relay_send(NWC_WORKSHOP_RANGES)
 
     def change_frost(self):
         f = int(self.ck_frost.isChecked())
         self.output.change_frost(f)
+        self.main_panel.coms_interface.relay_send(NWC_WORKSHOP_FROST, f)
 
     def change_boost(self):
         b = int(self.ck_auto_boost.isChecked())
