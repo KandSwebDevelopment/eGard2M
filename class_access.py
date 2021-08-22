@@ -1,6 +1,7 @@
 from PyQt5.QtCore import QObject, QTimer, pyqtSignal, pyqtSlot
 from defines import *
 # from eGard import MainWindow
+from functions import sound_click
 
 
 class Access(QObject):
@@ -166,10 +167,12 @@ class Access(QObject):
     def open(self):
         self.add_status(ACM_OPENING)
         self.my_parent.coms_interface.send_switch(SW_COVER_LOCK, OFF_RELAY, MODULE_DE)
+        sound_click()
 
     def close_cover(self):
         self.add_status(ACM_CLOSING)
         self.my_parent.coms_interface.send_switch(SW_DOOR_LOCK, ON_RELAY, MODULE_DE)
+        sound_click()
 
     def add_status(self, status_to_add):
         self.status |= status_to_add

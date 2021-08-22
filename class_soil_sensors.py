@@ -14,7 +14,7 @@ class SoilSensorClass(QObject):
         @type parent: pClass
         """
         super(SoilSensorClass, self).__init__()
-        self.areas_controller = parent
+        self.area_controller = parent
         self.db = parent.db
 
         self.soil_sensors_status = collections.defaultdict()  # Hold soil sensor status
@@ -23,7 +23,7 @@ class SoilSensorClass(QObject):
 
         self.load_status()
 
-        self.areas_controller.main_window.coms_interface.update_soil_reading.connect(self.calculate_soil)
+        self.area_controller.main_window.coms_interface.update_soil_reading.connect(self.calculate_soil)
 
     def load_status(self):
         for x in range(1, 9):

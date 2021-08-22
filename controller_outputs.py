@@ -16,13 +16,13 @@ class OutputController(QObject):
         :type parent: _main
         """
         super(OutputController, self).__init__()
-        self.areas_controller = parent     # Areas controller
-        self.db = self.areas_controller.db
+        self.area_controller = parent     # Areas controller
+        self.db = self.area_controller.db
         self.main_panel = parent.main_panel
         self.master_mode = self.main_panel.master_mode
         self.outputs = collections.defaultdict(OutputClass)
 
-        self.areas_controller.main_window.coms_interface.update_switch.connect(self.switch_update)
+        self.area_controller.main_window.coms_interface.update_switch.connect(self.switch_update)
         # sql = 'SELECT name, area, type, input, range, pin, short_name, item FROM {}'.format(DB_OUTPUTS)
         # rows = self.db.execute(sql)
         # for row in rows:
@@ -49,9 +49,9 @@ class OutputController(QObject):
                     self.outputs[oid] = OutputClass(self, row[0])   # ID used for controls id
             self.outputs[oid].load_profile()
             if self.outputs[oid].input_sensor > 0:
-                self.areas_controller.sensors[self.outputs[oid].input_sensor].set_action_handler(self.outputs[oid])  # Link sensor to output
+                self.area_controller.sensors[self.outputs[oid].input_sensor].set_action_handler(self.outputs[oid])  # Link sensor to output
             if self.master_mode == SLAVE:
-                self.areas_controller.main_window.coms_interface.relay_send(NWC_SWITCH_REQUEST, oid)
+                self.area_controller.main_window.coms_interface.relay_send(NWC_SWITCH_REQUEST, oid)
                 print("out request ", oid)
 
     def check_water_heaters(self):
@@ -95,15 +95,22 @@ class OutputController(QObject):
         sound_click()
 
     def set_last_feed_date(self, lfd):
-        self.areas_controller.main_window.feed_controller.set_last_feed_date(lfd)
+        self.area_controller.main_window.feed_controller.set_last_feed_date(lfd)
 
     def set_limits(self, op_id, low, high):
         self.outputs[op_id].set_limits(low, high)
 
     @pyqtSlot(int, int, int, name="updateSwitch")
     def switch_update(self, sw, state, module):
-        if sw in self.outputs:
-            self.outputs[sw].switch_update(state)
+        if module == MODULE_IO:
+            if sw in self.outputs:
+                self.outputs[sw].switch_update(state)
+        elif module == MODULE_DE:
+            if sw == SW_COVER_OPEN:
+                if self.outputs[OUT_HEATER_ROOM].auto_boost:
+                    self.outputs[OUT_HEATER_ROOM].switch_update(ON)
+            elif sw == SW_COVER_CLOSE:
+                self.outputs[OUT_HEATER_ROOM].switch_update(OFF)
 
     def update_info(self, op_id):
         self.outputs[op_id].update_info()
@@ -111,8 +118,8 @@ class OutputController(QObject):
     def water_heater_update_info(self):
         """ This should be called any time the feed date changes
             It updates the days_till_feed, displays it and relays to other pc"""
-        d = min(self.areas_controller.main_window.feed_controller.days_till_feed(1),
-                self.areas_controller.main_window.feed_controller.days_till_feed(2))
+        d = min(self.area_controller.main_window.feed_controller.days_till_feed(1),
+                self.area_controller.main_window.feed_controller.days_till_feed(2))
         self.outputs[OUT_WATER_HEATER_1].set_days_till_feed(d)
         self.outputs[OUT_WATER_HEATER_2].set_days_till_feed(d)
 

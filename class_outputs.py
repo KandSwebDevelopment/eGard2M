@@ -1,5 +1,5 @@
 from PyQt5 import QtGui, QtCore
-from PyQt5.QtCore import QObject, pyqtSignal, QTimer
+from PyQt5.QtCore import QObject, pyqtSignal, QTimer, pyqtSlot
 from datetime import timedelta, datetime
 
 from PyQt5.QtGui import QIcon, QPixmap
@@ -68,7 +68,7 @@ class OutputClass(QObject):
         self.output_pin = row[5]
         self.short_name = row[6]
         self.has_process = False
-        if self.area < 4 and self.output_controller.areas_controller.area_has_process(self.area):
+        if self.area < 4 and self.output_controller.area_controller.area_has_process(self.area):
             self.has_process = True
         self.tooltip = row[0] + "<br>Type:" + str(row[2]) + " Sensor:" + str(row[3])
         self._check()
@@ -82,7 +82,7 @@ class OutputClass(QObject):
         self.update_control(self.status)
 
     def load_ranges(self):
-        s, hi, lo = self.output_controller.areas_controller.sensors[self.input_sensor].get_set_temperatures()
+        s, hi, lo = self.output_controller.area_controller.sensors[self.input_sensor].get_set_temperatures()
         range_ = self.db.execute_single('SELECT `range` FROM {} WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
         self.temp_on = lo
         self.temp_off = s
@@ -189,17 +189,17 @@ class OutputClass(QObject):
             return
         if self.mode == 5:  # Day
             if self.area == 1 and self.has_process:
-                self.switch(self.output_controller.areas_controller.get_area_process(1).get_light_status())
+                self.switch(self.output_controller.area_controller.get_area_process(1).get_light_status())
                 return
             if self.area == 2 and self.has_process:
-                self.switch(self.output_controller.areas_controller.get_area_process(2).get_light_status())
+                self.switch(self.output_controller.area_controller.get_area_process(2).get_light_status())
                 return
         if self.mode == 6:  # Night
             if self.area == 1 and self.has_process:
-                self.switch(1 - self.output_controller.areas_controller.get_area_process(1).get_light_status())
+                self.switch(1 - self.output_controller.area_controller.get_area_process(1).get_light_status())
                 return
             if self.area == 2 and self.has_process:
-                self.switch(1 - self.output_controller.areas_controller.get_area_process(2).get_light_status())
+                self.switch(1 - self.output_controller.area_controller.get_area_process(2).get_light_status())
                 return
 
     def check(self, value):
@@ -239,7 +239,7 @@ class OutputClass(QObject):
         if state is None:
             state = int(not self.status)
         if state != self.status_last and self.output_controller.master_mode == MASTER:
-            self.output_controller.areas_controller.main_window.coms_interface.send_switch(self.output_pin, state)
+            self.output_controller.area_controller.main_window.coms_interface.send_switch(self.output_pin, state)
             # @Todo Add to event log
 
     def switch_hard(self, state=None):
@@ -249,8 +249,7 @@ class OutputClass(QObject):
         """
         if state is None:
             state = int(not self.status)
-        # if state != self.status_last and self.output_controller.master_mode == MASTER:
-        self.output_controller.areas_controller.main_window.coms_interface.send_switch(self.output_pin, state)
+        self.output_controller.area_controller.main_window.coms_interface.send_switch(self.output_pin, state)
         # @Todo Add to event log
 
     def switch_update(self, state):
@@ -355,13 +354,13 @@ class OutputClass(QObject):
                 if self.input_sensor < 0:
                     ctrl.setPixmap(QtGui.QPixmap(":/normal/none.png"))
                 else:
-                    if self.output_controller.areas_controller.sensors[self.input_sensor].short_name.find("Hum") == 0:
+                    if self.output_controller.area_controller.sensors[self.input_sensor].short_name.find("Hum") == 0:
                         ctrl.setPixmap(QtGui.QPixmap(":/normal/065-humidity.png"))
-                    elif self.output_controller.areas_controller.sensors[self.input_sensor].short_name.find("Roo") == 0:
+                    elif self.output_controller.area_controller.sensors[self.input_sensor].short_name.find("Roo") == 0:
                         ctrl.setPixmap(QtGui.QPixmap(":/normal/061-care.png"))
-                    elif self.output_controller.areas_controller.sensors[self.input_sensor].short_name.find("Pro") == 0:
+                    elif self.output_controller.area_controller.sensors[self.input_sensor].short_name.find("Pro") == 0:
                         ctrl.setPixmap(QtGui.QPixmap(":/normal/067-leaf.png"))
-                    elif self.output_controller.areas_controller.sensors[self.input_sensor].short_name.find("Cor") == 0:
+                    elif self.output_controller.area_controller.sensors[self.input_sensor].short_name.find("Cor") == 0:
                         ctrl.setPixmap(QtGui.QPixmap(":/normal/062-plant.png"))
 
             if self.mode == 2 or self.mode == 4:

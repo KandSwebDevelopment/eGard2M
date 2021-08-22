@@ -2692,6 +2692,7 @@ class DialogWorkshopSettings(QWidget, Ui_DialogWorkshopSetting):
         h = self.output.duration / 60
         m = self.output.duration % 60
         self.tm_duration.setTime(QTime(h, m))
+        self.tm_duration.timeChanged.connect(self.change_duration)
 
     def change_frost(self):
         f = int(self.ck_frost.isChecked())
@@ -2718,6 +2719,12 @@ class DialogWorkshopSettings(QWidget, Ui_DialogWorkshopSetting):
             self.le_max.setText(str(off))
         self.output_controller.set_limits(self.pin_id, on, off)
         self.main_panel.coms_interface.relay_send(NWC_OUTPUT_RANGE, self.pin_id)
+
+    def change_duration(self):
+        d = self.tm_duration.time()
+        duration = ((d.hour() * 60) + d.minute())
+        self.output_controller.outputs[OUT_HEATER_ROOM].set_duration(duration)
+        self.main_panel.coms_interface.relay_send(NWC_WORKSHOP_DURATION)
 
 
 class DialogWaterHeaterSettings(QWidget, Ui_DialogWaterHeatertSetting):

@@ -344,14 +344,15 @@ class CommunicationInterface(QObject):
             self.update_que_status.emit(int(prams[0]), int(prams[1]), int(prams[2]), int(prams[3]))
         # No prams
         elif command == NWC_WORKSHOP_HEATER or \
-                command == NWC_DRYING_AREA or \
-                command == NWC_WH_DURATION or \
-                command == NWC_MOVE_TO_FINISHING or \
-                command == NWC_CHANGE_TO_FLUSHING or \
-                command == NWC_SLAVE_START or \
-                command == NWC_MESSAGE or \
-                command == NWC_STAGE_ADJUST or \
                 command == NWC_ACCESS_BOOST or \
+                command == NWC_DRYING_AREA or \
+                command == NWC_CHANGE_TO_FLUSHING or \
+                command == NWC_MOVE_TO_FINISHING or \
+                command == NWC_MESSAGE or \
+                command == NWC_SLAVE_START or \
+                command == NWC_STAGE_ADJUST or \
+                command == NWC_WH_DURATION or \
+                command == NWC_WORKSHOP_DURATION or \
                 command == NWC_SOIL_LOAD:
             self.update_from_relay.emit(command, [])
         # 1 pram

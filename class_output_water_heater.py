@@ -11,7 +11,7 @@ class OutputWaterHeater(OutputClass):
         super().__init__(parent, o_id)
         self .on_time = datetime.now()      # Just to stop errors on initial loading
         self.output_controller = parent
-        self.output_controller.areas_controller.main_window.coms_interface.update_float_switch.connect(self.float_update)
+        self.output_controller.area_controller.main_window.coms_interface.update_float_switch.connect(self.float_update)
         self.float = FLOAT_UP
         self.is_feeding = False     # Set true if float goes down during feed time
         self.advance = 0    # For mode advance 0=Not used, 1=On till next off, 2=off till next on
@@ -66,15 +66,15 @@ class OutputWaterHeater(OutputClass):
                 self.switch(OFF)
                 # Check to see if we are in feed window
                 if datetime.now().time() >= (self.off_time - timedelta(hours=self.feed_tol)).time():
-                    self.output_controller.areas_controller.main_window.msg_sys.\
+                    self.output_controller.area_controller.main_window.msg_sys.\
                         add("Heater {} Off for feeding".format(tank), MSG_FLOAT_FEEDING + self.ctrl_id - 1, WARNING)
                     self.is_feeding = True
                 else:
-                    self.output_controller.areas_controller.main_window.msg_sys.\
+                    self.output_controller.area_controller.main_window.msg_sys.\
                         add("Tank {} Empty".format(tank), MSG_FLOAT + self.ctrl_id - 1, WARNING)
             if position == FLOAT_UP:
-                self.output_controller.areas_controller.main_window.msg_sys.remove(MSG_FLOAT + self.ctrl_id - 1)
-                self.output_controller.areas_controller.main_window.msg_sys.remove(MSG_FLOAT_HEATER + self.ctrl_id - 1)
+                self.output_controller.area_controller.main_window.msg_sys.remove(MSG_FLOAT + self.ctrl_id - 1)
+                self.output_controller.area_controller.main_window.msg_sys.remove(MSG_FLOAT_HEATER + self.ctrl_id - 1)
 
     def load_profile(self):
         row = self.db.execute_one_row('SELECT `name`, `area`, `type`, `input`, `range`, `pin`, `short_name`, '
@@ -90,8 +90,8 @@ class OutputWaterHeater(OutputClass):
         self.output_pin = row[5]
         self.short_name = row[6]
 
-        if self.output_controller.areas_controller.area_has_process(1) or\
-                self.output_controller.areas_controller.area_has_process(2):
+        if self.output_controller.area_controller.area_has_process(1) or\
+                self.output_controller.area_controller.area_has_process(2):
             self.has_process = True
         self._check()
         self.update_control(self.status)
@@ -103,14 +103,14 @@ class OutputWaterHeater(OutputClass):
                 self.switch(OFF)
             else:
                 if self.mode > 0:
-                    self.output_controller.areas_controller.main_window.msg_sys.\
+                    self.output_controller.area_controller.main_window.msg_sys.\
                         add("Tank {} Empty".format(self.area), MSG_FLOAT + self.ctrl_id - 1, WARNING)
                 else:
-                    self.output_controller.areas_controller.main_window.msg_sys.remove(MSG_FLOAT + self.ctrl_id - 1)
-                self.output_controller.areas_controller.main_window.msg_sys.remove(MSG_FLOAT_HEATER + self.ctrl_id - 1)
+                    self.output_controller.area_controller.main_window.msg_sys.remove(MSG_FLOAT + self.ctrl_id - 1)
+                self.output_controller.area_controller.main_window.msg_sys.remove(MSG_FLOAT_HEATER + self.ctrl_id - 1)
         else:
-            self.output_controller.areas_controller.main_window.msg_sys.remove(MSG_FLOAT + self.ctrl_id - 1)
-            self.output_controller.areas_controller.main_window.msg_sys.remove(MSG_FLOAT_HEATER + self.ctrl_id - 1)
+            self.output_controller.area_controller.main_window.msg_sys.remove(MSG_FLOAT + self.ctrl_id - 1)
+            self.output_controller.area_controller.main_window.msg_sys.remove(MSG_FLOAT_HEATER + self.ctrl_id - 1)
 
         try:
             self._check()
@@ -120,7 +120,7 @@ class OutputWaterHeater(OutputClass):
                 if datetime.now().time() >= self.off_time.time():
                     self.switch(OFF)
                     if self.is_feeding:
-                        self.output_controller.areas_controller.main_window.msg_sys.remove(
+                        self.output_controller.area_controller.main_window.msg_sys.remove(
                             MSG_FLOAT_FEEDING + self.ctrl_id - 1)
                 elif datetime.now().time() >= self.on_time.time():
                     if not self.is_feeding:
@@ -141,17 +141,17 @@ class OutputWaterHeater(OutputClass):
         """
         if self.float == FLOAT_DOWN and state == ON:
             if not self.is_feeding:
-                self.output_controller.areas_controller.main_window.msg_sys. \
+                self.output_controller.area_controller.main_window.msg_sys. \
                     add("Tank {} Empty. Heater Required".format(self.area), MSG_FLOAT_HEATER + self.ctrl_id - 1, WARNING)
-            if self.output_controller.areas_controller.main_window.msg_sys.has_msg_id(MSG_FLOAT + self.ctrl_id - 1):
-                self.output_controller.areas_controller.main_window.msg_sys.remove(MSG_FLOAT + self.ctrl_id - 1)
-            self.output_controller.areas_controller.main_window.coms_interface.send_switch(self.output_pin, OFF)
+            if self.output_controller.area_controller.main_window.msg_sys.has_msg_id(MSG_FLOAT + self.ctrl_id - 1):
+                self.output_controller.area_controller.main_window.msg_sys.remove(MSG_FLOAT + self.ctrl_id - 1)
+            self.output_controller.area_controller.main_window.coms_interface.send_switch(self.output_pin, OFF)
             return
 
         if state is None:
             state = int(not self.status)
         if state != self.status_last:
-            self.output_controller.areas_controller.main_window.coms_interface.send_switch(self.output_pin, state)
+            self.output_controller.area_controller.main_window.coms_interface.send_switch(self.output_pin, state)
             # @Todo Add to event log
         self.status = state
         self.status_last = state

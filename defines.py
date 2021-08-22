@@ -323,6 +323,7 @@ NWC_SWITCH = "switch"                       # switch number, on or off
 NWC_SWITCH_REQUEST = "request switch"       # Request the actual position of the switch, pin number
 NWC_SOIL_LOAD = "soil_load"                 # Reload soil sensors
 NWC_WORKSHOP_BOOST = "workshop_boost"       # Workshop heater auto boost setting changed, boost setting
+NWC_WORKSHOP_DURATION = "workshop duration"  # Workshop duration has changed
 NWC_WORKSHOP_HEATER = "workshop_heater"     # Reload workshop heater settings
 NWC_WH_DURATION = "water heater duration"   # The water heater duration has changed, heater pin id, new duration in minutes
 NWC_WH_FREQUENCY = "water heater frequency"  # The water heater frequency has changed, heater pin id, new freq in days
@@ -472,6 +473,7 @@ SR_FINISH_C = 13
 # Switch pins
 SW_LIGHT_1 = 0
 SW_LIGHT_2 = 1
+SW_WORKSHOP = 2
 SW_WATER_HEATER_1 = 6
 SW_WATER_HEATER_2 = 5
 SW_WATER_MAINS_1 = 13

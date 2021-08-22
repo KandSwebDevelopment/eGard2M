@@ -291,7 +291,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.area_controller.fan_controller.update_fans_mode.connect(self.update_fan_mode)
 
     def test(self):
-        se
+        self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].boost_start()
 
     def update_next_feeds(self):
         """
@@ -927,6 +927,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.area_controller.output_controller.outputs[data[0]].set_duration(data[1])
         elif cmd == NWC_WH_FREQUENCY:
             self.area_controller.output_controller.water_heater_set_frequency(data[0], data[1])
+        elif cmd == NWC_WORKSHOP_DURATION:
+            self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].set.duration()
         elif cmd == NWC_WORKSHOP_BOOST:
             self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].auto_boost = data[0]
             self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].update_info()
