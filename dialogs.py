@@ -2756,10 +2756,46 @@ class DialogWorkshopSettings(QWidget, Ui_DialogWorkshopSetting):
             self.le_max_frost.setEnabled(False)
         self.le_max.setText(str(self.output.max))
         self.le_min.setText(str(self.output.min))
+        self.le_max.editingFinished.connect(self.change_max)
+        self.le_min.editingFinished.connect(self.change_min)
+        self.le_max_frost.editingFinished.connect(self.change_max_frost)
+        self.le_min_frost.editingFinished.connect(self.change_min_frost)
         h = self.output.duration / 60
         m = self.output.duration % 60
         self.tm_duration.setTime(QTime(h, m))
         self.tm_duration.timeChanged.connect(self.change_duration)
+
+    def change_max(self):
+        m = string_to_float(self.le_max.text())
+        if m == self.output.max:
+            self.output.max = m
+            self.output.update_info()
+        self.db.set_config_both(CFT_WORKSHOP_HEATER, "high", m)
+        self.main_panel.coms_interface.relay_send(NWC_WORKSHOP_RANGES)
+
+    def change_min(self):
+        m = string_to_float(self.le_min.text())
+        if m == self.output.min:
+            self.output.min = m
+            self.output.update_info()
+        self.db.set_config_both(CFT_WORKSHOP_HEATER, "low", m)
+        self.main_panel.coms_interface.relay_send(NWC_WORKSHOP_RANGES)
+
+    def change_max_frost(self):
+        m = string_to_float(self.le_max_frost.text())
+        if m == self.output.max_frost:
+            self.output.max_frost = m
+            self.output.update_info()
+        self.db.set_config_both(CFT_WORKSHOP_HEATER, "frost_max", m)
+        self.main_panel.coms_interface.relay_send(NWC_WORKSHOP_RANGES)
+
+    def change_min_frost(self):
+        m = string_to_float(self.le_min_frost.text())
+        if m == self.output.min_frost:
+            self.output.min_frost = m
+            self.output.update_info()
+        self.db.set_config_both(CFT_WORKSHOP_HEATER, "frost_min", m)
+        self.main_panel.coms_interface.relay_send(NWC_WORKSHOP_RANGES)
 
     def change_frost(self):
         f = int(self.ck_frost.isChecked())

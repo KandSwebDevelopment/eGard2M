@@ -15,20 +15,18 @@ class OutputWorkshopHeater(OutputClass):
         self.output_controller = parent
         # self.output_controller.area_controller.main_window.coms_interface.update_float_switch.connect(self.float_update)
 
+        self.max = 0
+        self.min = 0
+        self.max_frost = 0
+        self.min_frost = 0
         self.auto_boost = int(self.db.get_config(CFT_WORKSHOP_HEATER, "auto boost", 1))
-        self.max = string_to_float(self.db.get_config(CFT_WORKSHOP_HEATER, "high", 19.5))
-        self.min = string_to_float(self.db.get_config(CFT_WORKSHOP_HEATER, "low", 10))
         self.duration = int(self.db.get_config(CFT_WORKSHOP_HEATER, "duration", 30))
         self.frost = int(self.db.get_config(CFT_WORKSHOP_HEATER, "frost", 1))
-        self.min_frost = int(self.db.get_config(CFT_WORKSHOP_HEATER, "frost min", 2))
-        self.max_frost = int(self.db.get_config(CFT_WORKSHOP_HEATER, "frost max", 6))
+        self.load_ranges()
         self.boost_timer = QTimer()
         self.boost_timer.timeout.connect(self.boost_timer_update)
         self.remaining = 0
         # self.output_controller.area_controller.main_window.coms_interface.update_switch.connect(self.switch_auto_boost)
-
-    # def switch_auto_boost(self):
-    #     print("Workshop A sw was detected")
 
     def switch_update(self, state):
         OutputClass.switch_update(self, state)
@@ -38,6 +36,13 @@ class OutputWorkshopHeater(OutputClass):
         else:
             self.boost_timer.stop()
             self.remaining = 0
+
+    def load_ranges(self):
+        self.max = string_to_float(self.db.get_config(CFT_WORKSHOP_HEATER, "high", 19.5))
+        self.min = string_to_float(self.db.get_config(CFT_WORKSHOP_HEATER, "low", 10))
+        self.min_frost = int(self.db.get_config(CFT_WORKSHOP_HEATER, "frost min", 2))
+        self.max_frost = int(self.db.get_config(CFT_WORKSHOP_HEATER, "frost max", 6))
+        self.update_info()
 
     def set_duration(self, duration=None):
         """ Set timer duration and update display

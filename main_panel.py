@@ -168,13 +168,6 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         if self.master_mode == MASTER:
             self.coms_interface.send_command(NWC_SENSOR_READ)
         self.check_light()
-        # if self.master_mode == MASTER:
-        #     if self.process_is_at_location(1):
-        #         if not self.fans[1].isRunning():
-        #             self.lefanspeed_1.setStyleSheet("background-color: red; color: yellow")
-        #     if self.process_is_at_location(2):
-        #         if not self.fans[2].isRunning():
-        #             self.lefanspeed_2.setStyleSheet("background-color: red; color: yellow")
         # if self.master_mode == SLAVE:
         #     self.slave_counter += 1
         #     if self.slave_counter > 6:
@@ -923,6 +916,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.area_controller.output_controller.outputs[data[0]].set_duration(data[1])
         elif cmd == NWC_WH_FREQUENCY:
             self.area_controller.output_controller.water_heater_set_frequency(data[0], data[1])
+        elif cmd == NWC_WORKSHOP_RANGES:
+            self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].load_ranges()
         elif cmd == NWC_WORKSHOP_DURATION:
             self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].set_duration()
         elif cmd == NWC_WORKSHOP_BOOST:

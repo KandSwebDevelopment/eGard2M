@@ -353,6 +353,7 @@ class CommunicationInterface(QObject):
                 command == NWC_STAGE_ADJUST or \
                 command == NWC_WH_DURATION or \
                 command == NWC_WORKSHOP_DURATION or \
+                command == NWC_WORKSHOP_RANGES or \
                 command == NWC_SOIL_LOAD:
             self.update_from_relay.emit(command, [])
         # 1 pram

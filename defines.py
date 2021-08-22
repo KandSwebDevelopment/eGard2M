@@ -325,6 +325,7 @@ NWC_SOIL_LOAD = "soil_load"                 # Reload soil sensors
 NWC_WORKSHOP_BOOST = "workshop_boost"       # Workshop heater auto boost setting changed, boost setting
 NWC_WORKSHOP_DURATION = "workshop duration"  # Workshop duration has changed
 NWC_WORKSHOP_HEATER = "workshop_heater"     # Reload workshop heater settings
+NWC_WORKSHOP_RANGES = "workshop_ranges"     # Reload workshop max, mix and frost values
 NWC_WH_DURATION = "water heater duration"   # The water heater duration has changed, heater pin id, new duration in minutes
 NWC_WH_FREQUENCY = "water heater frequency"  # The water heater frequency has changed, heater pin id, new freq in days
 NWC_WH_FLOAT_USE = "water heater float use"  # The water heater float use has changed, heater pin id, in use
