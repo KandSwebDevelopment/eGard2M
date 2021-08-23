@@ -871,14 +871,15 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         #     self.logger.new_day()
         # self.outputs[OP_W_HEATER_1].new_day()
         # self.outputs[OP_W_HEATER_2].new_day()
-        for a in range(1, 4):
+        for a in range(1, 3):
             if self.area_controller.area_has_process(a):
                 # Advance day in processes
                 p = self.area_controller.get_area_process(a)
                 p.day_advance()
                 self.check_stage(a)
-                # if p.is_feed_due_today():
-                #     self.feed_today = True
+        if self.area_controller.area_has_process(a):
+            self.check_stage(3)
+
         self.feed_controller.new_day()
         # Update next feed dates
         self.update_next_feeds()

@@ -31,7 +31,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super(MainWindow, self).__init__()
 
         self.setupUi(Application)
-        self.resize(2000, 1800)
+        self.resize(1250, 975)
         self.db = MysqlDB()
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Warning)
