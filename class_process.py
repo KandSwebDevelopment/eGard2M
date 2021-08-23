@@ -747,7 +747,7 @@ class ProcessClass(QObject):
                 # print("Running")
             else:
                 # print("Stopped 1")
-                self.running = False
+                self.running = True     # @ToDo if process is not in valid location this should return false
         else:
             self.running = False
 

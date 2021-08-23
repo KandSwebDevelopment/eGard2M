@@ -60,7 +60,7 @@ class SensorClass(object):
             if p != 0:
                 p.load_active_temperature_ranges()
                 r = p.temperature_ranges_active
-                if r is not None:
+                if len(r) > 0:
                     r = r[self.item]
                     self.set_range(r)
                     ro = p.temperature_ranges_active_org[self.item]
