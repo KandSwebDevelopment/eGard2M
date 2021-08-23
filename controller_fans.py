@@ -37,9 +37,14 @@ class FansController(QObject):
         self.area_controller.main_window.coms_interface.update_switch.connect(self.switch_update)
 
     def speed_update(self, fan, speed):
-        """ Used by slave to keep display updated """
+        """ A new fan speed has been received from the IO
+            Just update the display and relay the speed"""
+        if fan == 1:
+            self.main_panel.lefanspeed_1.setText(str(speed))
+        elif fan == 2:
+            self.main_panel.lefanspeed_2.setText(str(speed))
         self.fans[fan].update_speed(speed)
-        self.update_fans_speed.emit(fan, self.get_speed(fan))
+        self.coms_interface.relay_send(NWC_FAN_SPEED, fan, speed)
 
     def get_mode(self, area):
         return self.fans[area].mode

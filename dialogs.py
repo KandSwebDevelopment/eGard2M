@@ -2691,7 +2691,7 @@ class DialogFan(QDialog, Ui_DialogFan):
         @type speed: int
         """
         self.fan_controller.set_speed(self.id, speed)
-        self.main_panel.coms_interface.relay_send(NWC_FAN_SPEED, self.id, speed)
+        # self.main_panel.coms_interface.relay_send(NWC_FAN_SPEED, self.id, speed)
 
     def change_mode(self):
         mode = self.cb_mode.currentData()

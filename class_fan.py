@@ -33,7 +33,7 @@ class FanClass(QThread):
         self._master_power = 0
         self.fan_spin_up = int(self.db.get_config(CFT_FANS, "spin up", 10))
         self.startup_timer = QTimer()
-        self.startup_timer.timeout.connect(self.spin_up_finished)
+        self.startup_timer.timeout.connect(self.spin_up_timeout)
         self.startup_timer.setInterval(1000)
         self.startup_counter = 0
         self.spin_up = False     # True when fan is in spin up mode
@@ -122,8 +122,17 @@ class FanClass(QThread):
     #     # self.fan_controller.update_fans_sensor()
 
     def update_speed(self, speed):
-        """ This updates the speed without switching and is used by slave to keep display up to date"""
+        """ This updates the class with the new speed received back from IO, called by fan_controller"""
         self._speed = speed
+        if self.spin_up and self.last_speed <= 0:
+            self.startup_counter = self.fan_spin_up
+            self.startup_timer.start()
+            getattr(self.fan_controller.main_panel, "lefanspeed_{}".format(self.id)).setStyleSheet("background-color: Yellow;")
+
+        # self.update_fan_speed.emit(self.id, speed)
+        print("Fan {} switched to speed {} at temperature {}".format(self.id, self._speed, self.input))
+        getattr(self.fan_controller.main_panel, "lefanspeed_{}".format(self.id)).setText(str(speed))
+        self.last_speed = self._speed
 
     @property
     def speed(self):
@@ -190,11 +199,8 @@ class FanClass(QThread):
     def start_manual(self):
         if self.speed > 0:
             return
-        self.fan_controller.area_controller.main_window.msg_sys.\
-            add("Fan {} starting".format(self.id), MSG_FAN_START + self.id, INFO)
         self.switch(5)
         self.spin_up = True
-        self.startup_timer.start()
         self.mode = 1
 
     def run(self) -> None:
@@ -215,27 +221,26 @@ class FanClass(QThread):
             s = int((10 - s) / 5) + 1
             self.switch(s)
 
-    def spin_up_finished(self):
-        if self.startup_counter >= self.fan_spin_up:
+    def spin_up_timeout(self):
+        if self.startup_counter <= 0:
             self.spin_up = False
             self.switch(2)
             self.startup_timer.stop()
             self.fan_controller.area_controller.main_window.msg_sys.remove(MSG_FAN_START + self.id)
+            getattr(self.fan_controller.main_panel, "lefanspeed_{}".format(self.id)).setStyleSheet("")
+            getattr(self.fan_controller.main_panel, "lefanspeed_{}".format(self.id)).setText(str(self.speed))
+
             return
-        self.startup_counter += 1
-        self.update_fan_speed.emit(self.id, self.startup_counter - self.fan_spin_up)
+        self.startup_counter -= 1
+        # self.update_fan_speed.emit(self.id, self.startup_counter)
+        getattr(self.fan_controller.main_panel, "lefanspeed_{}".format(self.id)).setText(str(self.startup_counter))
 
     def switch(self, speed):
         if speed == self.last_speed:
             return
         if self.spin_up:
             return
-        # self.update_fan_speed.emit(self.id, speed)
-        self._speed = speed
-        print("Fan {} switched to speed {} at temperature {}".format(self.id, self._speed, self.input))
         self.fan_controller.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, self.id, speed)
-        self.fan_controller.coms_interface.relay_send(NWC_FAN_SPEED, self.id, speed)
-        self.last_speed = self._speed
 
     def _load_set_point(self):
         if self._sensor == 0:
