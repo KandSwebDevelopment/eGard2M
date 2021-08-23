@@ -727,6 +727,11 @@ class ProcessClass(QObject):
                     DB_PROCESS_ADJUSTMENTS, PA_STAGE_DAY_ADJUST, self.id)
                 self.db.execute_write(sql)
 
+            # Clear from drying table
+            sql = "DELETE FROM {}".format(DB_PROCESS_ADJUSTMENTS)
+            print(sql)
+            self.db.execute_write(sql)
+
             # Feed liters
             # if self.location < 3:
             #     sql = "UPDATE {} SET itemid = 0, offset = 0 WHERE item = {} id = {} LIMIT 1".format(

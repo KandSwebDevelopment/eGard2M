@@ -53,7 +53,22 @@ class AreaController(QObject):
                 for row in rows:
                     items.append(row[1])
                 self.areas_items[area] = items
-
+                if area == 3:
+                    for i in range(1, 9):
+                        getattr(self.main_panel, "pb_pm2_%i" % i).setText("")
+                    for i in self.get_area_items(3):
+                        getattr(self.main_panel, "pb_pm2_%i" % i).setEnabled(True)
+                        name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
+                                                      "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
+                                                      .format(DB_STRAINS, DB_PROCESS_STRAINS,
+                                                              self.areas_pid[3], i))
+                        getattr(self.main_panel, "pb_pm2_%i" % i).setText(str(i))
+                        getattr(self.main_panel, "pb_pm2_%i" % i).setToolTip(name)
+                else:  # No process in 3 so disable the finish buttons
+                    for i in range(1, 9):
+                        getattr(self.main_panel, "pb_pm2_%i" % i).setEnabled(False)
+                        getattr(self.main_panel, "pb_pm2_%i" % i).setText("")
+                        getattr(self.main_panel, "pb_pm2_%i" % i).setToolTip("")
             else:
                 # No process
                 self.areas_pid[area] = 0
@@ -99,7 +114,6 @@ class AreaController(QObject):
             for row in rows:
                 items.append(row[1])
             self.areas_items[area] = items
-
         else:
             # No process
             self.areas_pid[area] = 0
@@ -115,7 +129,6 @@ class AreaController(QObject):
                     self.main_window.coms_interface.send_switch(OUT_LIGHT_1 - 1 + area, 1, MODULE_IO)
                 else:
                     self.main_window.coms_interface.send_switch(OUT_LIGHT_1 - 1 + area, 0, MODULE_IO)
-
             else:
                 # Not in manual and no process
                 getattr(self.main_panel, "le_stage_{}".
@@ -128,7 +141,7 @@ class AreaController(QObject):
 
         self.load_sensors(area)
 
-        self.output_controller.load_areas(area)
+        self.output_controller.load_outputs(area)
 
     def load_processes(self):
         self.areas_processes.clear()
@@ -139,9 +152,13 @@ class AreaController(QObject):
         if self.areas_pid[area] > 0:
             self.areas_processes[area] = ProcessClass(self.areas_pid[area], self.main_window)
             # Put process id in area status bar
-            ctrl = getattr(self.main_panel, "lbl_sp_%i_4" % area)
+            ctrl = getattr(self.main_panel, "pb_pid_{}".format(area))
             ctrl.setText(str(self.areas_processes[area].id))
+            ctrl.setToolTip("Process ID\r\nClick for information")
+            ctrl.setEnabled(True)
             self.display_stage_icon(area)
+        else:
+            getattr(self.main_panel, "pb_pid_{}".format(area)).setEnabled(False)
 
     def display_stage_icon(self, area):
         # Display stage icon

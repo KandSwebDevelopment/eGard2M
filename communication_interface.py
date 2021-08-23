@@ -212,9 +212,7 @@ class CommunicationInterface(QObject):
                 # self.process_relay_command(command, data_list)
                 # return
         else:  # This will be all responses to requests by other PC
-            # if received.find("\r\n") > -1:
             data_list = received.split("\r\n")
-            # command = data_list[0][1:]
             command = data_list[0]
             command = command.replace('<', '')
             command = command.replace('>', '')

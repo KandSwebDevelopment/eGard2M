@@ -13,7 +13,7 @@ from controller_windows import WindowsController
 from dbController import MysqlDB
 from dialogs import DialogEngineerCommandSender, DialogEngineerIo, DialogDispatchInternal, DialogDispatchCounter, \
     DialogDispatchReports, DialogStrainFinder, DialogDispatchStorage, DialogDispatchOverview, DialogSysInfo, \
-    DialogSettings
+    DialogSettings, DialogProcessPerformance
 from functions import multi_status_bar, get_last_friday
 from functions_colors import get_css_colours
 from status_codes import *
@@ -31,7 +31,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super(MainWindow, self).__init__()
 
         self.setupUi(Application)
-        self.resize(2200, 1600)
+        self.resize(2000, 1800)
         self.db = MysqlDB()
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Warning)
@@ -73,7 +73,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.main_panel.update_next_feeds()
         self.main_panel.check_stage(1)
         self.main_panel.check_stage(2)
-        # self.main_panel.check_stage(3)
+        self.main_panel.check_stage(3)
 
         self.update_stock()
         self.main_panel.check_light()
@@ -93,6 +93,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionStorage.triggered.connect(lambda: self.wc.show(DialogDispatchStorage(self.main_panel)))
         self.actionOverview.triggered.connect(lambda: self.wc.show(DialogDispatchOverview(self.main_panel)))
 
+        # Process
+        self.actionPreformance_2.triggered.connect(lambda: self.wc.show(DialogProcessPerformance(self.main_panel)))
         # Materials
         self.actionFinder.triggered.connect(lambda: self.wc.show(DialogStrainFinder(self.main_panel)))
 

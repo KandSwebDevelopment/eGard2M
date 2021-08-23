@@ -27,11 +27,11 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.sub = self.main_window.mdiArea.addSubWindow(self)
         self.wc = self.main_window.wc
         self.master_mode = self.main_window.master_mode
-        # self.sub.setMinimumSize(1600, 1200)
+        self.sub.setMinimumSize(1250, 950)
         self.sub.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint | QtCore.Qt.FramelessWindowHint)
         # sub.setFixedSize(sub.width(), sub.height())
-        self.setGeometry(0, 0, self.width(), 1000)
-        self.main_window.resize(self.width(), 1000)
+        self.setGeometry(0, 0, self.width(), self.height())
+        # self.main_window.resize(self.width(), 1000)
         self.show()
 
         self.le_stage_1.installEventFilter(self)
@@ -222,7 +222,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.pbjournal_1.clicked.connect(lambda: self.wc.show_journal(1))
         self.pb_man_feed_1.clicked.connect(lambda: self.feed_manual(1))
         self.pb_feed_mix_1.clicked.connect(lambda: self.wc.show(DialogFeedMix(self, 1)))
-        self.pbinfo_1.clicked.connect(lambda: self.wc.show_process_info(1))
+        self.pb_pid_1.clicked.connect(lambda: self.wc.show_process_info(1))
         self.pb_advance_1.clicked.connect(lambda: self.stage_adjust(1, -1))
         self.pbstageadvance_1.clicked.connect(lambda: self.stage_advance(1))
         self.pb_hold_1.clicked.connect(lambda: self.stage_adjust(1, 1))
@@ -239,7 +239,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.pbjournal_2.clicked.connect(lambda: self.wc.show_journal(2))
         self.pb_man_feed_2.clicked.connect(lambda: self.feed_manual(2))
         self.pb_feed_mix_2.clicked.connect(lambda: self.wc.show(DialogFeedMix(self, 2)))
-        self.pbinfo_2.clicked.connect(lambda: self.wc.show_process_info(2))
+        self.pb_pid_2.clicked.connect(lambda: self.wc.show_process_info(2))
         self.pbadjust_2.clicked.connect(lambda: self.wc.show(DialogProcessAdjustments(self, 2)))
         self.pb_output_status_4.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_21))
         self.pb_output_status_5.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_22))
@@ -259,8 +259,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.pb_pm_8.clicked.connect(lambda: self.change_to_flushing(8))
         # Area 3
         self.pbjournal_3.clicked.connect(lambda: self.wc.show_journal(3))
-        self.pbinfo_3.clicked.connect(lambda: self.wc.show_process_info(3))
-        self.pbadjust_3.clicked.connect(lambda: self.wc.show(DialogProcessAdjustments(self, 3)))
+        self.pb_pid_3.clicked.connect(lambda: self.wc.show_process_info(3))
         self.pb_output_status_7.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_31))
         self.pb_output_mode_7.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 3, 1)))
         # Workshop
@@ -395,8 +394,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             return
             # next_stage_days = None
         else:
-            next_stage_days = self.area_controller.get_area_process(location).stage_days_remaining
             if location == 1:
+                next_stage_days = self.area_controller.get_area_process(location).stage_days_remaining
                 if next_stage_days <= self.stage_change_warning_days:
                     self.frmstagechange_1.setEnabled(True)
                     ctrl = self.pbstageadvance_1
@@ -431,11 +430,12 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                         flush_start = self.db.execute_single("SELECT start FROM {} WHERE item = {}".format(DB_FLUSHING, x))
                         if flush_start is not None:
                             w = 4
+                        if x in self.area_controller.get_area_items(3):
+                            w = -1
                         if w == -1:     # Item removed
                             ctrl.setText("")
                             ctrl.setEnabled(False)
                             ctrl.setToolTip("")
-                            continue
                         elif w == 1:
                             ctrl.setEnabled(True)
                             ctrl.setStyleSheet("background-color: Yellow;")
@@ -471,9 +471,25 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                         ctrl = getattr(self, "pb_pm_%i" % x)
                         ctrl.setEnabled(False)
                         ctrl.setText("")
-            else:
-                self.frmstagechange_2.setEnabled(False)
-                return None
+                else:
+                    self.frmstagechange_2.setEnabled(False)
+                    return None
+
+            elif location == 3:
+                if self.area_controller.area_has_process(3):
+                    self.frmstagechange_3.setEnabled(True)
+                    rows = self.db.execute('SELECT item, started FROM {}'.format(DB_PROCESS_DRYING))
+                    if len(rows) == 0:
+                        self.frmstagechange_3.setEnabled(False)
+                        return
+                    for row in rows:
+                        getattr(self, "pb_pm2_%i" % row[0]).setText(str(row[0]))
+                        days = (datetime.now().date() - row[1]).days
+                        name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
+                                                      "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
+                                                      .format(DB_STRAINS, DB_PROCESS_STRAINS,
+                                                              self.area_controller.areas_pid[3], row[0]))
+                        getattr(self, "pb_pm2_%i" % row[0]).setToolTip("{}\r\nDay {} drying".format(name, days))
 
     def change_to_flushing(self, item):
         sql = "SELECT start FROM {} WHERE item = {}".format(DB_FLUSHING, item)
@@ -526,11 +542,17 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         # Remove item from flushing table
         sql = "DELETE FROM {} WHERE item = {} LIMIT 1".format(DB_FLUSHING, item)
         self.db.execute_write(sql)
+        # Add to drying table
+        sql = "INSERT INTO {} (item, started) VALUES ({}, {})".format(DB_AREAS, item, datetime.now().date())
+        self.db.execute_write(sql)
+
         getattr(self, "pb_pm2_%i" % item).setEnabled(True)
         dt = datetime.strftime(datetime.now(), '%d/%m/%y %H:%M')
-        p.journal_write(dt + "    Number " + str(item) + " Cut and moved to drying. Days flowering "
-                        + str(p.stage_days_elapsed) + "  ^")
-        if len(self.area_controller.get_items(2)) == 0:  # If no items left in area 2
+        # p.journal_write(dt + "    Number " + str(item) + " Cut and moved to drying. Days flowering "
+        #                 + str(p.stage_days_elapsed) + "  ^")
+        p.journal_write("{}    Number {} Cut and moved to drying. Days Veging {}   Days flowering {}  Total days {}"
+                        .format(dt, item, p.days_total - p.stage_days_elapsed, p.stage_days_elapsed, p.days_total))
+        if len(self.area_controller.get_area_items(2)) == 0:  # If no items left in area 2
             # Update the processes current stage
             self.db.execute_write(
                 "UPDATE " + DB_PROCESS + " SET stage = 4, location = 3 WHERE id = " + str(p.id))

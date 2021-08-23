@@ -28,6 +28,7 @@ from ui.dialogJournal import Ui_DialogJournal
 from ui.dialogOutputSettings import Ui_DialogOutputSetting
 from ui.dialogProcessAdjustments import Ui_DialogProcessAdjust
 from ui.dialogProcessInfo import Ui_DialogProcessInfo
+from ui.dialogProcessPerformance import Ui_DialogProcessPreformance
 from ui.dialogSensorSettings import Ui_DialogSensorSettings
 from ui.dialogSettings import Ui_DialogSettings
 from ui.dialogStrainFinder import Ui_DialogStrainFinder
@@ -3564,5 +3565,66 @@ class DialogSettings(QDialog, Ui_DialogSettings):
                               format(DB_FANS, kp, ki, kd, fan))
         self.main_panel.fans[fan].set_pid(kp, ki, kd)
         self.main_panel.fans[fan].reset()
+
+
+class DialogProcessPerformance(QDialog, Ui_DialogProcessPreformance):
+
+    def __init__(self, parent):
+        super(DialogProcessPerformance, self).__init__()
+        self.setupUi(self)
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.sub = None
+        self.main_panel = parent
+        self.db = self.main_panel.db
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.epp = float(self.db.get_config(CFT_DISPATCH, "estimate per plant", 50))
+        rows = self.db.execute(
+            "SELECT DISTINCT(process_id) FROM {} ORDER BY process_id DESC".format(DB_PROCESS_STRAINS))
+        self.cb_process.addItem("Select", 0)
+        for row in rows:
+            self.cb_process.addItem(str(row[0]), row[0])
+        self.cb_process.currentIndexChanged.connect(lambda: self.load_process(self.cb_process.currentData()))
+
+    def load_process(self, pid):
+        rows = self.db.execute(
+            "SELECT item, strain_id, yield FROM {} WHERE process_id = {} AND location > 0 ORDER BY item".
+            format(DB_PROCESS_STRAINS, pid))
+        txt = '<table cellspacing = "5"  border = "0" width = "50%">'
+        total_dif = total = waiting_count = finished_count = 0
+        for row in rows:
+            strain = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_STRAINS, row[1]))
+            if row[2] == 0:
+                result = "Waiting..."
+                css = "background-color:white; color:green;"
+                waiting_count += 1
+            else:
+                result = round(row[2] - self.epp, 1)
+                total_dif += result
+                total += row[2]
+                finished_count += 1
+                if result < 0:
+                    css = "background-color:red; color:white;"
+                else:
+                    css = "background-color:green; color:black;"
+            txt += '<tr><td style="width:35%">{}</td><td>{}</td><td>{}</td><td style="{}">{}</td></tr>'. \
+                format(row[0], strain, row[2], css, result)
+        txt += '<tr style="font-size:16px;"><td></td><td><b>Totals</td><td>{}</td><td>{}</b></td></tr>'. \
+            format(round(total, 1), round(total_dif, 1))
+        if finished_count > 0:
+            avg = round(total / finished_count, 1)
+        else:
+            avg = 0
+        txt += '<tr style="font-size:14px;"><td></td><td>Average per item</td><td>{}</td><td></td></tr>'. \
+            format(avg)
+        if waiting_count > 0:
+            txt += '<tr style="font-size:14px;"><td></td><td>Waiting</td><td>{}</td><td></td></tr>'. \
+                format(waiting_count * self.epp)
+            txt += '<tr style="font-size:14px;"><td></td><td>New prediction</td><td>{}</td><td></td></tr>'. \
+                format(waiting_count * self.epp + total)
+            txt += '<tr style="font-size:14px;"><td></td><td>Avg required</td><td>{}</td><td></td></tr>'. \
+                format(round((((waiting_count + finished_count) * self.epp) - total) / waiting_count), 1)
+        txt += "</table>"
+        self.textEdit.setHtml(txt)
+
 
 
