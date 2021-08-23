@@ -920,6 +920,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].load_ranges()
         elif cmd == NWC_WORKSHOP_DURATION:
             self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].set_duration()
+        elif cmd == NWC_WORKSHOP_FROST:
+            self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].change_frost(data[0])
         elif cmd == NWC_WORKSHOP_BOOST:
             self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].auto_boost = data[0]
             self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].update_info()

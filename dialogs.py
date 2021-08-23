@@ -2805,6 +2805,12 @@ class DialogWorkshopSettings(QWidget, Ui_DialogWorkshopSetting):
         f = int(self.ck_frost.isChecked())
         self.output.change_frost(f)
         self.main_panel.coms_interface.relay_send(NWC_WORKSHOP_FROST, f)
+        if not self.output.frost:
+            self.le_min_frost.setEnabled(False)
+            self.le_max_frost.setEnabled(False)
+        else:
+            self.le_min_frost.setEnabled(True)
+            self.le_max_frost.setEnabled(True)
 
     def change_boost(self):
         b = int(self.ck_auto_boost.isChecked())

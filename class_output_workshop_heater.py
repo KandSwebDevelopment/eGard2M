@@ -45,8 +45,8 @@ class OutputWorkshopHeater(OutputClass):
     def load_ranges(self):
         self.max = string_to_float(self.db.get_config(CFT_WORKSHOP_HEATER, "high", 19.5))
         self.min = string_to_float(self.db.get_config(CFT_WORKSHOP_HEATER, "low", 10))
-        self.min_frost = int(self.db.get_config(CFT_WORKSHOP_HEATER, "frost min", 2))
-        self.max_frost = int(self.db.get_config(CFT_WORKSHOP_HEATER, "frost max", 6))
+        self.min_frost = string_to_float(self.db.get_config(CFT_WORKSHOP_HEATER, "frost min", 2))
+        self.max_frost = string_to_float(self.db.get_config(CFT_WORKSHOP_HEATER, "frost max", 6))
         self.update_info()
 
     def set_duration(self, duration=None):

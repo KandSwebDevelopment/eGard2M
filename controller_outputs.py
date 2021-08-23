@@ -23,9 +23,6 @@ class OutputController(QObject):
         self.outputs = collections.defaultdict(OutputClass)
 
         self.area_controller.main_window.coms_interface.update_switch.connect(self.switch_update)
-        # sql = 'SELECT name, area, type, input, range, pin, short_name, item FROM {}'.format(DB_OUTPUTS)
-        # rows = self.db.execute(sql)
-        # for row in rows:
 
     def load_all_areas(self):
         self.load_outputs(1)
@@ -106,10 +103,10 @@ class OutputController(QObject):
             if sw in self.outputs:
                 self.outputs[sw].switch_update(state)
         elif module == MODULE_DE:
-            if sw == SW_COVER_OPEN:
+            if sw == SW_COVER_OPEN and state == ON:
                 if self.outputs[OUT_HEATER_ROOM].auto_boost:
                     self.outputs[OUT_HEATER_ROOM].switch_update(ON)
-            elif sw == SW_COVER_CLOSE:
+            elif sw == SW_COVER_CLOSE and state == ON:
                 self.outputs[OUT_HEATER_ROOM].switch_update(OFF)
 
     def update_info(self, op_id):

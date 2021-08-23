@@ -367,6 +367,7 @@ class CommunicationInterface(QObject):
                 command == NWC_ACCESS_OPERATE or \
                 command == NWC_OUTPUT_TRIGGER or \
                 command == NWC_OUTPUT_TRIGGER or \
+                command == NWC_WORKSHOP_FROST or \
                 command == NWC_WORKSHOP_BOOST:
             self.update_from_relay.emit(command, [int(prams[0])])
         # 2 prams
