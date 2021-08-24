@@ -8,11 +8,10 @@ from PyQt5.QtCore import pyqtSlot, Qt, QTimer
 from PyQt5.QtGui import QPixmap
 from PyQt5.QtWidgets import QWidget, QMdiSubWindow, QMessageBox
 
-from class_fan import FanClass
-from class_soil_sensors import SoilSensorClass
 from defines import *
 from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan, DialogOutputSettings, \
-    DialogSensorSettings, DialogProcessAdjustments, DialogWaterHeaterSettings, DialogWorkshopSettings, DialogElectMeter
+    DialogSensorSettings, DialogProcessAdjustments, DialogWaterHeaterSettings, DialogWorkshopSettings, DialogElectMeter, \
+    DialogJournal
 from functions import play_sound
 from scales_com import ScalesComs
 from ui.main import Ui_Form
@@ -93,21 +92,18 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         # Remember to install event filter for control first
         # print("Event ", event.type())
         if event.type() == QtCore.QEvent.MouseButtonPress:
-            if source is self.le_stage_1:
-                self.wc.show(DialogAreaManual(self, 1))
-            elif source is self.le_stage_2:
-                self.wc.show(DialogAreaManual(self, 2))
-            elif source is self.le_stage_3:
-                self.wc.show(DialogAreaManual(self, 3))
-            elif source is self.lbl_access_2:
+            if source is self.lbl_access_2:
                 self.wc.show(DialogAccessModule(self))
-            elif source is self.lbl_fan_1:
-                self.wc.show(DialogFan(self, 1))
-            elif source is self.lbl_fan_2:
-                self.wc.show(DialogFan(self, 2))
             elif source is self.lbl_access:
                 self.wc.show(DialogElectMeter(self))
             # Area 1
+            elif source is self.lbl_fan_1:
+                self.wc.show(DialogFan(self, 1))
+            elif source is self.le_stage_1:
+                if self.area_controller.area_has_process(1):
+                    self.wc.show(DialogJournal(self.area_controller.get_area_process(1), self))
+                else:
+                    self.wc.show(DialogAreaManual(self, 1))
             elif source is self.tesstatus_2.viewport():
                 self.wc.show(DialogSensorSettings(self, 1, 3))
             elif source is self.tesstatus_3.viewport():
@@ -117,6 +113,13 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             elif source is self.tesstatus_5.viewport():
                 self.wc.show(DialogSensorSettings(self, 1, 11))
             # Area 2
+            elif source is self.lbl_fan_2:
+                self.wc.show(DialogFan(self, 2))
+            elif source is self.le_stage_2:
+                if self.area_controller.area_has_process(2):
+                    self.wc.show(DialogJournal(self.area_controller.get_area_process(2), self))
+                else:
+                    self.wc.show(DialogAreaManual(self, 2))
             elif source is self.tesstatus_6.viewport():
                 self.wc.show(DialogSensorSettings(self, 2, 5))
             elif source is self.tesstatus_7.viewport():
@@ -126,6 +129,11 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             elif source is self.tesstatus_9.viewport():
                 self.wc.show(DialogSensorSettings(self, 2, 13))
             # Area 3, drying
+            elif source is self.le_stage_3:
+                if self.area_controller.area_has_process(3):
+                    self.wc.show(DialogJournal(self.area_controller.get_area_process(3), self))
+                else:
+                    self.wc.show(DialogAreaManual(self, 3))
             elif source is self.tesstatus_11.viewport():
                 self.wc.show(DialogSensorSettings(self, 3, 7))
             elif source is self.tesstatus_12.viewport():
@@ -219,7 +227,6 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.b1.clicked.connect(self.test)
 
         # Area 1
-        self.pbjournal_1.clicked.connect(lambda: self.wc.show_journal(1))
         self.pb_man_feed_1.clicked.connect(lambda: self.feed_manual(1))
         self.pb_feed_mix_1.clicked.connect(lambda: self.wc.show(DialogFeedMix(self, 1)))
         self.pb_pid_1.clicked.connect(lambda: self.wc.show_process_info(1))
@@ -236,7 +243,6 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.pb_output_mode_3.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 3)))
         self.pb_output_mode_9.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 4)))
         # Area 2
-        self.pbjournal_2.clicked.connect(lambda: self.wc.show_journal(2))
         self.pb_man_feed_2.clicked.connect(lambda: self.feed_manual(2))
         self.pb_feed_mix_2.clicked.connect(lambda: self.wc.show(DialogFeedMix(self, 2)))
         self.pb_pid_2.clicked.connect(lambda: self.wc.show_process_info(2))
@@ -258,7 +264,6 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.pb_pm_7.clicked.connect(lambda: self.change_to_flushing(7))
         self.pb_pm_8.clicked.connect(lambda: self.change_to_flushing(8))
         # Area 3
-        self.pbjournal_3.clicked.connect(lambda: self.wc.show_journal(3))
         self.pb_pid_3.clicked.connect(lambda: self.wc.show_process_info(3))
         self.pb_output_status_7.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_31))
         self.pb_output_mode_7.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 3, 1)))
