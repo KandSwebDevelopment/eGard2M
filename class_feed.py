@@ -6,6 +6,7 @@ from PyQt5.QtCore import QObject
 
 # from class_process import ProcessClass as pClass
 from defines import *
+from functions import dict2str
 
 
 def str2dict(items_str):
@@ -44,7 +45,7 @@ class FeedClass(QObject):
         self._area = 0
         self.stage = 0
         self.stages_max = 0
-        self.qty_total = 0
+        self.qty_org = 0
         self.qty_current = 0
         self.stage_days_elapsed = 0  # Process stage days elapsed
         self.feed_schedule = None  # Active schedule
@@ -211,7 +212,7 @@ class FeedClass(QObject):
     def get_next_feed_recipe(self):
         sql = "SELECT f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = s.feeding AND" \
               " s.pid = {} and s.stage ={}".format(
-               DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id, self.stage)
+                DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id, self.stage)
         rows = self.db.execute(sql)
         if self.feed_schedule_item_num < len(rows) - 1:
             self.recipe_next_from_feed_schedule(rows[self.feed_schedule_item_num + 1])
@@ -266,7 +267,7 @@ class FeedClass(QObject):
     def _load_mixes(self, area):  # ..    0       1    2      3        4        5
         rows = self.db.execute(
             'SELECT mix_num, freq, lpp, `items`, cycles, base_id FROM {} WHERE `area` = {} ORDER BY mix_num'.
-                format(DB_PROCESS_FEED_ADJUSTMENTS, area))
+            format(DB_PROCESS_FEED_ADJUSTMENTS, area))
         for row in rows:
             mix_num = row[0]
             if mix_num > 1:
@@ -361,17 +362,6 @@ class FeedClass(QObject):
             return 0
         return (self.nfd.date() - datetime.now().date()).days
 
-    # def set_last_feed_date(self, area, f_date):
-    #     """ Sets the last feed date for the given area in the data structure and the also updates the db"""
-    #     t = self.feed_time.split(":")
-    #     f_date = datetime(f_date.year, f_date.month, f_date.day, int(t[0]), int(t[1]))
-    #     self.lfd = f_date
-    #     self.nfd = f_date + timedelta(days=self.frequency)
-    #     sql = "UPDATE {} SET dt = '{}' WHERE item = '{}' and id = {} LIMIT 1". \
-    #         format(DB_PROCESS_ADJUSTMENTS, f_date, PA_FEED_DATE, area)
-    #     self.db.execute_write(sql)
-    #     self._check_feed_due_today()
-
     def get_mix_count(self):
         """ Return the number of mixes for the area"""
         return len(self.area_data['mixes'])
@@ -382,6 +372,66 @@ class FeedClass(QObject):
 
     def get_items(self, mix_num=1):
         return self.area_data['mixes'][mix_num]['items']
+
+    def get_recipe_item(self, mix_num, nid):
+        for i in self.area_data['mixes'][mix_num]['recipe']:
+            if i[0] == nid:
+                return i
+        return [0, 0, 0, 0, 0, 0]
+
+    def change_recipe_item(self, mix_num, change):
+        """
+
+        :param mix_num: The mix number to change item in
+        :type mix_num: int
+        :type change: tuple     (nid, mls)
+        """
+        r = self.area_data['mixes'][mix_num]['recipe']
+        for rl in r:
+            if rl[0] == change[0]:
+                rl[1] = change[1]
+        self.save_mix_adjustment(mix_num)
+
+    def change_items(self, mix_num, items):
+        self.area_data['mixes'][mix_num]['items'] = items
+        self.area_data['mixes'][mix_num]['water total'] = \
+            len(items) * self.area_data['mixes'][mix_num]["lpp"]
+        self.save_adjustments(mix_num)
+
+    def save_adjustments(self, mix_num):
+        data = self.area_data['mixes'][mix_num]
+        count = self.db.execute_single('SELECT COUNT(area) FROM {} WHERE area = {} AND mix_num = {}'.
+                                       format(DB_PROCESS_FEED_ADJUSTMENTS, self.area, mix_num))
+        if count > 1:
+            print("Only should be 1 entry")
+        items = dict2str(data['items'])
+        if count == 0:
+            # Insert into db
+            sql = 'INSERT INTO {} (area, mix_num, freq, lpp, cycles, items, base_id) VALUES ({}, {}, {}, {}, {}, "{}", {})'.\
+                format(DB_PROCESS_FEED_ADJUSTMENTS, self.area, mix_num, self.frequency, data['lpp'],
+                       data['cycles'], items, data['base id'])
+        else:
+            # Update db
+            sql = 'UPDATE {} SET freq = {}, lpp = {}, cycles = {}, items = "{}", base_id = {} WHERE area = {} AND mix_num = {} LIMIT 1'.\
+                format(DB_PROCESS_FEED_ADJUSTMENTS, self.frequency, data['lpp'],
+                       data['cycles'], items, data['base id'], self.area, mix_num)
+        self.db.execute_write(sql)
+
+    def save_mix_adjustment(self, mix_num):
+        """ This save any adjustments to a mix"""
+        # Delete any entries for this. Trust me this is best way
+        self.db.execute_write('DELETE FROM {} WHERE area = {} AND mix_num = {}'.
+                              format(DB_PROCESS_MIXES, self.area, mix_num))
+        # Insert into db
+        if self.area_data['mixes'][mix_num]['recipe'] == WATER_ONLY_IDX:
+            sql = 'INSERT INTO {} (area, mix_num, nid, ml) VALUES ({}, {}, {}, {})'. \
+                format(DB_PROCESS_MIXES, self.area, mix_num, WATER_ONLY_IDX, 0)
+            self.db.execute_write(sql)
+            return
+        for r in self.area_data['mixes'][mix_num]['recipe']:
+            sql = 'INSERT INTO {} (area, mix_num, nid, ml) VALUES ({}, {}, {}, {})'. \
+                format(DB_PROCESS_MIXES, self.area, mix_num, r[0], r[1])
+            self.db.execute_write(sql)
 
     def get_recipe_status(self):
         """ This checks both areas and sets 'status' in the data structure """
@@ -491,7 +541,7 @@ class FeedClass(QObject):
         self.area_data["mixes"][mix_num]["water total"] = \
             self.area_data["mixes"][mix_num]["lpp"] * \
             len(self.area_data["mixes"][mix_num]['items'])
-        self.save_all(mix_num)
+        self.save_adjustments(mix_num, )
 
     def new_day(self):
         self.get_recipe_status()

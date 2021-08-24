@@ -1529,8 +1529,11 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         self.tw_mixes.setStyleSheet("""QTabBar::tab:selected {background: green}""")
         # self.lbl_info.setToolTip("Next")
         self.lbl_next.installEventFilter(self)
-        if self.area > 0:
+        if 0 < self.area < 3:
             self.load(self.area)
+
+        self.lw_recipe_1.doubleClicked.connect(self.load_item)
+        self.pb_store_n_1.clicked.connect(self.store_nutrient)
 
     def eventFilter(self, source, event):
         print("Event ", event.type())
@@ -1555,6 +1558,40 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
             self.show_next = False
             self._load()
         return QWidget.eventFilter(self, source, event)
+
+    def store_nutrient(self):
+        nid = self.cb_nutrients_1.currentData()
+        if nid == 0:
+            return
+        self.feed_control.feeds[self.area].change_recipe_item(self.mix_number, (nid, string_to_float(self.le_ml_1.text())))
+        self._load()
+        self.cb_nutrients_1.setCurrentIndex(0)
+        self.le_ml_1.clear()
+        self.is_changed = True
+        # self.my_parent.coms_interface.send_data(NWC_FEED_ADJUST, MODULE_IO, self.process.location)
+
+    def change_qty(self):
+        count = 0
+        items = collections.defaultdict()
+        for x in range(1, self.feed_control.feeds[self.area].qty_org + 1):
+            if getattr(self, "ck_fed_%i" % (x + 10)).isChecked():
+                count += 1
+                items[x] = 1
+        self.feed_control.change_items(self.location, self.mix_number, items)
+
+        for x in range(1, self.feed_control.area_data[self.location]["qty actual"] + 1):
+            self.check_included(x)
+
+        self._load()
+        self.is_changed = True
+
+    def load_item(self):  # Loads off dbl click of list
+        nid = self.lw_recipe_1.currentItem().data(Qt.UserRole)
+        r = self.feed_control.get_recipe_item(self.area, self.mix_number, nid)
+        self.le_ml_1.setText(str(r[1]))
+        nid = self.cb_nutrients_1.findData(nid)
+        if nid != -1:
+            self.cb_nutrients_1.setCurrentIndex(nid)
 
     def load(self, location):
         self.area = location
@@ -1592,10 +1629,10 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
             getattr(self, "ck_fed_%i" % (x + 10)).blockSignals(True)
             if x in feed_data[self.mix_number]['items']:
                 getattr(self, "ck_fed_%i" % (x + 10)).setChecked(True)
-                self.check_included(x)
             else:
                 getattr(self, "ck_fed_%i" % (x + 10)).setChecked(False)
-                getattr(self, "ck_fed_%i" % (x + 10)).setEnabled(False)
+                # getattr(self, "ck_fed_%i" % (x + 10)).setEnabled(False)
+            self.check_included(x)
             getattr(self, "ck_fed_%i" % (x + 10)).blockSignals(False)
 
         # Set number of feeds combo
@@ -1628,7 +1665,7 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
             if recipe is None:
                 return      # Safety check, need looking into
             for nid in recipe:      # nid = (nid, mls)
-                # ri - 0=nid, 1=ml, 2=L, 3=rid, 4=freq, 5=adj ml, 6=adj remaining
+                # ri - 0=nid, 1=ml, 2=L, 3=nid, 4=freq, 5=adj ml, 6=adj remaining
                 rs, diff = self.feed_control.recipe_item_status(self.area, self.mix_number, (nid[0], nid[1]))
                 if nid[0] == WATER_ONLY_IDX:
                     lw_item = QListWidgetItem(str(x) + " Water only")
@@ -1650,7 +1687,7 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
                     elif rs == 1 and diff != 0:
                         # This item is part of normal recipe but has been altered
                         lw_item = QListWidgetItem(
-                            str(x) + "   " + str(nid[1]) + "ml each (" + str(diff) +
+                            str(x) + "   " + str(nid[1]) + "ml each (" + str(round(diff, 1)) +
                             ")   A total of " + str(
                                 round((nid[1] + 0) * feed_data[self.mix_number]["water total"], 1))
                             + "ml of " + self.feed_control.nutrients[nid[0]])
@@ -1660,7 +1697,7 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
                             round(nid[1] * feed_data[self.mix_number]["water total"], 1)) + "ml of " +
                                                   self.feed_control.nutrients[nid[0]])
 
-                v_item = QVariant(nid)
+                v_item = QVariant(nid[0])
                 lw_item.setData(Qt.UserRole, v_item)
                 self.lw_recipe_1.addItem(lw_item)
                 x += 1

@@ -58,6 +58,15 @@ def minutes_to_hhmm(minutes):
     m = minutes % 60
     return h, m
 
+
+def dict2str(items_dict):
+    """ Lists dictionary item in a string, comma separated"""
+    s = ""
+    for i in items_dict:
+        s += str(i) + ","
+    return s[:len(s) - 1]      # Remove last comma
+
+
 def get_last_friday(current_time=None):
     """
     Return the date of the friday before the date passed in. If no date is passed in it will use the current date

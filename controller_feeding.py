@@ -46,6 +46,7 @@ class FeedControl(QThread):
                 self.feeds[area] = FeedClass(self)
                 self.feeds[area].load(area, p.pattern_id, p.current_stage, p.stage_days_elapsed, p.stages_max,
                                       self.main_window.area_controller.get_area_items(area))
+                self.feeds[area].qty_org = p.quantity_org
                 self.feeds[area].load_mixes()
 
     def set_feed_time(self, feed_time):
@@ -111,6 +112,9 @@ class FeedControl(QThread):
     def get_next_recipe(self, area):
         return self.feeds[area].get_next_feed_recipe()
 
+    def get_recipe_item(self, area, mix_num, nid):
+        return self.feeds[area].get_recipe_item(mix_num, nid)
+
     def get_next_lpp(self, area):
         return self.feeds[area].feed_litres_next
 
@@ -160,10 +164,7 @@ class FeedControl(QThread):
         return 2, 0.0                # New
 
     def change_items(self, area, mix_num, items):
-        self.feeds[area].area_data['mixes'][mix_num]['items'] = items
-        self.feeds[area].area_data['mixes'][mix_num]['water total'] = \
-            len(items) * self.feeds[area].area_data['mixes'][mix_num]["lpp"]
-        # self.save_all(area, mix_num)
+        self.feeds[area].change_items(mix_num, items)
 
     def new_day(self):
         for a in range(1, 3):
