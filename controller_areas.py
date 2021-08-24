@@ -137,7 +137,7 @@ class AreaController(QObject):
                     # Light should be off
                     self.main_window.coms_interface.send_switch(OUT_LIGHT_1 - 1 + area, 0, MODULE_IO)
 
-        self.load_processes()
+        self.reload_processes(area)
 
         self.load_sensors(area)
 
@@ -146,6 +146,8 @@ class AreaController(QObject):
     def load_processes(self):
         self.areas_processes.clear()
         for area in self.areas_pid:
+            if area > 3:
+                return
             self.reload_process(area)
 
     def reload_process(self, area):

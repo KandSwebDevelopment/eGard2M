@@ -38,6 +38,7 @@ class OutputWorkshopHeater(OutputClass):
             self.boost_timer.stop()
             self.remaining = 0
 
+
     def load_settings(self):
         self.auto_boost = int(self.db.get_config(CFT_WORKSHOP_HEATER, "auto boost", 1))
         self.frost = int(self.db.get_config(CFT_WORKSHOP_HEATER, "frost", 1))
