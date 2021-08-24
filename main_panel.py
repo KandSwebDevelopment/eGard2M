@@ -620,22 +620,22 @@ class MainPanel(QMdiSubWindow, Ui_Form):
 
         if self.access.has_status(ACS_COVER_OPEN):  # Open limit sw
             self.le_access_status_1.setText("<  >")
+            # self.lbl_cover_position.setPixmap(QtGui.QPixmap(":/normal/warning.png"))
             self.lbl_cover_lock.setStyleSheet("background-color: red; color: White; border-radius: 6px;")
             self.le_access_status_1.setStyleSheet("background-color: red; color: White; border-radius: 6px;")
             self.pb_cover.setEnabled(False)
             self.pb_cover_close.setEnabled(True)
 
         if self.access.has_status(ACS_COVER_CLOSED):    # Closed limit sw
-            # self.lbl_cover_lock.setStyleSheet("background-color: green; color: White")
             self.le_access_status_1.setStyleSheet("background-color: Green; color: White; border-radius: 6px;")
-            # self.le_access_status_1.setText(">><<")
+            # self.lbl_cover_position.setPixmap(QtGui.QPixmap(":/normal/locked.png"))
             self.lbl_cover_lock.setStyleSheet("")
             self.pb_cover_close.setEnabled(False)
             self.pb_cover.setEnabled(True)
         else:  # In open position or somewhere between
             if self.access.has_status(ACS_CLOSING) or self.access.has_status(ACS_OPENING):
                 self.lbl_cover_lock.setStyleSheet("background-color: blue; color: White; border-radius: 6px;")
-                # self.le_access_status_1.setText("Closing")
+                # self.lbl_cover_position.setPixmap("")
             self.pb_cover.setEnabled(False)
             self.pb_cover_close.setEnabled(True)
 

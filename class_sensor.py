@@ -145,16 +145,20 @@ class SensorClass(object):
     def update_status_ctrl(self):
         if self.status_ctrl is None:
             return
-        # ht = ""
-        # for h in self.handler_info.keys():
-        #     ht += h + "<br>"
+        if self.display_id in [5, 9]:
+            font_size = 8
+            padding_size = 4
+        else:
+            padding_size = 12
+            font_size = 12
         t = "<table>"
         #  Low value
         if self.low_org != 999 and self.low != self.low_org:
             tv = "<i>{}</i>".format(self.low)
         else:
             tv = self.low
-        t += "<tr><td style='font-size:12px; vertical-align:bottom; padding:2px 0px 0px 0px;'>{}</td>".format(tv)
+        t += "<tr><td style='font-size:{}px; vertical-align:bottom; padding:2px 0px 0px 0px;'>{}</td>"\
+            .format(font_size, tv)
 
         #  set value
         if self.set_org != 999 and self.set != self.set_org:
@@ -162,18 +166,18 @@ class SensorClass(object):
         else:
             tv = self.set
         if self._is_fan:
-            t += "<td style='padding:0px 12px 0px 12px;' rowspan='2' style='text-align:center; vertical-align:middle;" \
-                 " color:blue'>{}</td>".format(tv)
+            t += "<td style='padding:0px {}px 0px {}px;' rowspan='2' style='text-align:center; vertical-align:middle;" \
+                 " color:blue'>{}</td>".format(padding_size, padding_size, tv)
         else:
-            t += "<td style='padding:0px 10px 0px 10px;' style='text-align:center; vertical-align:middle'>{}</td>". \
-                format(tv)
+            t += "<td style='padding:0px {}px 0px {}px;' style='text-align:center; vertical-align:middle'>{}</td>". \
+                format(padding_size, padding_size, tv)
 
         #      high value
         if self.high_org != 999 and self.high != self.high_org:
             tv = "<i>{}</i>".format(self.high)
         else:
             tv = self.high
-        t += "<td style='padding:0px 0px 0px 0px; vertical-align:top; font-size:12px;'>{}</td>".format(tv)
+        t += "<td style='padding:0px 0px 0px 0px; vertical-align:top; font-size:{}px;'>{}</td>".format(font_size, tv)
         t += "</tr></table>"
         self.status_ctrl.setText(t)
 

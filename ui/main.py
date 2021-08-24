@@ -383,7 +383,7 @@ class Ui_Form(object):
         self.tesstatus_5.setGeometry(QtCore.QRect(200, 261, 101, 28))
         font = QtGui.QFont()
         font.setFamily("Oblivious font")
-        font.setPointSize(12)
+        font.setPointSize(8)
         font.setBold(False)
         font.setWeight(50)
         self.tesstatus_5.setFont(font)
