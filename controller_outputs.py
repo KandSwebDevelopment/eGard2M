@@ -103,10 +103,10 @@ class OutputController(QObject):
             if sw in self.outputs:
                 self.outputs[sw].switch_update(state)
         elif module == MODULE_DE:
-            if sw == SW_COVER_OPEN and state == ON:
+            if sw == SW_COVER_OPEN and state == ON_RELAY:
                 if self.outputs[OUT_HEATER_ROOM].auto_boost:
                     self.outputs[OUT_HEATER_ROOM].switch_update(ON)
-            elif sw == SW_COVER_CLOSE and state == ON:
+            elif sw == SW_COVER_CLOSE and state == ON_RELAY:
                 self.outputs[OUT_HEATER_ROOM].switch_update(OFF)
 
     def update_info(self, op_id):

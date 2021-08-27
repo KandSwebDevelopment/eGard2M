@@ -126,8 +126,8 @@ class FeedClass(QObject):
             self.feed_schedules_previous = rows_s.copy()
         self.recipe_current_from_feed_schedule()
         self.get_next_feed_recipe()
-        print(self.recipe)
-        print(self.recipe_next)
+        # print(self.recipe)
+        # print(self.recipe_next)
 
     def recipe_current_from_feed_schedule(self):
         """
@@ -235,7 +235,7 @@ class FeedClass(QObject):
 
     def load_mixes(self):
         """
-        This loads all mixes (different feeds) active
+        This loads all mixes (different feeds) for the current area
         :return: None
         :rtype: None
         """
@@ -268,9 +268,9 @@ class FeedClass(QObject):
         rows = self.db.execute(
             'SELECT mix_num, freq, lpp, `items`, cycles, base_id FROM {} WHERE `area` = {} ORDER BY mix_num'.
             format(DB_PROCESS_FEED_ADJUSTMENTS, area))
+        mix_num = 1
         for row in rows:
-            mix_num = row[0]
-            if mix_num > 1:
+            if mix_num not in self.area_data['mixes']:
                 self.area_data["mixes"][mix_num] = {}
             self.area_data["mixes"][mix_num]["items"] = str_to_list(row[3])
             self.area_data["mixes"][mix_num]["lpp"] = row[2]
@@ -279,11 +279,8 @@ class FeedClass(QObject):
             self.area_data["mixes"][mix_num]["recipe"] = {}
             self.area_data["mixes"][mix_num]["water total"] = row[2] * len(
                 self.area_data["mixes"][mix_num]['items'])
-            if row[5] != self.recipe_id:
-                # A new recipe has started, so the loaded mix needs replaced with new one
-                self.db.execute_write('DELETE FROM {} WHERE area = {} AND mix_num = {}'.
-                                      format(DB_PROCESS_MIXES, self.area, mix_num))
             self.area_data["mixes"][mix_num]["recipe"] = self.load_mix_recipe(mix_num)
+            mix_num += 1
 
     def create_flush_mix(self):
         if len(self.items_flushing) == 0:
@@ -313,16 +310,44 @@ class FeedClass(QObject):
         self.area_data["mixes"][mix]['items'].append(item)
         self.area_data["mixes"][mix]['items'].sort()
 
+    def add_blank_mix(self):
+        """ Adds a new mix using next mix number. The mix will be water only with the
+            items set to none """
+        n = len(self.area_data['mixes']) + 1
+        self.area_data["mixes"][n] = {"items": {},  # Plant numbers
+                                      "recipe": WATER_ONLY_IDX,
+                                      "base id": WATER_ONLY_IDX,
+                                      "lpp": self.feed_litres,  # Liters per plant
+                                      "water total": 0,   # No items yet
+                                      "cycles": 1}  # How many feeds this is used for
+        # self.save_all(area, n)
+
+    def add_new_mix(self):
+        """ Adds a new mix using next mix number. The mix will be a copy of the original but with the
+            items set to none """
+        n = len(self.area_data['mixes']) + 1
+        self.area_data["mixes"][n] = {"items": {},  # Plant numbers
+                                      "recipe": copy.deepcopy(self.recipe),
+                                      "base id": self.recipe_id,
+                                      "lpp": self.feed_litres,  # Liters per plant
+                                      "water total": 0,   # No items yet
+                                      "cycles": 1}  # How many feeds this is used for
+        # self.save_all(area, n)
+
     def load_mix_recipe(self, mix_num) -> list:
         """Load the recipe for the mix number
            If none is found it returns the original"""
         ingredients = self.db.execute('SELECT nid, ml FROM {} WHERE `area` = {} AND mix_num = {}'.
                                       format(DB_PROCESS_MIXES, self.area, mix_num))
         if len(ingredients) == 0:
-            # self.area_data[area]["mixes"][mix_num] = {}
-            self.area_data["mixes"][mix_num]["recipe"].clear()
-            self.area_data["mixes"][mix_num]["base id"] = self.recipe_id
-            return copy.deepcopy(self.recipe)
+            if self.area_data['mixes'][mix_num]['base id'] == WATER_ONLY_IDX:
+                self.area_data["mixes"][mix_num]["recipe"] = WATER_ONLY_IDX
+                return WATER_ONLY_IDX
+            else:
+                # self.area_data[area]["mixes"][mix_num] = {}
+                self.area_data["mixes"][mix_num]["recipe"].clear()
+                self.area_data["mixes"][mix_num]["base id"] = self.recipe_id
+                return copy.deepcopy(self.recipe)
         i = []
         for ingredient in ingredients:
             i.append([ingredient[0], ingredient[1]])
@@ -379,6 +404,10 @@ class FeedClass(QObject):
                 return i
         return [0, 0, 0, 0, 0, 0]
 
+    def change_cycles(self, mix_num, cycles):
+        self.area_data['mixes'][mix_num]['cycles'] = cycles
+        self.save_adjustments(mix_num)
+
     def change_recipe_item(self, mix_num, change):
         """
 
@@ -387,6 +416,8 @@ class FeedClass(QObject):
         :type change: tuple     (nid, mls)
         """
         r = self.area_data['mixes'][mix_num]['recipe']
+        if r == WATER_ONLY_IDX:
+            return
         for rl in r:
             if rl[0] == change[0]:
                 rl[1] = change[1]
@@ -396,6 +427,14 @@ class FeedClass(QObject):
         self.area_data['mixes'][mix_num]['items'] = items
         self.area_data['mixes'][mix_num]['water total'] = \
             len(items) * self.area_data['mixes'][mix_num]["lpp"]
+        self.save_adjustments(mix_num)
+        self._refresh_water_total()
+
+    def change_mix_water(self, mix_num, new_lpp):
+        self.area_data['mixes'][mix_num]['lpp'] = new_lpp
+        self.area_data['mixes'][mix_num]['water total'] = \
+            new_lpp * len(self.area_data['mixes'][mix_num]['items'])
+        self._refresh_water_total()
         self.save_adjustments(mix_num)
 
     def save_adjustments(self, mix_num):
@@ -476,9 +515,6 @@ class FeedClass(QObject):
                 return
         self.r_status = 0
 
-    def get_feeds_remaining(self):
-        return (self.recipe_expires_day - self.stage_days_elapsed) / self.frequency
-
     def get_feed_frequency(self):
         return self.frequency
 
@@ -515,7 +551,7 @@ class FeedClass(QObject):
                     # if mixes[m]['cycles'] == 0:
                     #     print("Shouldn't be here as 0 cycles for mix 1 means recipe change ")
                 else:
-                    mixes[1]['items'].update(mixes[2]['items'])  # Copies items from mix to be deleted to mix 1
+                    mixes[1]['items'] = mixes[m]['items']  # Copies items from mix to be deleted to mix 1
                     self.delete_mix(m)
                     return
             # self.save_all(m)
@@ -525,23 +561,57 @@ class FeedClass(QObject):
             return
         mixes = self.area_data['mixes']
         mixes.pop(mix_num)
+        if len(mixes) == 1:
+            # Only 1 mix left so make sure all items are selected
+            self.area_data["mixes"][1]['items'] = self.get_items(1)
+        # if mix_num < self.get_mix_count():
+        #     # Its not the last one so move rest up
+        #     for mix_n in mixes.copy():
+        #         if mix_n == mix_num:
+        #             self.copy_mix_to_mix(mix_n + 1 if mix_n + 1 <= self.get_mix_count() else self.get_mix_count(),
+        #                                  mix_n)
+        #     mixes.pop(self.get_mix_count())
         self.db.execute_write('DELETE FROM {} WHERE area = {} AND mix_num ={}'.
                               format(DB_PROCESS_MIXES, self.area, mix_num))
         self.db.execute_write('DELETE FROM {} WHERE area = {} AND mix_num ={}'.
                               format(DB_PROCESS_FEED_ADJUSTMENTS, self.area, mix_num))
-        if len(mixes) == 1:
-            # Only 1 mix left so make sure all items are selected
-            items = collections.defaultdict()
-            # for p in range(1, self.area_data["qty actual"] + 1):
-            #     items[p] = 1
-            self.area_data["mixes"][1]['items'] = items
+        self.db.execute_write('UPDATE {} SET mix_num = mix_num - 1 WHERE area = {} AND mix_num > {} '.
+                              format(DB_PROCESS_FEED_ADJUSTMENTS, self.area, mix_num))
+        # else:
+        #     self.db.execute_write('DELETE FROM {} WHERE area = {} AND mix_num ={}'.
+        #                           format(DB_PROCESS_MIXES, self.area, mix_num))
+        #     self.db.execute_write('DELETE FROM {} WHERE area = {} AND mix_num ={}'.
+        #                           format(DB_PROCESS_FEED_ADJUSTMENTS, self.area, mix_num))
+        #     mixes.pop(mix_num)
+        print(mixes)
+
+    def copy_mix_to_mix(self, from_mix, to_mix):
+        mixes = self.area_data['mixes']
+        mixes[to_mix] = mixes[from_mix]
+        self.save_mix_adjustment(to_mix)
+
+    def swap_mix_to_mix(self, from_mix, to_mix):
+        mixes = self.area_data['mixes']
+        t = mixes[to_mix].copy()
+        mixes[to_mix] = mixes[from_mix]
+        self.save_mix_adjustment(to_mix)
+        mixes[from_mix] = t
+        self.save_mix_adjustment(from_mix)
 
     def reset_water(self, mix_num):
         self.area_data["mixes"][mix_num]["lpp"] = self.feed_litres
         self.area_data["mixes"][mix_num]["water total"] = \
             self.area_data["mixes"][mix_num]["lpp"] * \
             len(self.area_data["mixes"][mix_num]['items'])
-        self.save_adjustments(mix_num, )
+        self.save_adjustments(mix_num)
+        self._refresh_water_total()
+
+    def reset_nutrients(self, mix_num):
+        """ Resets nutrients back to original recipe values, also sets cycles to remaining number and saves"""
+        self.area_data["mixes"][mix_num]["recipe"] = copy.deepcopy(self.recipe)
+        self.area_data["mixes"][mix_num]["base id"] = self.recipe_id
+        self.area_data["mixes"][mix_num]["cycles"] = self.max_feeds_till_change()
+        self.save_mix_adjustment(mix_num)
 
     def new_day(self):
         self.get_recipe_status()

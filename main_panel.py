@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import QWidget, QMdiSubWindow, QMessageBox
 from defines import *
 from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan, DialogOutputSettings, \
     DialogSensorSettings, DialogProcessAdjustments, DialogWaterHeaterSettings, DialogWorkshopSettings, DialogElectMeter, \
-    DialogJournal
+    DialogJournal, DialogSoilSensors
 from functions import play_sound
 from scales_com import ScalesComs
 from ui.main import Ui_Form
@@ -40,6 +40,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.lbl_fan_1.installEventFilter(self)
         self.lbl_fan_2.installEventFilter(self)
         self.lbl_access.installEventFilter(self)
+        self.lbl_soil_1.installEventFilter(self)
+        self.lbl_soil_2.installEventFilter(self)
 
         self.tesstatus_2.viewport().installEventFilter(self)
         self.tesstatus_3.viewport().installEventFilter(self)
@@ -112,6 +114,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 self.wc.show(DialogSensorSettings(self, 1, 10))
             elif source is self.tesstatus_5.viewport():
                 self.wc.show(DialogSensorSettings(self, 1, 11))
+            elif source is self.lbl_soil_1:
+                self.wc.show(DialogSoilSensors(self, 1))
             # Area 2
             elif source is self.lbl_fan_2:
                 self.wc.show(DialogFan(self, 2))
@@ -128,6 +132,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 self.wc.show(DialogSensorSettings(self, 2, 12))
             elif source is self.tesstatus_9.viewport():
                 self.wc.show(DialogSensorSettings(self, 2, 13))
+            elif source is self.lbl_soil_2:
+                self.wc.show(DialogSoilSensors(self, 2))
             # Area 3, drying
             elif source is self.le_stage_3:
                 if self.area_controller.area_has_process(3):
@@ -394,6 +400,20 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.check_stage(location)
         self.coms_interface.relay_send(NWC_RELOAD_PROCESSES)
 
+    def check_drying(self):
+        for i in range(1, 9):
+            getattr(self.main_panel, "pb_pm2_%i" % i).setEnabled(False)
+            getattr(self.main_panel, "pb_pm2_%i" % i).setText("")
+            getattr(self.main_panel, "pb_pm2_%i" % i).setToolTip("")
+        for i in self.get_area_items(3):
+            getattr(self.main_panel, "pb_pm2_%i" % i).setEnabled(True)
+            name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
+                                          "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
+                                          .format(DB_STRAINS, DB_PROCESS_STRAINS,
+                                                  self.areas_pid[3], i))
+            getattr(self.main_panel, "pb_pm2_%i" % i).setText(str(i))
+            getattr(self.main_panel, "pb_pm2_%i" % i).setToolTip(name)
+
     def check_stage(self, location):
         if self.area_controller.get_area_process(location) == 0:
             return
@@ -533,6 +553,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             return
 
         self.sender().setStyleSheet("")
+        self.sender().setText("")
         self.sender().setEnabled(False)
         p = self.area_controller.get_area_process(2)  # Don't need to check if process at location as it should never be here unless there is a process
         p.strain_location[item - 1] = 3
@@ -564,6 +585,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             p.current_stage += 1
         self.area_controller.reload_area(2)
         self.area_controller.reload_area(3)
+        self.check_drying()
         self.coms_interface.relay_send(NWC_MOVE_TO_FINISHING)
 
     def feed_manual(self, loc):
@@ -884,6 +906,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 self.check_stage(a)
         if self.area_controller.area_has_process(a):
             self.check_stage(3)
+            self.check_drying()
 
         self.feed_controller.new_day()
         # Update next feed dates

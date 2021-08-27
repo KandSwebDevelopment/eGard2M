@@ -29,6 +29,14 @@ class SoilSensorClass(QObject):
         for x in range(1, 9):
             self.soil_sensors_status[x] = int(self.db.get_config(CFT_SOIL_SENSORS, x, 0) == "True")
 
+    def convert_reading(self, reading):
+        r = 100 - (((reading - self.soil_wet) / (
+                self.soil_dry - self.soil_wet)) * 100)
+        r = round(r, 1)
+        r = 0 if r < 0 else r
+        r = 100 if r > 100 else r
+        return r
+
     def calculate_soil(self, data):
         if len(data) < 8:
             print("ERROR soil data to short")
@@ -38,19 +46,16 @@ class SoilSensorClass(QObject):
         total = 0
         avg = 0
         cnt = 0
+        result = collections.defaultdict(int)
         for x in range(0, 4):
             if self.soil_sensors_status[x + 1]:
-                if int(data[x]) < 1000:
+                if int(data[x + (self.area - 1) * 4]) < 1000:
                     total += int(data[x])
+                    result[x + 1] = self.convert_reading(data[x])
                     cnt += 1
         if total > 0:
             avg = total / cnt
-            r = 100 - (((avg - self.soil_wet) / (
-                    self.soil_dry - self.soil_wet)) * 100)
-            avg = round(r, 1)
-            avg = 0 if avg < 0 else avg
-            avg = 100 if avg > 100 else avg
-        data.append(avg)
+        result[5] = self.convert_reading(avg)
         # print(str(avg) + "%")
         # Area 2
         total = 0

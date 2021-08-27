@@ -60,7 +60,10 @@ class FeedControl(QThread):
         self.db.set_config_both(CFT_FEEDER, "feed time", feed_time)
 
     def days_till_feed(self, area):
-        return self.feeds[area].get_days_till_feed()
+        if area in self.feeds:
+            return self.feeds[area].get_days_till_feed()
+        else:
+            return 0
 
     def feed_due_today(self):
         """ Returns true if either area is due today"""
@@ -110,7 +113,8 @@ class FeedControl(QThread):
         return self.feeds[area].lfd
 
     def get_next_recipe(self, area):
-        return self.feeds[area].get_next_feed_recipe()
+        # return self.feeds[area].get_next_feed_recipe()
+        return self.feeds[area].recipe_next
 
     def get_recipe_item(self, area, mix_num, nid):
         return self.feeds[area].get_recipe_item(mix_num, nid)
