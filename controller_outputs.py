@@ -117,8 +117,10 @@ class OutputController(QObject):
             It updates the days_till_feed, displays it and relays to other pc"""
         d = min(self.area_controller.main_window.feed_controller.days_till_feed(1),
                 self.area_controller.main_window.feed_controller.days_till_feed(2))
-        self.outputs[OUT_WATER_HEATER_1].set_days_till_feed(d)
-        self.outputs[OUT_WATER_HEATER_2].set_days_till_feed(d)
+        if not self.outputs[OUT_WATER_HEATER_1].mode == OFF:
+            self.outputs[OUT_WATER_HEATER_1].set_days_till_feed(d)
+        if not self.outputs[OUT_WATER_HEATER_2].mode == OFF:
+            self.outputs[OUT_WATER_HEATER_2].set_days_till_feed(d)
 
     def water_heater_set_duration(self, duration):
         """ duration can either be an int with duration as minutes ie 240 or as a string ie 'hh:mm' or a QTime object"""

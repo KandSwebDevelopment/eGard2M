@@ -53,24 +53,13 @@ class AreaController(QObject):
                 for row in rows:
                     items.append(row[1])
                 self.areas_items[area] = items
-                # if area == 3:
-                #     for i in range(1, 9):
-                #         getattr(self.main_panel, "pb_pm2_%i" % i).setText("")
-                #     for i in self.get_area_items(3):
-                #         getattr(self.main_panel, "pb_pm2_%i" % i).setEnabled(True)
-                #         name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
-                #                                       "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
-                #                                       .format(DB_STRAINS, DB_PROCESS_STRAINS,
-                #                                               self.areas_pid[3], i))
-                #         getattr(self.main_panel, "pb_pm2_%i" % i).setText(str(i))
-                #         getattr(self.main_panel, "pb_pm2_%i" % i).setToolTip(name)
-                # else:  # No process in 3 so disable the finish buttons
-                #     for i in range(1, 9):
-                #         getattr(self.main_panel, "pb_pm2_%i" % i).setEnabled(False)
-                #         getattr(self.main_panel, "pb_pm2_%i" % i).setText("")
-                #         getattr(self.main_panel, "pb_pm2_%i" % i).setToolTip("")
+                getattr(self.main_panel, "frmstagechange_%i" % area).setEnabled(True)
             else:
                 # No process
+                getattr(self.main_panel, "frmstagechange_%i" % area).setEnabled(False)
+                if area < 3:
+                    getattr(self.main_panel, "pbadjust_%i" % area).setEnabled(False)
+
                 self.areas_pid[area] = 0
                 self.areas_items[area] = []
                 # Check if in manual mode

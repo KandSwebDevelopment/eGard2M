@@ -509,6 +509,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                         return
                     for row in rows:
                         getattr(self, "pb_pm2_%i" % row[0]).setText(str(row[0]))
+                        getattr(self, "pb_pm2_%i" % row[0]).setEnabled(True)
                         days = (datetime.now().date() - row[1]).days
                         name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
                                                       "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
@@ -741,18 +742,15 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         elif _input == AUD_AUTO_SET:
             pass
 
-    @pyqtSlot(list, name="updateSoil")
-    def update_soil_display(self, lst):
+    @pyqtSlot(int, collections.defaultdict, name="updateSoil")
+    def update_soil_display(self, area, lst):
         try:
-            self.le_avg_soil_1.setText(str(lst[8]))
-            self.le_avg_soil_2.setText(str(lst[9]))
-            for a in range(1, 3):
-                for c in range(1, 5):
-                    idx = ((a - 1) * 4) + c
-                    if int(lst[idx - 1]) > 1020:
-                        getattr(self, "le_soil_{}_{}".format(a, c)).setText("--")
-                    else:
-                        getattr(self, "le_soil_{}_{}".format(a, c)).setText(lst[idx - 1])
+            getattr(self, "le_avg_soil_%i" % area).setText(str(lst[5]))
+            for c in range(1, 5):
+                if int(lst[c]) > 1020:
+                    getattr(self, "le_soil_{}_{}".format(area, c)).setText("--")
+                else:
+                    getattr(self, "le_soil_{}_{}".format(area, c)).setText(str(lst[c]))
         except Exception as e:
             print("Update soil display - ", e.args)
 

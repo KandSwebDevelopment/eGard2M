@@ -63,7 +63,7 @@ class FeedControl(QThread):
         if area in self.feeds:
             return self.feeds[area].get_days_till_feed()
         else:
-            return 0
+            return 101
 
     def feed_due_today(self):
         """ Returns true if either area is due today"""

@@ -6,7 +6,7 @@ from defines import CFT_SOIL_SENSORS
 
 
 class SoilSensorClass(QObject):
-    update_soil_reading = pyqtSignal(list, name="updateSoil")  # List will contain area 1 and area 2
+    update_soil_reading = pyqtSignal(int, collections.defaultdict, name="updateSoil")  # Area, List will contain avg as item 5
 
     def __init__(self, parent):
         """
@@ -18,14 +18,20 @@ class SoilSensorClass(QObject):
         self.db = parent.db
 
         self.soil_sensors_status = collections.defaultdict()  # Hold soil sensor status
-        self.soil_dry = int(self.db.get_config("soil limits", "dry", 600))
-        self.soil_wet = int(self.db.get_config("soil limits", "wet", 300))
+        self.soil_dry = 0
+        self.soil_wet = 0
+        self.area_active = [0, 0, 0]
+        self.area2_active = 0
 
         self.load_status()
 
         self.area_controller.main_window.coms_interface.update_soil_reading.connect(self.calculate_soil)
 
     def load_status(self):
+        self.soil_dry = int(self.db.get_config("soil limits", "dry", 600))
+        self.soil_wet = int(self.db.get_config("soil limits", "wet", 300))
+        self.area_active[1] = int(self.db.get_config(CFT_SOIL_SENSORS, "area 1", 0) == "True")
+        self.area_active[2] = int(self.db.get_config(CFT_SOIL_SENSORS, "area 2", 0) == "True")
         for x in range(1, 9):
             self.soil_sensors_status[x] = int(self.db.get_config(CFT_SOIL_SENSORS, x, 0) == "True")
 
@@ -37,6 +43,31 @@ class SoilSensorClass(QObject):
         r = 100 if r > 100 else r
         return r
 
+    def update_active(self, area):
+        if self.area_active[area]:
+            getattr(self.area_controller.main_window.main_panel, "le_avg_soil_%i" % area).setEnabled(True)
+            getattr(self.area_controller.main_window.main_panel, "le_soil_%i_1" % area).setEnabled(True)
+            getattr(self.area_controller.main_window.main_panel, "le_soil_%i_2" % area).setEnabled(True)
+            getattr(self.area_controller.main_window.main_panel, "le_soil_%i_3" % area).setEnabled(True)
+            getattr(self.area_controller.main_window.main_panel, "le_soil_%i_4" % area).setEnabled(True)
+        else:
+            getattr(self.area_controller.main_window.main_panel, "le_avg_soil_%i" % area).setEnabled(False)
+            getattr(self.area_controller.main_window.main_panel, "le_soil_%i_1" % area).setEnabled(False)
+            getattr(self.area_controller.main_window.main_panel, "le_soil_%i_2" % area).setEnabled(False)
+            getattr(self.area_controller.main_window.main_panel, "le_soil_%i_3" % area).setEnabled(False)
+            getattr(self.area_controller.main_window.main_panel, "le_soil_%i_4" % area).setEnabled(False)
+
+    def update_display(self, area):
+        try:
+            getattr(self, "le_avg_soil_%i" % area).setText(str(lst[5]))
+            for c in range(1, 5):
+                if int(lst[c]) > 1020:
+                    getattr(self, "le_soil_{}_{}".format(area, c)).setText("--")
+                else:
+                    getattr(self, "le_soil_{}_{}".format(area, c)).setText(str(lst[c]))
+        except Exception as e:
+            print("Update soil display - ", e.args)
+
     def calculate_soil(self, data):
         if len(data) < 8:
             print("ERROR soil data to short")
@@ -47,34 +78,34 @@ class SoilSensorClass(QObject):
         avg = 0
         cnt = 0
         result = collections.defaultdict(int)
-        for x in range(0, 4):
-            if self.soil_sensors_status[x + 1]:
-                if int(data[x + (self.area - 1) * 4]) < 1000:
-                    total += int(data[x])
-                    result[x + 1] = self.convert_reading(data[x])
-                    cnt += 1
-        if total > 0:
-            avg = total / cnt
-        result[5] = self.convert_reading(avg)
+        if self.area_active[1]:
+            for x in range(0, 4):
+                if self.soil_sensors_status[x + 1]:
+                    if int(data[x]) < 1000:
+                        total += int(data[x])
+                        result[x + 1] = self.convert_reading(int(data[x]))
+                        cnt += 1
+            if total > 0:
+                avg = total / cnt
+            result[5] = self.convert_reading(avg)
+            self.update_soil_reading.emit(1, result)  # Signal new data
         # print(str(avg) + "%")
         # Area 2
         total = 0
         avg = 0
         cnt = 0
-        for x in range(0, 4):
-            try:
-                if self.soil_sensors_status[x + 5]:
-                    total += int(data[x + 4])
-                    cnt += 1
-            except Exception as e:
-                print("Update display error COM_SOIL_READ 2 - ", e.args)
-                pass
-        if total > 0:
-            avg = total / cnt
-            r = 100 - (((avg - self.soil_wet) / (
-                    self.soil_dry - self.soil_wet)) * 100)
-            avg = round(r, 1)
-            avg = 0 if avg < 0 else avg
-            avg = 100 if avg > 100 else avg
-        data.append(avg)
-        self.update_soil_reading.emit(data)  # Signal new data
+        result.clear()
+        if self.area_active[2]:
+            for x in range(0, 4):
+                try:
+                    if self.soil_sensors_status[x + 5]:
+                        total += int(data[x + 4])
+                        result[x + 1] = self.convert_reading(int(data[x + 4]))
+                        cnt += 1
+                except Exception as e:
+                    print("Update display error COM_SOIL_READ 2 - ", e.args)
+                    pass
+            if total > 0:
+                avg = total / cnt
+            result[5] = self.convert_reading(avg)
+            self.update_soil_reading.emit(2, result)  # Signal new data

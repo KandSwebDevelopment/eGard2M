@@ -3769,7 +3769,7 @@ class DialogSoilSensors(QDialog, Ui_DialogSoilSensors):
         self.main_panel = parent
         self.db = self.main_panel.db
         self.area = area
-        self.all_active = self.db.get_config(CFT_SOIL_SENSORS, "area {}".format(self.area), 0)
+        self.all_active = int(self.db.get_config(CFT_SOIL_SENSORS, "area {}".format(self.area), 0) == "True")
         self.pb_close.clicked.connect(lambda: self.sub.close())
         self.ck_active_all.setChecked(self.all_active)
         self.ck_active_all.clicked.connect(self.change_all_active)
@@ -3778,4 +3778,5 @@ class DialogSoilSensors(QDialog, Ui_DialogSoilSensors):
         aa = self.ck_active_all.isChecked()
         if aa == self.all_active:
             return
-        self.db.get_config(CFT_SOIL_SENSORS, "area {}".format(self.area), aa)
+        self.db.set_config_both(CFT_SOIL_SENSORS, "area {}".format(self.area), aa)
+        self.main_panel.area_controller.soil_sensors.load_status()

@@ -207,9 +207,6 @@ class SensorClass(object):
             new_value = string_to_float(new_value)
             self.value = round(new_value + self.calibration, 2)
 
-            # if (self.value_last + 7 > new_value < self.value_last - 7) or new_value > 100 and not self.is_first_update:
-            # ts = "Sensor {}   New {}    Old {}".format(self.id, self.value, self.value_last)
-            # print(ts)
             if self.display_ctrl is None:
                 return
             if self.display_id < 13:
@@ -218,11 +215,9 @@ class SensorClass(object):
                     self.display_ctrl.setText("Err")
                     return
 
-                self.display_ctrl.setText(str(self.value))
+                self.display_ctrl.setText(str(round(self.value, 1)))
                 if self.has_range:
-                    # colour_offset = self.value - self.set
                     colour_offset = self.get_colour_offset()
-                    # colour_offset = 2 - self.id
                 else:
                     colour_offset = 0
                 r, g, b, rt, gt, bt = self.get_colour(colour_offset)

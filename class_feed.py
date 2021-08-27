@@ -384,7 +384,7 @@ class FeedClass(QObject):
 
     def get_days_till_feed(self):
         if self.nfd is None:
-            return 0
+            return 101
         return (self.nfd.date() - datetime.now().date()).days
 
     def get_mix_count(self):
