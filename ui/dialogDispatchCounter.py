@@ -43,6 +43,7 @@ class Ui_DialogDispatchCounter(object):
         self.pb_start = QtWidgets.QPushButton(DialogDispatchCounter)
         self.pb_start.setEnabled(False)
         self.pb_start.setGeometry(QtCore.QRect(130, 100, 81, 31))
+        self.pb_start.setAutoDefault(True)
         self.pb_start.setDefault(True)
         self.pb_start.setObjectName("pb_start")
         self.lb_info = QtWidgets.QLabel(DialogDispatchCounter)
@@ -103,6 +104,14 @@ class Ui_DialogDispatchCounter(object):
 
         self.retranslateUi(DialogDispatchCounter)
         QtCore.QMetaObject.connectSlotsByName(DialogDispatchCounter)
+        DialogDispatchCounter.setTabOrder(self.cb_client, self.cb_jar)
+        DialogDispatchCounter.setTabOrder(self.cb_jar, self.le_amount)
+        DialogDispatchCounter.setTabOrder(self.le_amount, self.pb_start)
+        DialogDispatchCounter.setTabOrder(self.pb_start, self.pb_cancel)
+        DialogDispatchCounter.setTabOrder(self.pb_cancel, self.pb_tare)
+        DialogDispatchCounter.setTabOrder(self.pb_tare, self.pb_close)
+        DialogDispatchCounter.setTabOrder(self.pb_close, self.cb_type)
+        DialogDispatchCounter.setTabOrder(self.cb_type, self.le_progress)
 
     def retranslateUi(self, DialogDispatchCounter):
         _translate = QtCore.QCoreApplication.translate

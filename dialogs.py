@@ -1,7 +1,11 @@
 import collections
+import os
 import socket
+import sys
 from datetime import *
 
+import serial
+import serial.tools.list_ports
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import *
 from PyQt5.QtGui import QTextCursor
@@ -15,6 +19,7 @@ from ui.dialogDispatchCounter import Ui_DialogDispatchCounter
 from ui.dialogDispatchInternal import Ui_DialogDispatchInternal
 from functions import string_to_float, m_box, play_sound, auto_capital, sound_click, minutes_to_hhmm
 from ui.dialogAccess import Ui_DialogDEmodule
+from ui.dialogDispatchLoadingBay import Ui_DialogDispatchLoading
 from ui.dialogDispatchOverview import Ui_DialogLogistics
 from ui.dialogDispatchReports import Ui_DialogDispatchReport
 from ui.dialogDispatchStorage import Ui_Form
@@ -270,6 +275,7 @@ class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
         if self.cb_client.currentIndex() > 0 and self.cb_jar.currentIndex() > 0 and string_to_float(
                 self.le_amount.text()) and self.cb_type.currentIndex() > 0:
             self.pb_start.setEnabled(True)
+            self.pb_start.setFocus()
         else:
             self.pb_start.setEnabled(False)
 
@@ -871,6 +877,288 @@ class DialogDispatchInternal(QDialog, Ui_DialogDispatchInternal):
                 strain = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_STRAINS, row[1]))
             self.cb_jar.addItem("{} - {}".format(row[0], strain), row[0])
         self.cb_jar.blockSignals(False)
+
+
+class DialogDispatchLoadingBay(QDialog, Ui_DialogDispatchLoading):
+    def __init__(self, parent):
+        """
+
+        :type parent: MainWindow
+        """
+        super(DialogDispatchLoadingBay, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.main_panel = parent
+        self.sub = None
+        self.db = parent.db
+        self.scales = parent.scales
+        self.reading = self.reading_last = 0
+        self.is_finished = False
+        self.is_stored = False  # Blocks readings until jar and strain set
+        self.is_reading = False  # Blocks readings until jar and strain set
+        self.jar = None
+        self.jar_id = 0
+        self.jar_nett = 0
+        self.strain_total = 0
+        self.strain_id = 0
+        self.process_id = 0
+        self.adding_to_jar = False      # True when adding to a jar with same strain
+        self.step = 0  # 0=Not started, 1=item selected waiting on empty, 2=nett stored waiting on filled
+        self.empty_grams = string_to_float(self.db.get_config(CFT_DISPATCH, "empty grams", 1.5))
+
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.pb_tare.clicked.connect(lambda: self.scales.tare())
+        self.cb_strain.currentIndexChanged.connect(self.change_strain)
+        self.pb_store.clicked.connect(self.store)
+        self.scales.new_reading.connect(self.update_reading)
+        self.scales.new_uid.connect(self.new_uid)
+        self.msg = QMessageBox()
+        self.msg.setIcon(QMessageBox.Warning)
+
+        self.pb_store.setEnabled(False)
+
+        self.load_strain_list()
+        if not self.scales.is_connected:
+            self.te_jar_info.setText("Scales Not Connected")
+            return
+        self.te_jar_info.setText("Step 1: Select Item")
+        self.scales.tare()
+
+    @pyqtSlot(str, name='newUID')
+    def new_uid(self, uid):
+        if self.step == 1:
+            if not self.check_uid(uid):
+                self.step = 10
+                # self.te_jar_info.clear()
+                # self.te_jar_info.setText("This jar is not empty")
+                return
+            self.jar = self.db.execute_one_row(
+                "SELECT jar, weight, nett, UID, strain FROM {} WHERE UID ='{}'".format(DB_JARS, uid))
+            self.jar_id = self.jar[0]
+            # if idx != -1:
+            #     self.cb_jars.setCurrentIndex(idx)
+            if self.adding_to_jar:
+                self.jar_nett = self.jar[1]
+                # self.te_jar_info.clear()
+                self.te_jar_info.append("Step 3: Store jar contents")
+                # self.le_gross.setText("Waiting")
+                # self.le_weight.setText("....")
+            else:
+                self.jar_nett = self.jar[2]
+                self.te_jar_info.clear()
+                self.te_jar_info.setText("Step 3: Store nett weight")
+            self.pb_store.setEnabled(True)
+        if self.step == 2:
+            jar = self.db.execute_one_row(
+                "SELECT jar, weight, nett, UID, strain FROM {} WHERE UID ='{}'".format(DB_JARS, uid))
+            if jar[0] != self.jar[0]:
+                self.te_jar_info.clear()
+                self.te_jar_info.setText("Incorrect jar")
+                return
+            self.step = 3
+            self.te_jar_info.clear()
+            self.te_jar_info.setText("Step 5: Store total")
+
+    @pyqtSlot(str, name='updateReading')
+    def update_reading(self, value):
+        self.reading = float(value)
+        if self.step == 1 or self.step == 3:
+            self.le_gross.setText(str(self.reading))
+            self.reading_last = self.reading
+            self.le_weight.setText(str(round(self.reading - self.jar_nett, 1)))
+        if self.step == 10 and self.reading < 0.5:  # Jar removed
+            self.te_jar_info.clear()
+            self.cb_strain.setCurrentIndex(0)
+            self.te_jar_info.setText("Step 1: Select Item")
+            self.step = 0
+            self.le_weight.setText("")
+            self.le_gross.setText("")
+            self.load_strain_list()
+
+        # if self.is_stored and self.reading < 0.5:  # Jar removed
+        #     self.le_weight.setText("")
+        #     self.le_gross.setText("")
+        #     self.te_jar_info.setText("")
+        # if not self.is_reading:
+        #     return
+        # if self.is_finished and self.reading < 0.2:
+        #     self.is_finished = False
+        # if not self.is_finished:
+        #     if self.reading > 1:
+        #         self.te_jar_info.setText("")
+        #     self.le_gross.setText(str(self.reading))
+        #     self.reading_last = self.reading
+        #     self.le_weight.setText(str(round(self.reading - self.jar_nett, 1)))
+
+    # def read(self):
+    #     self.is_reading = True
+    #     self.pb_read.setEnabled(False)
+    #     self.pb_store.setEnabled(True)
+    #     self.cb_jars.setEnabled(False)
+    #     self.cb_strain.setEnabled(False)
+    #     self.pb_close.setEnabled(False)
+    #     self.te_jar_info.setText("Place filled jar in scales")
+
+    def load_strain_list(self):
+        # Select all the items in area 3 as it will be these to be stored
+        self.cb_strain.clear()
+        sql = 'SELECT s.name, s.id, a.item, a.process_id FROM {} s INNER JOIN {} ps ON s.id = ps.strain_id INNER JOIN {}' \
+              ' a ON ps.process_id = a.process_id AND ps.item = a.item AND a.area = 3'. \
+            format(DB_STRAINS, DB_PROCESS_STRAINS, DB_AREAS)
+        rows = self.db.execute(sql)
+        if len(rows) == 0:
+            self.cb_strain.addItem("None Incoming", 0)
+        else:
+            self.cb_strain.addItem("Select", 0)
+            self.process_id = rows[0][3]
+        for row in rows:
+            self.cb_strain.addItem("No.{}  {}".format(row[2], row[0]), row[2])  # Data is item number
+
+    def store(self):
+        if self.step == 1:
+            self.step = 2
+            if self.adding_to_jar:
+                sql = 'UPDATE {} SET weight = {}, last_recon = "{}" WHERE jar = "{}"' \
+                    .format(DB_JARS, self.reading, datetime.now(), self.jar_id)
+            else:
+                sql = 'UPDATE {} SET nett = {}, weight = {}, last_nett = "{}" WHERE jar = "{}"' \
+                    .format(DB_JARS, self.reading, self.reading, datetime.now(), self.jar_id)
+            self.db.execute_write(sql)
+            self.jar_nett = self.reading
+            self.te_jar_info.clear()
+            self.te_jar_info.setText("Step 4: Place filled jar")
+            self.le_gross.setText("Waiting")
+            self.le_weight.setText("....")
+            return
+
+        if self.step == 3:
+            self.step = 4
+            self.strain_total = round(self.reading - self.jar_nett, 1)
+            # Get strain
+            sql = 'SELECT s.id FROM {} s INNER JOIN {} ps ON s.id = ps.strain_id INNER JOIN {}' \
+                  ' a ON ps.process_id = a.process_id AND ps.item = a.item AND a.area = 3 AND a.item = {}'. \
+                format(DB_STRAINS, DB_PROCESS_STRAINS, DB_AREAS, self.cb_strain.currentData())
+            strain = self.db.execute_single(sql)
+            # Store in jar
+            sql = 'UPDATE {} SET weight = {}, strain = {} WHERE jar = "{}"' \
+                .format(DB_JARS, self.reading, strain, self.jar_id)
+            print(sql)
+            self.db.execute_write(sql)
+            # Store plant amount
+            sql = 'UPDATE {} SET yield = {} WHERE process_id = {} AND item = {}'. \
+                format(DB_PROCESS_STRAINS, self.strain_total, self.process_id, self.cb_strain.currentData())
+            print(sql)
+            self.db.execute_write(sql)
+            # Add entry in journal
+            dt = datetime.strftime(datetime.now(), '%d/%m/%y %H:%M')
+            self.main_panel.process_from_id(self.process_id).journal_write(
+                "{} Number {} finished drying and {} grams stored in {}".
+                format(dt, self.cb_strain.currentData(), self.strain_total, self.jar_id))
+            # Call the finish item
+            self.main_panel.finish_item(self.cb_strain.currentData(), self.strain_total, False)
+            self.te_jar_info.setText("Remove Jar")
+            self.step = 10
+            self.adding_to_jar = False
+            # self.cb_jars.setEnabled(True)
+            self.pb_store.setEnabled(False)
+            # self.pb_read.setEnabled(True)
+            play_sound(SND_OK)
+            # self.load_jars_list()
+            self.main_panel.update_stock()
+            self.load_strain_list()
+
+    def finish(self):  # Done
+        self.le_weight.setText("")
+        self.pb_store.setEnabled(False)
+        self.pb_read.setEnabled(False)
+        # self.cb_jars.setEnabled(True)
+        self.cb_strain.setEnabled(True)
+        self.cb_strain.setCurrentIndex(0)
+        self.pb_close.setEnabled(True)
+        self.te_jar_info.setText("")
+        self.le_gross.setText("")
+        self.strain_total = 0
+        # self.main_panel.finish_item(self.cb_strain.currentData())
+        self.load_jars_list()
+        self.load_strain_list()
+        self.pb_done.setEnabled(False)
+
+    # def change_jar(self):
+    #     sql = 'SELECT jar, strain, weight - nett as gross, nett FROM {} WHERE  jar = "{}"'. \
+    #         format(DB_JARS, self.cb_jars.currentData())
+    #     rows = self.db.execute_one_row(sql)
+    #     if rows is None:
+    #         return
+    #     if rows[2] >= self.empty_grams:
+    #         self.msg.setText(
+    #             "This jar is not empty, it should still have {}grams.<br>Please check".format(round(rows[2], 1)))
+    #         self.msg.setWindowTitle("Jar Not Empty")
+    #         self.msg.setStandardButtons(QMessageBox.Cancel)
+    #         self.msg.setDefaultButton(QMessageBox.Cancel)
+    #         self.msg.exec_()
+    #         return False
+    #     self.jar_nett = rows[3]
+    #     self.check_start()
+
+    def change_strain(self):
+        if self.cb_strain.currentIndex() > 0:
+            self.step = 1
+            self.te_jar_info.clear()
+            self.te_jar_info.setText("Step 2: Place empty jar")
+            sql = 'SELECT strain_id FROM {} WHERE process_id = {} AND item = {}'. \
+                format(DB_PROCESS_STRAINS, self.process_id, self.cb_strain.currentData())
+            self.strain_id = self.db.execute_single(sql)
+
+    # def load_jars_list(self):
+    #     self.cb_jars.clear()
+    #     sql = "SELECT jar, strain FROM {} WHERE weight - nett <= 1 ORDER BY jar".format(DB_JARS)
+    #     rows = self.db.execute(sql)
+    #
+    #     self.cb_jars.blockSignals(True)
+    #     if rows is None:
+    #         self.cb_jars.addItem("None Available", "000")
+    #     else:
+    #         self.cb_jars.addItem("Select", "000")
+    #     for row in rows:
+    #         self.cb_jars.addItem(row[0], row[0])
+    #     self.cb_jars.blockSignals(False)
+
+    def check_uid(self, uid) -> bool:
+        """
+        Checks if a jar with the UID is empty
+        :param uid: The jar UID to check
+        :type uid: str
+        :return: True if ok to use jar
+        :rtype:
+        """
+        row = self.db.execute_one_row("SELECT weight - nett, strain FROM {} WHERE UID = '{}'".format(DB_JARS, uid))
+        gross = row[0]
+        if gross is None:
+            self.msg.setText("This tag has not been registered {}".format(uid))
+            self.msg.setWindowTitle("Unregistered UID")
+            self.msg.setStandardButtons(QMessageBox.Cancel)
+            self.msg.setDefaultButton(QMessageBox.Cancel)
+            self.msg.exec_()
+            return False
+        if gross >= self.empty_grams:
+            if self.strain_id == row[1]:
+                self.te_jar_info.setText("This jar contains {}g of {}, you will be adding to it".
+                                         format(round(gross, 1), self.cb_strain.currentText()))
+                self.adding_to_jar = True
+                return True
+            else:
+                self.te_jar_info.setText("This jar contains a different strain and can NOT be used")
+                return False
+        return True
+
+    def check_start(self):
+        if self.cb_strain.currentIndex() > 0:
+            self.pb_done.setEnabled(True)
+            self.pb_read.setEnabled(True)
+            # self.te_jar_info.setText("Place Vessel")
+        else:
+            self.pb_done.setEnabled(False)
+            self.pb_read.setEnabled(False)
 
 
 class DialogDispatchStorage(QDialog, Ui_Form):
@@ -3512,20 +3800,20 @@ class DialogSettings(QDialog, Ui_DialogSettings):
         self.servo_valve = 0
         self.rbustank_1.setChecked(True)
 
-        self.pb_close.clicked.connect(lambda: self.close())
+        self.pb_close.clicked.connect(lambda: self.sub.close())
 
-        self.pbusoperate.clicked.connect(self.us_test)
-        self.rbustank_1.clicked.connect(self.us_set_tank)
-        self.rbustank_2.clicked.connect(self.us_set_tank)
-        self.rbustank_3.clicked.connect(self.us_set_tank)
-
-        self.rsservovalve_1.clicked.connect(self.sv_set_valve)
-        self.rsservovalve_2.clicked.connect(self.sv_set_valve)
-        self.rsservovalve_3.clicked.connect(self.sv_set_valve)
-        self.rsservovalve_4.clicked.connect(self.sv_set_valve)
-        self.rsservovalve_5.clicked.connect(self.sv_set_valve)
-        self.rsservovalve_6.clicked.connect(self.sv_set_valve)
-        self.pbsvmove.clicked.connect(self.sv_move)
+        # self.pbusoperate.clicked.connect(self.us_test)
+        # self.rbustank_1.clicked.connect(self.us_set_tank)
+        # self.rbustank_2.clicked.connect(self.us_set_tank)
+        # self.rbustank_3.clicked.connect(self.us_set_tank)
+        #
+        # self.rsservovalve_1.clicked.connect(self.sv_set_valve)
+        # self.rsservovalve_2.clicked.connect(self.sv_set_valve)
+        # self.rsservovalve_3.clicked.connect(self.sv_set_valve)
+        # self.rsservovalve_4.clicked.connect(self.sv_set_valve)
+        # self.rsservovalve_5.clicked.connect(self.sv_set_valve)
+        # self.rsservovalve_6.clicked.connect(self.sv_set_valve)
+        # self.pbsvmove.clicked.connect(self.sv_move)
 
         self.pbsoilread.clicked.connect(self.soil_read)
         # self.main_panel.water_control.new_data.connect(self.update_us_display)
@@ -3534,7 +3822,7 @@ class DialogSettings(QDialog, Ui_DialogSettings):
         # Mode
         self.cb_system_mode.addItem("Master", 1)
         self.cb_system_mode.addItem("Slave", 2)
-        self.cb_system_mode.setCurrentIndex(self.main_panel.mode - 1)
+        self.cb_system_mode.setCurrentIndex(self.main_panel.master_mode - 1)
         self.cb_system_mode.currentIndexChanged.connect(self.system_mode_change)
 
         # Database
@@ -3575,8 +3863,8 @@ class DialogSettings(QDialog, Ui_DialogSettings):
         self.pb_reset_fan_1.clicked.connect(lambda: self.main_panel.fans[1].reset())
         self.pb_save_fans_2.clicked.connect(lambda: self.save_fans(2))
         self.pb_reset_fan_2.clicked.connect(lambda: self.main_panel.fans[2].reset())
-        self.pb_show_log_1.clicked.connect(lambda: self.main_panel.dialog_control("Fan 1 Log", DialogFanLog, 1))
-        self.pb_show_log_2.clicked.connect(lambda: self.main_panel.dialog_control("Fan 2 Log", DialogFanLog, 2))
+        # self.pb_show_log_1.clicked.connect(lambda: self.main_panel.dialog_control("Fan 1 Log", DialogFanLog, 1))
+        # self.pb_show_log_2.clicked.connect(lambda: self.main_panel.dialog_control("Fan 2 Log", DialogFanLog, 2))
 
         self.ck_test.clicked.connect(lambda: self.logging(1))
         self.ck_test_2.clicked.connect(lambda: self.logging(2))

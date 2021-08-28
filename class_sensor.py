@@ -27,6 +27,7 @@ class SensorClass(object):
         self.value = None
         self.value_last = 0
         self.has_range = False  # Set True when set range is called. If false no colouring display
+        self.has_process = False    #
         self.status_ctrl = None  # The ctrl to indicate set point
         self.is_first_update = True  # Set false after 1st update, for data jump detection
         self.trend_ctrl = None
@@ -65,10 +66,13 @@ class SensorClass(object):
                     self.set_range(r)
                     ro = p.temperature_ranges_active_org[self.item]
                     self.set_range_org(ro)
+                    self.has_process = True
                 else:
                     # @todo Add call to msg sys - No temperature range for process
+                    self.has_process = False
                     self.area_controller.sensor_load_manual_ranges(self.area, self.item)
         else:
+            self.has_process = False
             self.area_controller.sensor_load_manual_ranges(self.area, self.item)
 
     @property
@@ -216,7 +220,7 @@ class SensorClass(object):
                     return
 
                 self.display_ctrl.setText(str(round(self.value, 1)))
-                if self.has_range:
+                if self.has_range or (self.has_process and self.area < 3):
                     colour_offset = self.get_colour_offset()
                 else:
                     colour_offset = 0

@@ -57,7 +57,7 @@ class SoilSensorClass(QObject):
             getattr(self.area_controller.main_window.main_panel, "le_soil_%i_3" % area).setEnabled(False)
             getattr(self.area_controller.main_window.main_panel, "le_soil_%i_4" % area).setEnabled(False)
 
-    def update_display(self, area):
+    def update_display(self, area, lst):
         try:
             getattr(self, "le_avg_soil_%i" % area).setText(str(lst[5]))
             for c in range(1, 5):

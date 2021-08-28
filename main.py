@@ -13,7 +13,7 @@ from controller_windows import WindowsController
 from dbController import MysqlDB
 from dialogs import DialogEngineerCommandSender, DialogEngineerIo, DialogDispatchInternal, DialogDispatchCounter, \
     DialogDispatchReports, DialogStrainFinder, DialogDispatchStorage, DialogDispatchOverview, DialogSysInfo, \
-    DialogSettings, DialogProcessPerformance
+    DialogSettings, DialogProcessPerformance, DialogDispatchLoadingBay
 from functions import multi_status_bar, get_last_friday
 from functions_colors import get_css_colours
 from status_codes import *
@@ -92,6 +92,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionReport.triggered.connect(lambda: self.wc.show(DialogDispatchReports(self.main_panel)))
         self.actionStorage.triggered.connect(lambda: self.wc.show(DialogDispatchStorage(self.main_panel)))
         self.actionOverview.triggered.connect(lambda: self.wc.show(DialogDispatchOverview(self.main_panel)))
+        self.actionLoading.triggered.connect(lambda: self.wc.show(DialogDispatchLoadingBay(self.main_panel)))
 
         # Process
         self.actionPreformance_2.triggered.connect(lambda: self.wc.show(DialogProcessPerformance(self.main_panel)))
