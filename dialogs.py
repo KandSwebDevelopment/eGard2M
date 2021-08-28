@@ -1974,7 +1974,7 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
 
         count = self.feed_control.get_mix_count(location)
         self.tw_mixes.clear()
-        for t in range(2, count + 1):
+        for t in range(1, count + 1):
             self.tw_mixes.addTab(QWidget(), "Feed {}".format(t))
 
         self.display_mix(self.mix_number)

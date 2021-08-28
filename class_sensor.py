@@ -73,7 +73,8 @@ class SensorClass(object):
                     self.area_controller.sensor_load_manual_ranges(self.area, self.item)
         else:
             self.has_process = False
-            self.area_controller.sensor_load_manual_ranges(self.area, self.item)
+            if self.area_controller.area_is_manual(self.area) or self.area > 3:
+                self.area_controller.sensor_load_manual_ranges(self.area, self.item)
 
     @property
     def is_fan(self):

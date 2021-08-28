@@ -73,6 +73,9 @@ class Ui_DialogWaterHeatertSetting(object):
         self.cb_frequency.setProperty("area", 1)
         self.cb_frequency.setProperty("item", 1)
         self.cb_frequency.setObjectName("cb_frequency")
+        self.ck_lock = QtWidgets.QCheckBox(DialogWaterHeatertSetting)
+        self.ck_lock.setGeometry(QtCore.QRect(30, 290, 71, 20))
+        self.ck_lock.setObjectName("ck_lock")
 
         self.retranslateUi(DialogWaterHeatertSetting)
         QtCore.QMetaObject.connectSlotsByName(DialogWaterHeatertSetting)
@@ -89,6 +92,7 @@ class Ui_DialogWaterHeatertSetting(object):
         self.lbl_name.setText(_translate("DialogWaterHeatertSetting", "Water Heater 1"))
         self.ck_use_float.setText(_translate("DialogWaterHeatertSetting", "Use Float Switch"))
         self.label_50.setText(_translate("DialogWaterHeatertSetting", "Frequency"))
+        self.ck_lock.setText(_translate("DialogWaterHeatertSetting", "Lock"))
 
 
 if __name__ == "__main__":

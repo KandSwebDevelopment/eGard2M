@@ -820,10 +820,12 @@ class MainPanel(QMdiSubWindow, Ui_Form):
     @pyqtSlot(int, int, int)
     def update_fan_mode(self, fan1, fan2, master_power):
         if master_power == OFF:
-            self.lefanspeed_1.setStyleSheet("background-color: red; color: White")
-            self.lefanspeed_2.setStyleSheet("background-color: red; color: White")
-            self.lefanspeed_1.setText("")
-            self.lefanspeed_2.setText("")
+            if self.area_controller.area_has_process(1):
+                self.lefanspeed_1.setStyleSheet("background-color: red; color: White")
+                self.lefanspeed_1.setText("")
+            if self.area_controller.area_has_process(2):
+                self.lefanspeed_2.setStyleSheet("background-color: red; color: White")
+                self.lefanspeed_2.setText("")
         else:
             self.lefanspeed_1.setStyleSheet("")
             self.lefanspeed_2.setStyleSheet("")
@@ -837,7 +839,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
 
             if mode == 0:
                 ctrl.setPixmap(QtGui.QPixmap(":/normal/002-stop.png"))
-                getattr(self, "lefanspeed_{}".format(x)).setStyleSheet("background-color: red; color: White")
+                if self.area_controller.area_has_process(x):
+                    getattr(self, "lefanspeed_{}".format(x)).setStyleSheet("background-color: red; color: White")
             elif mode == 1:
                 ctrl.setPixmap(QtGui.QPixmap(":/normal/output_manual_1.png"))
                 getattr(self, "lefanspeed_{}".format(x)).setStyleSheet("background-color: lightblue; color: black")

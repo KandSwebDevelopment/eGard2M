@@ -86,7 +86,8 @@ class FansController(QObject):
             self.fans[area].start_auto()
         else:
             # In manual mode
-            self.fans[area].start_fan()
+            # self.fans[area].start_manual()
+            pass
 
     def start_manual(self, area):
         self.fans[area].start_manual()

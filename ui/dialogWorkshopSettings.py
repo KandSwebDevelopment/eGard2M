@@ -112,6 +112,10 @@ class Ui_DialogWorkshopSetting(object):
         self.label_53.setGeometry(QtCore.QRect(120, 40, 41, 20))
         self.label_53.setAlignment(QtCore.Qt.AlignCenter)
         self.label_53.setObjectName("label_53")
+        self.ck_lock = QtWidgets.QCheckBox(DialogWorkshopSetting)
+        self.ck_lock.setGeometry(QtCore.QRect(30, 357, 71, 20))
+        self.ck_lock.setObjectName("ck_lock")
+        self.label_46.setBuddy(self.label_46)
 
         self.retranslateUi(DialogWorkshopSetting)
         QtCore.QMetaObject.connectSlotsByName(DialogWorkshopSetting)
@@ -133,6 +137,7 @@ class Ui_DialogWorkshopSetting(object):
         self.label_52.setText(_translate("DialogWorkshopSetting", "Min"))
         self.ck_frost.setText(_translate("DialogWorkshopSetting", "Frost Protection"))
         self.label_53.setText(_translate("DialogWorkshopSetting", "Max"))
+        self.ck_lock.setText(_translate("DialogWorkshopSetting", "Lock"))
 
 
 if __name__ == "__main__":

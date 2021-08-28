@@ -110,6 +110,9 @@ class Ui_DialogOutputSetting(object):
         font.setWeight(75)
         self.lbl_name.setFont(font)
         self.lbl_name.setObjectName("lbl_name")
+        self.ck_lock = QtWidgets.QCheckBox(DialogOutputSetting)
+        self.ck_lock.setGeometry(QtCore.QRect(30, 290, 71, 20))
+        self.ck_lock.setObjectName("ck_lock")
 
         self.retranslateUi(DialogOutputSetting)
         QtCore.QMetaObject.connectSlotsByName(DialogOutputSetting)
@@ -132,6 +135,7 @@ class Ui_DialogOutputSetting(object):
         self.label_47.setText(_translate("DialogOutputSetting", "Timer"))
         self.pb_close.setText(_translate("DialogOutputSetting", "Close"))
         self.lbl_name.setText(_translate("DialogOutputSetting", "Socket"))
+        self.ck_lock.setText(_translate("DialogOutputSetting", "Lock"))
 
 
 if __name__ == "__main__":
