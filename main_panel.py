@@ -583,6 +583,10 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             # Update the processes current stage
             self.db.execute_write(
                 "UPDATE " + DB_PROCESS + " SET stage = 4, location = 3 WHERE id = " + str(p.id))
+            # Delete any mixes for area 2 as it will now be empty
+            self.db.execute_write("DELETE FROM {} WHERE area = 2".format(DB_PROCESS_FEED_ADJUSTMENTS))
+            self.db.execute_write("DELETE FROM {} WHERE area = 2".format(DB_PROCESS_MIXES))
+
             p.current_stage += 1
         self.area_controller.reload_area(2)
         self.area_controller.reload_area(3)
@@ -602,6 +606,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                     self.coms_interface.send_switch(SW_LIGHT_1, status)
                 else:
                     self.coms_interface.relay_send(NWC_SWITCH_REQUEST, SW_LIGHT_1)
+        else:
+            self.coms_interface.send_switch(SW_LIGHT_1, OFF)
 
         if self.area_controller.area_has_process(2):
             status = self.area_controller.get_area_process(2).check_light()
@@ -610,6 +616,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                     self.coms_interface.send_switch(SW_LIGHT_2, status)
                 else:
                     self.coms_interface.relay_send(NWC_SWITCH_REQUEST, SW_LIGHT_2)
+        else:
+            self.coms_interface.send_switch(SW_LIGHT_1, OFF)
 
     def stage_advance(self, area):
         # Advances the the process to the next stage

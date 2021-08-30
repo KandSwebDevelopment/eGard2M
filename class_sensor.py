@@ -175,7 +175,7 @@ class SensorClass(object):
             tv = self.set
         if self._is_fan:
             t += "<td style='padding:0px 4px 0px 4px; style='text-align:center; vertical-align:middle;" \
-                 " color:blue'>{}</td>".format(padding_size, padding_size, tv)
+                 " color:blue'>{}</td>".format(tv)
         else:
             # t += "<td style='padding:0px 6px 0px 6px;' style='text-align:center; vertical-align:middle;'>{}</td>". \
             t += "<td style='width:33%; padding:0px 6px 0px 6px; font-size:16px; vertical-align:middle;'>{}</td>". format(tv)
