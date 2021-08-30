@@ -53,9 +53,10 @@ class OutputClass(QObject):
         self.timer = QTimer()
         self.timer.setInterval(1000)
         self.timer.timeout.connect(self.timer_event)
+        self.locked = 0
 
     def load_profile(self):
-        row = self.db.execute_one_row('SELECT `name`, `area`, `type`, `input`, `range`, `pin`, `short_name`, `trigger` FROM {}'
+        row = self.db.execute_one_row('SELECT `name`, `area`, `type`, `input`, `range`, `pin`, `short_name`, `trigger`, locked FROM {}'
                                       ' WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
         if len(row) == 0:
             return
@@ -67,6 +68,7 @@ class OutputClass(QObject):
         self.range = (row[4]).split(",")
         self.output_pin = row[5]
         self.short_name = row[6]
+        self.locked = row[7]
         self.has_process = False
         if self.area < 4 and self.output_controller.area_controller.area_has_process(self.area):
             self.has_process = True
@@ -91,6 +93,11 @@ class OutputClass(QObject):
         self.range[1] = string_to_float(range_[1])
         self.calculate_limits()
         self.update_info()
+
+    def set_locked(self, lock):
+        if lock == self.locked:
+            return
+        self.locked = lock
 
     def set_mode(self, mode):
         """ Updates the outputs mode and saves it to the db and updates the outputs info control """
@@ -311,7 +318,13 @@ class OutputClass(QObject):
 
     def update_info(self):
         """ Displays the output type icon, sensor icon and mode icon """
-        getattr(self.output_controller.main_panel, "lbl_output_number_%i" % self.ctrl_id).setText(self.short_name[1:])
+        # Locked
+        if self.locked:
+            getattr(self.output_controller.main_panel, "lbl_output_number_%i" % self.ctrl_id).setText("L")
+        else:
+            getattr(self.output_controller.main_panel, "lbl_output_number_%i" % self.ctrl_id).setText("")
+
+        # Output type
         ctrl = getattr(self.output_controller.main_panel, "lbl_output_%i" % self.ctrl_id)
         if self.short_name[:1] == "H":
             ctrl.setPixmap(QPixmap(":/normal/output_heater.png"))
@@ -320,6 +333,7 @@ class OutputClass(QObject):
         if self.short_name[:1] == "S":
             ctrl.setPixmap(QPixmap(":/normal/output_socket.png"))
 
+        # Output mode
         if self.has_process or self.area > 3:
             getattr(self.output_controller.main_panel, "frm_output_%i" % self.ctrl_id).setEnabled(True)
             ctrl = getattr(self.output_controller.main_panel, "pb_output_mode_%i" % self.ctrl_id)

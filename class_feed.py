@@ -140,7 +140,7 @@ class FeedClass(QObject):
         stage_days_elapsed = 1 if self.stage_days_elapsed == 0 else self.stage_days_elapsed
         x = schedule = 0
         for schedule in self.feed_schedules_current:
-            if schedule[1] >= self.stage_days_elapsed >= schedule[0]:
+            if schedule[1] >= stage_days_elapsed >= schedule[0]:
                 self.feed_schedule = schedule
                 self.feed_schedule_item_num = x
                 break

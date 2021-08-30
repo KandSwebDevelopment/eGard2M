@@ -172,7 +172,8 @@ class FeedControl(QThread):
 
     def new_day(self):
         for a in range(1, 3):
-            self.feeds[a].new_day()
+            if a in self.feeds:
+                self.feeds[a].new_day()
 
     def feed(self, area, f_date=None):
         if not self.main_window.area_controller.area_has_process(area):

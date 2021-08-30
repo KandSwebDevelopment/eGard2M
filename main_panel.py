@@ -402,17 +402,17 @@ class MainPanel(QMdiSubWindow, Ui_Form):
 
     def check_drying(self):
         for i in range(1, 9):
-            getattr(self.main_panel, "pb_pm2_%i" % i).setEnabled(False)
-            getattr(self.main_panel, "pb_pm2_%i" % i).setText("")
-            getattr(self.main_panel, "pb_pm2_%i" % i).setToolTip("")
+            getattr(self, "pb_pm2_%i" % i).setEnabled(False)
+            getattr(self, "pb_pm2_%i" % i).setText("")
+            getattr(self, "pb_pm2_%i" % i).setToolTip("")
         for i in self.get_area_items(3):
-            getattr(self.main_panel, "pb_pm2_%i" % i).setEnabled(True)
+            getattr(self, "pb_pm2_%i" % i).setEnabled(True)
             name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
                                           "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
                                           .format(DB_STRAINS, DB_PROCESS_STRAINS,
                                                   self.areas_pid[3], i))
-            getattr(self.main_panel, "pb_pm2_%i" % i).setText(str(i))
-            getattr(self.main_panel, "pb_pm2_%i" % i).setToolTip(name)
+            getattr(self, "pb_pm2_%i" % i).setText(str(i))
+            getattr(self, "pb_pm2_%i" % i).setToolTip(name)
 
     def check_stage(self, location):
         if self.area_controller.get_area_process(location) == 0:
