@@ -394,5 +394,6 @@ class OutputClass(QObject):
                 # t += "<br>F: {}<br>N: {}".format(self.temp_off_adjusted, self.temp_on_adjusted)
             # self.info_ctrl.setText(t)
         else:
-            getattr(self.output_controller.main_panel, "frm_output_%i" % self.ctrl_id).setEnabled(False)
+            if not self.output_controller.area_controller.area_is_manual(self.area):
+                getattr(self.output_controller.main_panel, "frm_output_%i" % self.ctrl_id).setEnabled(False)
             pass
