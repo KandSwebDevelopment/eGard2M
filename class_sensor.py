@@ -167,7 +167,7 @@ class SensorClass(object):
         else:
             tv = self.low
         # t += "<tr><td style='font-size:{}px; vertical-align:middle; padding:0px 0px 0px 0px;'>{}</td>"\
-        t += "<tr><td style='width:33%; vertical-align:bottom;'>{}</td>"\
+        t += "<tr><td style='width:33%;'>{}</td>"\
             .format(tv)
 
         #  set value
@@ -176,11 +176,10 @@ class SensorClass(object):
         else:
             tv = self.set
         if self._is_fan:
-            t += "<td style='width:33%;text-align:center; vertical-align:middle;" \
-                 " color:blue'>{}</td>".format(tv)
+            t += "<td style='width:33%; color:blue'>{}</td>".format(tv)
         else:
             # t += "<td style='padding:0px 6px 0px 6px;' style='text-align:center; vertical-align:middle;'>{}</td>". \
-            t += "<td style='width:33%; padding:0px 6px 3px 6px; font-size:14px; vertical-align:middle;'>{}</td>". format(tv)
+            t += "<td style='width:33%; padding:0px 8px 8px 6px;'>{}</td>". format(tv)
 
         #      high value
         if self.high_org != 999 and self.high != self.high_org:
@@ -188,7 +187,7 @@ class SensorClass(object):
         else:
             tv = self.high
         # t += "<td style='padding:0px 0px 0px 0px; vertical-align:middle; font-size:{}px;'>{}</td>".format(font_size, tv)
-        t += "<td style='width:33%; vertical-align:top;'>{}</td>".format(tv)
+        t += "<td style='width:33%;'>{}</td>".format(tv)
         t += "</tr></table>"
         self.status_ctrl.setText(t)
 
