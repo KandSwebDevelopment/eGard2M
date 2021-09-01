@@ -102,7 +102,7 @@ class MessageSystem(QObject):
         self.remove(mid)
 
     def remove(self, mid):
-        if not self.has_msg_id(mid):
+        if self.has_msg_id(mid):
             self._delete(mid)
             self.load()
             self.my_parent.coms_interface.relay_send(NWC_MESSAGE)

@@ -425,7 +425,7 @@ class FeedClass(QObject):
                 self.save_mix_adjustment(mix_num)
                 return
         # If here it is a new item to the recipe
-        r.append([change[0], change[1], rl[2], rl[3], rl[4]])
+        r.append([change[0], change[1]])
 
     def change_items(self, mix_num, items):
         self.area_data['mixes'][mix_num]['items'] = items

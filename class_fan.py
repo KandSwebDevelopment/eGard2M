@@ -174,6 +174,8 @@ class FanClass(QThread):
         self.pid.Kd = kd
 
     def update_input_value(self, value):
+        if value < -120:
+            return
         self.input = value + self.input_calibration
         # print("Fan input ", value)
         if self._logging:
