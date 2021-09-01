@@ -405,12 +405,12 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             getattr(self, "pb_pm2_%i" % i).setEnabled(False)
             getattr(self, "pb_pm2_%i" % i).setText("")
             getattr(self, "pb_pm2_%i" % i).setToolTip("")
-        for i in self.get_area_items(3):
+        for i in self.area_controller.get_area_items(3):
             getattr(self, "pb_pm2_%i" % i).setEnabled(True)
             name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
                                           "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
                                           .format(DB_STRAINS, DB_PROCESS_STRAINS,
-                                                  self.areas_pid[3], i))
+                                                  self.area_controller.get_area_pid(3), i))
             getattr(self, "pb_pm2_%i" % i).setText(str(i))
             getattr(self, "pb_pm2_%i" % i).setToolTip(name)
 
@@ -607,7 +607,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 else:
                     self.coms_interface.relay_send(NWC_SWITCH_REQUEST, SW_LIGHT_1)
         else:
-            self.coms_interface.send_switch(SW_LIGHT_1, OFF)
+            if self.area_controller.light_relay_1 != OFF:
+                self.coms_interface.send_switch(SW_LIGHT_1, OFF)
 
         if self.area_controller.area_has_process(2):
             status = self.area_controller.get_area_process(2).check_light()
@@ -617,7 +618,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 else:
                     self.coms_interface.relay_send(NWC_SWITCH_REQUEST, SW_LIGHT_2)
         else:
-            self.coms_interface.send_switch(SW_LIGHT_1, OFF)
+            if self.area_controller.light_relay_2 != OFF:
+                self.coms_interface.send_switch(SW_LIGHT_2, OFF)
 
     def stage_advance(self, area):
         # Advances the the process to the next stage

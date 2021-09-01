@@ -2039,7 +2039,7 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
                                     0) + ".  A total of " + str(
                                     round(nid[1] * feed_data[self.mix_number]["water total"], 1)) + "ml of "
                                 + self.feed_control.nutrients[nid[0]])
-                            lw_item.setBackground(Qt.darkGray)
+                            lw_item.setForeground(Qt.lightGray)
                         elif rs == 2:
                             # This item is not part of normal recipe
                             lw_item = QListWidgetItem(

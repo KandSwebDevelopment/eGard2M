@@ -416,12 +416,16 @@ class FeedClass(QObject):
         :type change: tuple     (nid, mls)
         """
         r = self.area_data['mixes'][mix_num]['recipe']
+        #  recipe  nid, ml, L, rid, freq
         if r == WATER_ONLY_IDX:
             return
         for rl in r:
             if rl[0] == change[0]:
                 rl[1] = change[1]
-        self.save_mix_adjustment(mix_num)
+                self.save_mix_adjustment(mix_num)
+                return
+        # If here it is a new item to the recipe
+        r.append([change[0], change[1], rl[2], rl[3], rl[4]])
 
     def change_items(self, mix_num, items):
         self.area_data['mixes'][mix_num]['items'] = items

@@ -32,6 +32,8 @@ class SensorClass(object):
         self.is_first_update = True  # Set false after 1st update, for data jump detection
         self.trend_ctrl = None
         self.calibration = 0
+        self.show_calibration = True
+        self.error_count = 0
         self.short_name = ""
         self.display_ctrl = None
         self.process_id = None
@@ -158,7 +160,7 @@ class SensorClass(object):
         #     font_size = 10
         padding_size = 0
         font_size = 12
-        t = "<table style='width:100%'>"
+        t = '<table cellspacing = "0" width="100%" border= "1px">'
         #  Low value
         if self.low_org != 999 and self.low != self.low_org:
             tv = "<i>{}</i>".format(self.low)
@@ -174,11 +176,11 @@ class SensorClass(object):
         else:
             tv = self.set
         if self._is_fan:
-            t += "<td style='padding:0px 4px 0px 4px; style='text-align:center; vertical-align:middle;" \
+            t += "<td style='width:33%;text-align:center; vertical-align:middle;" \
                  " color:blue'>{}</td>".format(tv)
         else:
             # t += "<td style='padding:0px 6px 0px 6px;' style='text-align:center; vertical-align:middle;'>{}</td>". \
-            t += "<td style='width:33%; padding:0px 6px 0px 6px; font-size:16px; vertical-align:middle;'>{}</td>". format(tv)
+            t += "<td style='width:33%; padding:0px 6px 3px 6px; font-size:14px; vertical-align:middle;'>{}</td>". format(tv)
 
         #      high value
         if self.high_org != 999 and self.high != self.high_org:
@@ -221,9 +223,12 @@ class SensorClass(object):
             if self.display_id < 13:
                 # Temperatures
                 if self.value < - 100:
-                    self.display_ctrl.setText("Err")
+                    self.error_count += 1
+                    if self.error_count > 5:
+                        self.display_ctrl.setText("Err")
                     return
 
+                self.error_count = 0
                 self.display_ctrl.setText(str(round(self.value, 1)))
                 if self.has_range or (self.has_process and self.area < 3):
                     colour_offset = self.get_colour_offset()
