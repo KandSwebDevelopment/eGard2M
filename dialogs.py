@@ -3376,6 +3376,8 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
 
         # get day or night
         self.on_day = self.main_panel.area_controller.get_light_status(self.area)
+        if self.on_day == -1:
+            self.on_day = 1
         self.day_night = self.on_day    # Holds the day night value. Will be same as on_day unless inverted
 
         # Is sensor used by fan

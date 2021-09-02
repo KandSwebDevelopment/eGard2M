@@ -400,20 +400,20 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.check_stage(location)
         self.coms_interface.relay_send(NWC_RELOAD_PROCESSES)
 
-    def check_drying(self):
-        for i in range(1, 9):
-            getattr(self, "pb_pm2_%i" % i).setEnabled(False)
-            getattr(self, "pb_pm2_%i" % i).setText("")
-            getattr(self, "pb_pm2_%i" % i).setToolTip("")
-        for i in self.area_controller.get_area_items(3):
-            getattr(self, "pb_pm2_%i" % i).setEnabled(True)
-            name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
-                                          "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
-                                          .format(DB_STRAINS, DB_PROCESS_STRAINS,
-                                                  self.area_controller.get_area_pid(3), i))
-            getattr(self, "pb_pm2_%i" % i).setText(str(i))
-            getattr(self, "pb_pm2_%i" % i).setToolTip(name)
-
+    # def check_drying(self):
+    #     for i in range(1, 9):
+    #         getattr(self, "pb_pm2_%i" % i).setEnabled(False)
+    #         getattr(self, "pb_pm2_%i" % i).setText("")
+    #         getattr(self, "pb_pm2_%i" % i).setToolTip("")
+    #     for i in self.area_controller.get_area_items(3):
+    #         getattr(self, "pb_pm2_%i" % i).setEnabled(True)
+    #         name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
+    #                                       "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
+    #                                       .format(DB_STRAINS, DB_PROCESS_STRAINS,
+    #                                               self.area_controller.get_area_pid(3), i))
+    #         getattr(self, "pb_pm2_%i" % i).setText(str(i))
+    #         getattr(self, "pb_pm2_%i" % i).setToolTip(name)
+    #
     def check_stage(self, location):
         if self.area_controller.get_area_process(location) == 0:
             return
@@ -590,7 +590,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             p.current_stage += 1
         self.area_controller.reload_area(2)
         self.area_controller.reload_area(3)
-        self.check_drying()
+        self.check_stage(3)
         self.coms_interface.relay_send(NWC_MOVE_TO_FINISHING)
 
     def feed_manual(self, loc):
@@ -620,6 +620,18 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         else:
             if self.area_controller.light_relay_2 != OFF:
                 self.coms_interface.send_switch(SW_LIGHT_2, OFF)
+
+    def io_reboot(self):
+        # Send all parameters to the IO unit as it has rebooted
+        self.coms_interface.send_switch(SW_LIGHT_1, self.area_controller.light_relay_1)
+        self.coms_interface.send_switch(SW_LIGHT_2, self.area_controller.light_relay_2)
+
+        for o in self.area_controller.output_controller.outputs:
+            self.coms_interface.send_switch(o.output_pin, o.relay_position)
+
+        # Water heaters
+        # self.water_supply.switch_heater(1, self.water_supply.heater_is_on[1])
+        # self.water_supply.switch_heater(2, self.water_supply.heater_is_on[2])
 
     def stage_advance(self, area):
         # Advances the the process to the next stage
@@ -917,7 +929,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                 self.check_stage(a)
         if self.area_controller.area_has_process(a):
             self.check_stage(3)
-            self.check_drying()
+            # self.check_drying()
 
         self.feed_controller.new_day()
         # Update next feed dates

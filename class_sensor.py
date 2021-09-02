@@ -229,7 +229,7 @@ class SensorClass(object):
 
                 self.error_count = 0
                 self.display_ctrl.setText(str(round(self.value, 1)))
-                if self.has_range or (self.has_process and self.area < 3):
+                if self.has_range and (self.has_process and self.area < 3 or self.area_controller.area_is_manual(self.area)):
                     colour_offset = self.get_colour_offset()
                 else:
                     colour_offset = 0

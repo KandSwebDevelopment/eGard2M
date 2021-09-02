@@ -74,12 +74,6 @@ class OutputClass(QObject):
             self.has_process = True
         self.tooltip = row[0] + "<br>Type:" + str(row[2]) + " Sensor:" + str(row[3])
         self._check()
-        # if self.mode == 0:
-        #     self.switch(OFF)
-        # elif self.mode == 2 or self.mode == 3 or self.mode == 5 or self.mode == 6 or self.mode == 0:
-        #     self.update_info()
-        # if self.id > 10:
-        #     return
         self.calculate_limits()
         self.update_control(self.status)
 
@@ -334,7 +328,7 @@ class OutputClass(QObject):
             ctrl.setPixmap(QPixmap(":/normal/output_socket.png"))
 
         # Output mode
-        if self.has_process or self.area > 3:
+        if self.has_process or self.area > 3 or self.output_controller.area_controller.area_is_manual(self.area):
             getattr(self.output_controller.main_panel, "frm_output_%i" % self.ctrl_id).setEnabled(True)
             ctrl = getattr(self.output_controller.main_panel, "pb_output_mode_%i" % self.ctrl_id)
             if self.mode == 0:

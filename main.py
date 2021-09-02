@@ -74,7 +74,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.main_panel.check_stage(1)
         self.main_panel.check_stage(2)
         self.main_panel.check_stage(3)
-        self.main_panel.check_drying()
+        # self.main_panel.check_drying()
 
         self.update_stock()
         self.main_panel.check_light()
