@@ -1051,7 +1051,7 @@ class DialogDispatchLoadingBay(QDialog, Ui_DialogDispatchLoading):
             self.db.execute_write(sql)
             # Add entry in journal
             dt = datetime.strftime(datetime.now(), '%d/%m/%y %H:%M')
-            self.main_panel.process_from_id(self.process_id).journal_write(
+            self.main_panel.area_controller.get_area_process(3).journal_write(
                 "{} Number {} finished drying and {} grams stored in {}".
                 format(dt, self.cb_strain.currentData(), self.strain_total, self.jar_id))
             # Call the finish item
@@ -2306,7 +2306,7 @@ class DialogJournal(QDialog, Ui_DialogJournal):
         self.sub = None
         self.pbsave.clicked.connect(self.add)
         self.pbclose.clicked.connect(lambda: self.sub.close())
-        self.my_parent = parent
+        self.main_panel = parent
         self.process = process
         self.new_line = '\n'
 
@@ -2325,7 +2325,7 @@ class DialogJournal(QDialog, Ui_DialogJournal):
         self.process.journal_write(entry)
 
         self.temessage.setText(self.process.journal_read())
-        self.my_parent.my_parent.coms_interface.send_command(NWC_JOURNAL_ADD, self.process.location, entry)
+        self.main_panel.coms_interface.send_command(NWC_JOURNAL_ADD, self.process.location, entry)
         self.tenew.setText("")
 
 

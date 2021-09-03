@@ -296,7 +296,15 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.area_controller.fan_controller.update_fans_mode.connect(self.update_fan_mode)
 
     def test(self):
-        self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].boost_start()
+        s = ["low", "set", "high"]
+        for a in range(1, 3):
+            for i in range(1, 5):
+                for se in range(1, 4):
+                    self.db.execute_write('INSERT INTO {} (area, `day`, `item`, `setting`, `value`)'
+                                          ' VALUES ({}, -1, {}, "{}", 20)'.format(DB_PROCESS_TEMPERATURE, a, i, s[se]))
+                    self.db.execute_write('INSERT INTO {} (area, `day`, `item`, `setting`, `value`)'
+                                          ' VALUES ({}, -2, {}, "{}", 20)'.format(DB_PROCESS_TEMPERATURE, a, i, s[se]))
+        # self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].boost_start()
 
     def update_next_feeds(self):
         """
@@ -592,6 +600,44 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.area_controller.reload_area(3)
         self.check_stage(3)
         self.coms_interface.relay_send(NWC_MOVE_TO_FINISHING)
+
+    def finish_item(self, item, amount=None, show_warn=True):
+        # Drying area, when plant dried
+        if show_warn:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("Confirm you wish to finish number " + str(item))
+            msg.setWindowTitle("Confirm Item Finish")
+            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+            msg.setDefaultButton(QMessageBox.Cancel)
+            if msg.exec_() == QMessageBox.Cancel:
+                return
+        getattr(self, "pb_pm2_%i" % item).setEnabled(False)
+        p = self.area_controller.get_area_process(3)
+        if p is None:  # If p is none then the process is still running in area 2
+            p = self.area_controller.get_area_process(2)  # ??? Is this right - an item shouldn't finish unless in area 3
+        p.strain_location[item - 1] = 50
+        # Remove it from areas table
+        sql = "DELETE FROM {} WHERE process_id = {} AND item = {} AND area = 3".format(DB_AREAS, p.id, item)
+        self.db.execute_write(sql)
+        # Update the location in the process strains table
+        sql = "UPDATE {} SET location = 50 WHERE process_id = {} and item = {}".format(
+            DB_PROCESS_STRAINS, p.id, item)
+        self.db.execute_write(sql)
+        # Add journal entry
+        if amount is None:
+            dt = datetime.strftime(datetime.now(), '%d/%m/%Y %H:%M')
+            p.journal_write(dt + "    Number " + str(item) + " Dried and finished.")
+
+        if len(self.area_controller.get_area_items(3)) == 0:
+            # None left, so finish stage
+            self.area_controller.get_area_process(3).end_process()
+            self.load_areas()
+            self.load_sensors(3)
+            self.load_outputs(3)
+        else:
+            self.load_areas()
+            self.check_stage(3)
 
     def feed_manual(self, loc):
         self.feed_controller.feed(loc)

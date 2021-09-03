@@ -225,6 +225,8 @@ class SensorClass(object):
                     self.error_count += 1
                     if self.error_count > 5:
                         self.display_ctrl.setText("Err")
+                        if self.id < 9:     # DHT sensors so reset power to them
+                            self.area_controller.main_window.coms_interface.send_switch(SW_DHT_POWER, OFF)
                     return
 
                 self.error_count = 0

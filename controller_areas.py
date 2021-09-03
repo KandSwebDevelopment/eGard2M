@@ -1,7 +1,7 @@
 import collections
 
 from PyQt5 import QtGui
-from PyQt5.QtCore import QObject
+from PyQt5.QtCore import QObject, QTimer
 from PyQt5.QtGui import QPixmap
 
 from class_fan import FanClass
@@ -35,6 +35,14 @@ class AreaController(QObject):
         self.soil_sensors = SoilSensorClass(self)
         self.light_relay_1 = UNSET      # Hold the actual position of the relay, this is only changed by switch updates
         self.light_relay_2 = UNSET
+        self.cool_warm_1 = 0        # Area is is cool = 1, warm = 2, normal = 0
+        self.cool_warm_2 = 0
+        self.trans_timer_1 = QTimer()
+        self.trans_timer_1.setInterval(int(self.db.get_config(CFT_AREA, "trans 1", 60)) * 60000)
+        self.trans_timer_1.timeout.connect(self.trans_end_1)
+        self.trans_timer_2 = QTimer()
+        self.trans_timer_2.setInterval(int(self.db.get_config(CFT_AREA, "trans 2", 60)) * 60000)
+        self.trans_timer_2.timeout.connect(self.trans_end_2)
 
         self.main_panel.timer.start()
 
@@ -210,6 +218,27 @@ class AreaController(QObject):
         if len(rows) > 0:
             self.sensors[sid].set_range({'low': rows[0][1], 'set': rows[1][1], 'high': rows[2][1]})
             self.sensors[sid].update_status_ctrl()
+
+    def start_trans(self, area):
+        s = self.get_light_status(area)
+        if area == 1:
+            if s == ON:
+                self.cool_warm_1 = 2
+            else:
+                self.cool_warm_1 = 1
+            self.trans_timer_1.start()
+        if area == 2:
+            if s == ON:
+                self.cool_warm_2 = 2
+            else:
+                self.cool_warm_2 = 1
+            self.trans_timer_2.start()
+
+    def trans_end_1(self):
+        self.cool_warm_1 = 0
+
+    def trans_end_2(self):
+        self.cool_warm_2 = 0
 
     def get_area_pid(self, area):
         """ Returns the PID in the area"""
