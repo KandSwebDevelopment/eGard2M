@@ -279,8 +279,8 @@ class CommunicationInterface(QObject):
             self.update_us_reading.emit(int(prams[0]), int(prams[1]))  # Signal emit - tank, value
             self.relay_command(relay_command)
         #  General
-        elif command == COM_IO_REBOOT:
-            self.main_window.io_reboot()
+        elif command == COM_IO_REBOOT or command == CMD_IO_RESTART:
+            self.main_window.main_panel.io_reboot()
         # DE Unit
         elif command == COM_DOOR_POSITION:
             self.update_access.emit(AUD_DOOR, int(prams[0]))
