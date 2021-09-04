@@ -66,6 +66,10 @@ class OutputController(QObject):
         self.outputs[op_id].set_mode(mode)
         self.main_panel.coms_interface.relay_send(NWC_OUTPUT_MODE, op_id, mode)
 
+    def change_lock(self, op_id, lock):
+        self.outputs[op_id].set_locked(lock)
+        self.main_panel.coms_interface.relay_send(NWC_OUTPUT_LOCK, op_id, lock)
+
     def change_sensor(self, op_id, sid):
         self.outputs[op_id].set_input_sensor(sid)
         self.main_panel.coms_interface.relay_send(NWC_OUTPUT_SENSOR, op_id, sid)

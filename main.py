@@ -86,6 +86,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionSend_Command.triggered.connect(lambda: self.wc.show(DialogEngineerCommandSender(self)))
         self.actionReconnect.triggered.connect(self.reconnect)
         self.actionSystem_Info.triggered.connect(lambda: self.wc.show(DialogSysInfo(self)))
+        self.actionSync_IO.triggered.connect(lambda: self.main_panel.io_reboot())
 
         # Dispatch
         self.actionCounter.triggered.connect(lambda: self.wc.show(DialogDispatchCounter(self.main_panel)))

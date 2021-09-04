@@ -68,7 +68,7 @@ class OutputClass(QObject):
         self.range = (row[4]).split(",")
         self.output_pin = row[5]
         self.short_name = row[6]
-        self.locked = row[7]
+        self.locked = row[8]
         self.has_process = False
         if self.area < 4 and self.output_controller.area_controller.area_has_process(self.area):
             self.has_process = True
@@ -92,6 +92,7 @@ class OutputClass(QObject):
         if lock == self.locked:
             return
         self.locked = lock
+        self.update_info()
 
     def set_mode(self, mode):
         """ Updates the outputs mode and saves it to the db and updates the outputs info control """

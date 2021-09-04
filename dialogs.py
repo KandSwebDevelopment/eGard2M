@@ -1171,7 +1171,7 @@ class DialogDispatchStorage(QDialog, Ui_Form):
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setupUi(self)
         self.sub = None
-        self.my_parent = parent
+        self.main_panel = parent
         self.db = parent.db
         self.jar = None  # jar, weight, nett, UID, strain, hum_pac
         self.is_scan = False  # When True next UID scan will be entered
@@ -1185,7 +1185,7 @@ class DialogDispatchStorage(QDialog, Ui_Form):
         self.org_gross = 0
         self.hum_pac = 0
         self.transfer_to_jar = ""
-        self.scales = self.my_parent.scales
+        self.scales = self.main_panel.scales
         self.nett_tol = self.db.get_config(CFT_ACCESS, "nett set", 5)
         self.scales.new_reading.connect(self.update_reading)
         # self.scales.update_status.connect(self.update_status)
@@ -1473,7 +1473,7 @@ class DialogDispatchStorage(QDialog, Ui_Form):
             return
         self.clear()
         self.load_jars_list()
-        self.my_parent.my_parent.update_stock()
+        self.main_panel.main_window.update_stock()
 
     def transfer(self):
         msg = QMessageBox()
@@ -1537,7 +1537,7 @@ class DialogDispatchStorage(QDialog, Ui_Form):
             return
         sql = "UPDATE {} SET weight = {}, strain = {}, hum_pac = 0 WHERE jar = '{}' LIMIT 1". \
             format(DB_JARS, self.jar[2], 0, self.jar[0])
-        self.my_parent.db.execute_write(sql)
+        self.main_panel.db.execute_write(sql)
         self.load_jars_list()
         self.cb_jar.setCurrentIndex(self.cb_jar.findData(self.jar[0]))
         # self.select_jar()
@@ -2343,10 +2343,10 @@ class DialogEngineerCommandSender(QDialog, Ui_DialogEngineerCommandSender):
         self.cb_command.addItem("Sensor Read", COM_SENSOR_READ)
         self.cb_command.addItem("Soil Read", COM_SOIL_READ)
         self.cb_command.addItem("Other Read", COM_OTHER_READINGS)
-        self.cb_command.addItem("Tank Read", COM_US_READ)
         self.cb_command.addItem("Switch", CMD_SWITCH)
-        self.cb_command.addItem("Valve", CMD_VALVE)
-        self.cb_command.addItem("Valve Cluster", CMD_VALVE_CLUSTER)
+        self.cb_command.addItem("Switch Position", COM_SWITCH_POS)
+        self.cb_command.addItem("One Wire Scan", COM_OW_SCAN)
+        self.cb_command.addItem("One Wire Query", COM_OW_COUNT)
         if self.my_parent.master_mode == MASTER:
             self.cb_to.addItem("Slave", MODULE_SL)
         else:
@@ -3741,6 +3741,11 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         self.cb_trigger.addItem("Rising", DET_RISE)
         self.cb_trigger.setCurrentIndex(self.cb_trigger.findData(self.detection_mode))
         self.cb_trigger.currentIndexChanged.connect(self.change_detection_mode)
+        self.ck_lock.clicked.connect(self.change_lock)
+
+    def change_lock(self):
+        lock = self.ck_lock.isChecked()
+        self.output_controller.change_lock(self.pin_id, lock)
 
     def change_detection_mode(self):
         self.detection_mode = self.cb_trigger.currentData()
