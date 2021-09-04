@@ -672,8 +672,9 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.coms_interface.send_switch(SW_LIGHT_1, self.area_controller.light_relay_1)
         self.coms_interface.send_switch(SW_LIGHT_2, self.area_controller.light_relay_2)
 
-        for o in self.area_controller.output_controller.outputs:
-            self.coms_interface.send_switch(o.output_pin, o.relay_position)
+        outputs = self.area_controller.output_controller.outputs
+        for o in outputs:   # o = index
+            self.coms_interface.send_switch(outputs[o].output_pin, outputs[o].relay_position)
 
         # Water heaters
         # self.water_supply.switch_heater(1, self.water_supply.heater_is_on[1])
