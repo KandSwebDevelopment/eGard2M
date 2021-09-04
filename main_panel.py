@@ -679,10 +679,6 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         for o in outputs:   # o = index
             self.coms_interface.send_switch(outputs[o].output_pin, outputs[o].relay_position)
 
-        # Water heaters
-        # self.water_supply.switch_heater(1, self.water_supply.heater_is_on[1])
-        # self.water_supply.switch_heater(2, self.water_supply.heater_is_on[2])
-
     def stage_advance(self, area):
         # Advances the the process to the next stage
         if self.area_controller.area_has_process(area):
