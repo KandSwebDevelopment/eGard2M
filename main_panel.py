@@ -620,6 +620,9 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         # Remove it from areas table
         sql = "DELETE FROM {} WHERE process_id = {} AND item = {} AND area = 3".format(DB_AREAS, p.id, item)
         self.db.execute_write(sql)
+        # Remove it from drying table
+        sql = "DELETE FROM {} WHERE item = {}3".format(DB_PROCESS_DRYING, item)
+        self.db.execute_write(sql)
         # Update the location in the process strains table
         sql = "UPDATE {} SET location = 50 WHERE process_id = {} and item = {}".format(
             DB_PROCESS_STRAINS, p.id, item)
