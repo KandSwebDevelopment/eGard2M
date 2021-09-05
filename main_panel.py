@@ -189,13 +189,13 @@ class MainPanel(QMdiSubWindow, Ui_Form):
 
     def loop_3(self):  # 10 sec
         if self.master_mode == MASTER:
-            self.coms_interface.send_command(NWC_SOIL_READ)
             self.coms_interface.send_command(COM_OTHER_READINGS)
             self.coms_interface.send_data(COM_WATTS, False, MODULE_DE)
             self.coms_interface.send_data(COM_READ_KWH, False, MODULE_DE)
         self.area_controller.output_controller.check_water_heaters()
 
     def loop_5(self):  # 60 secs
+        self.coms_interface.send_command(NWC_SOIL_READ)
         self.update_next_feeds()
         # Check for new day
         if datetime.now().day != self.today:
