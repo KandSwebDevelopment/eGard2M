@@ -5,7 +5,7 @@ from datetime import *
 from PyQt5 import QtCore
 # from PyQt5.QtCore import QObject, pyqtSignal, pyqtSlot, QRunnable
 from PyQt5.QtWidgets import *
-
+from pathlib import Path
 
 
 def m_box(title, text, style):
@@ -33,6 +33,19 @@ def play_sound(sound):
 
 def sound_click():
     winsound.PlaySound("C:\\Windows\\Media\\Windows Ding.wav", winsound.SND_FILENAME)
+
+
+def sound_error():
+    print(Path().absolute())
+    parts = Path().absolute().parts
+    path = ""
+    for i in range(0, len(parts)):
+        path += parts[i]
+        if i > 0:
+            path += "\\"
+    print(path)
+    path += "wave_files\\error.wav"
+    winsound.PlaySound(path, winsound.SND_FILENAME)
 
 
 def find_it(key, my_list):

@@ -1043,7 +1043,7 @@ class ProcessClass(QObject):
         self.db.execute_write(sql)
 
         # Update the location in process strains
-        sql = 'UPDATE {} SET location = {} WHERE location = {}'.format(DB_PROCESS_STRAINS, new_loc, from_loc)
+        sql = 'UPDATE {} SET location = {} WHERE location = {} LIMIT 1'.format(DB_PROCESS_STRAINS, new_loc, from_loc)
         self.db.execute_write(sql)
         dt = datetime.strftime(datetime.now(), '%d/%m/%y %H:%M')
         self.journal_write(dt + "    Moved from area {} to area {} after {} days ".

@@ -92,6 +92,7 @@ class OutputClass(QObject):
         if lock == self.locked:
             return
         self.locked = lock
+        self.db.execute_write('UPDATE {} SET locked = {} WHERE id = {} LIMIT 1'.format(DB_OUTPUTS, lock, self.ctrl_id))
         self.update_info()
 
     def set_mode(self, mode):

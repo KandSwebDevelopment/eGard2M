@@ -1,12 +1,13 @@
 import collections
 
 from PyQt5.QtCore import QObject, pyqtSlot
+from PyQt5.QtWidgets import QMessageBox
 
 from class_output_water_heater import OutputWaterHeater
 from class_output_workshop_heater import OutputWorkshopHeater
 from class_outputs import OutputClass
 from defines import *
-from functions import sound_click
+from functions import sound_click, sound_error
 
 
 class OutputController(QObject):
@@ -87,6 +88,10 @@ class OutputController(QObject):
         self.main_panel.coms_interface.relay_send(NWC_OUTPUT_TRIGGER, op_id, mode)
 
     def switch_output(self, op_id, state=None):
+        if self.outputs[op_id].locked:
+            sound_error()
+            return
+
         if self.outputs[op_id].mode >= 2:    # Auto modes
             self.outputs[op_id].switch_hard(state)
         else:   # Manual off or on

@@ -1064,7 +1064,7 @@ class DialogDispatchLoadingBay(QDialog, Ui_DialogDispatchLoading):
             # self.pb_read.setEnabled(True)
             play_sound(SND_OK)
             # self.load_jars_list()
-            self.main_panel.update_stock()
+            self.main_panel.main_window.update_stock()
             self.load_strain_list()
 
     def finish(self):  # Done
@@ -3741,11 +3741,32 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         self.cb_trigger.addItem("Rising", DET_RISE)
         self.cb_trigger.setCurrentIndex(self.cb_trigger.findData(self.detection_mode))
         self.cb_trigger.currentIndexChanged.connect(self.change_detection_mode)
+        self.ck_lock.setChecked(self.output_controller.outputs[self.pin_id].locked)
         self.ck_lock.clicked.connect(self.change_lock)
+        self.set_controls()
 
     def change_lock(self):
         lock = self.ck_lock.isChecked()
         self.output_controller.change_lock(self.pin_id, lock)
+        self.set_controls()
+
+    def set_controls(self):
+        if self.ck_lock.isChecked():
+            self.cb_out_mode_1_1.setEnabled(False)
+            self.cb_sensor_out_1_1.setEnabled(False)
+            self.le_range_on_1_1.setEnabled(False)
+            self.le_range_off_1_1.setEnabled(False)
+            self.pb_reset.setEnabled(False)
+            self.cb_trigger.setEnabled(False)
+            self.cb_timer_1_1.setEnabled(False)
+        else:
+            self.cb_out_mode_1_1.setEnabled(True)
+            self.cb_sensor_out_1_1.setEnabled(True)
+            self.le_range_on_1_1.setEnabled(True)
+            self.le_range_off_1_1.setEnabled(True)
+            self.pb_reset.setEnabled(True)
+            self.cb_trigger.setEnabled(True)
+            self.cb_timer_1_1.setEnabled(True)
 
     def change_detection_mode(self):
         self.detection_mode = self.cb_trigger.currentData()

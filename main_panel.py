@@ -618,13 +618,13 @@ class MainPanel(QMdiSubWindow, Ui_Form):
             p = self.area_controller.get_area_process(2)  # ??? Is this right - an item shouldn't finish unless in area 3
         p.strain_location[item - 1] = 50
         # Remove it from areas table
-        sql = "DELETE FROM {} WHERE process_id = {} AND item = {} AND area = 3".format(DB_AREAS, p.id, item)
+        sql = "DELETE FROM {} WHERE process_id = {} AND item = {} AND area = 3 LIMIT 1".format(DB_AREAS, p.id, item)
         self.db.execute_write(sql)
         # Remove it from drying table
-        sql = "DELETE FROM {} WHERE item = {}3".format(DB_PROCESS_DRYING, item)
+        sql = "DELETE FROM {} WHERE item = {} LIMIT 1".format(DB_PROCESS_DRYING, item)
         self.db.execute_write(sql)
         # Update the location in the process strains table
-        sql = "UPDATE {} SET location = 50 WHERE process_id = {} and item = {}".format(
+        sql = "UPDATE {} SET location = 50 WHERE process_id = {} and item = {} LIMIT 1".format(
             DB_PROCESS_STRAINS, p.id, item)
         self.db.execute_write(sql)
         # Add journal entry
@@ -635,11 +635,11 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         if len(self.area_controller.get_area_items(3)) == 0:
             # None left, so finish stage
             self.area_controller.get_area_process(3).end_process()
-            self.load_areas()
-            self.load_sensors(3)
-            self.load_outputs(3)
+            self.area_controller.load_areas()
+            self.area_controller.load_sensors(3)
+            self.area_controller.load_outputs(3)
         else:
-            self.load_areas()
+            self.area_controller.load_areas()
             self.check_stage(3)
 
     def feed_manual(self, loc):
