@@ -104,6 +104,9 @@ class OutputController(QObject):
     @pyqtSlot(int, int, int, name="updateSwitch")
     def switch_update(self, sw, state, module):
         if module == MODULE_IO or module == MODULE_SL:
+            if sw == SW_DHT_POWER:
+                self.main_panel.coms_interface.switch(SW_DHT_POWER, OFF)
+                return
             if sw in self.outputs:
                 self.outputs[sw].switch_update(state)
         elif module == MODULE_DE:
