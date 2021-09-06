@@ -32,11 +32,38 @@ def play_sound(sound):
 
 
 def sound_click():
-    winsound.PlaySound("C:\\Windows\\Media\\Windows Ding.wav", winsound.SND_FILENAME)
+    winsound.PlaySound(get_wave_path("sound55.wav"), winsound.SND_FILENAME)
+
+
+def sound_check_out():
+    winsound.PlaySound(get_wave_path("sound63.wav"), winsound.SND_FILENAME)
 
 
 def sound_error():
-    print(Path().absolute())
+    winsound.PlaySound(get_wave_path("sound78.wav"), winsound.SND_FILENAME)
+
+
+def sound_ok():
+    winsound.PlaySound(get_wave_path("sound95.wav"), winsound.SND_FILENAME)
+
+
+def sound_access_warn():
+    winsound.PlaySound(get_wave_path("sound74.wav"), winsound.SND_FILENAME)
+
+
+def get_wave_path(sound):
+    parts = Path().absolute().parts
+    path = ""
+    for i in range(0, len(parts)):
+        path += parts[i]
+        if i > 0:
+            path += "\\"
+    path += "wave_files\\" + sound
+    return path
+
+
+def sound_error():
+    # print(Path().absolute())
     parts = Path().absolute().parts
     path = ""
     for i in range(0, len(parts)):

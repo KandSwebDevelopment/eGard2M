@@ -17,7 +17,8 @@ from plotter import *
 from status_codes import FC_MESSAGE
 from ui.dialogDispatchCounter import Ui_DialogDispatchCounter
 from ui.dialogDispatchInternal import Ui_DialogDispatchInternal
-from functions import string_to_float, m_box, play_sound, auto_capital, sound_click, minutes_to_hhmm
+from functions import string_to_float, m_box, play_sound, auto_capital, sound_click, minutes_to_hhmm, sound_check_out, \
+    sound_error, sound_ok
 from ui.dialogAccess import Ui_DialogDEmodule
 from ui.dialogDispatchLoadingBay import Ui_DialogDispatchLoading
 from ui.dialogDispatchOverview import Ui_DialogLogistics
@@ -144,7 +145,8 @@ class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
         value = string_to_float(value)
         if self.has_got >= 3 and value < self.weight_required / 2:
             self.has_got = 0
-            play_sound(SND_CHECK_OUT_ERROR)
+            # play_sound(SND_CHECK_OUT_ERROR)
+            sound_error()
             print(m_box("Warning", "This has not been checked out\n\rReplace vessel and check out before removing", 64))
             return
         # Remove any text from progress
@@ -237,6 +239,7 @@ class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
             self.cancel()
 
     def deduct(self):
+        sound_check_out()
         sql = 'UPDATE {} SET weight = weight - {} WHERE jar = "{}"'.format(DB_JARS, self.reading, self.jar)
         print(sql)
         self.db.execute_write(sql)
@@ -843,6 +846,7 @@ class DialogDispatchInternal(QDialog, Ui_DialogDispatchInternal):
             self.pb_start.setEnabled(False)
 
     def deduct(self):
+        sound_check_out()
         if self.is_return:
             amount = 0 - self.reading
             t_type = "INT-R"
@@ -1062,7 +1066,8 @@ class DialogDispatchLoadingBay(QDialog, Ui_DialogDispatchLoading):
             # self.cb_jars.setEnabled(True)
             self.pb_store.setEnabled(False)
             # self.pb_read.setEnabled(True)
-            play_sound(SND_OK)
+            sound_ok()
+            # play_sound(SND_OK)
             # self.load_jars_list()
             self.main_panel.main_window.update_stock()
             self.load_strain_list()
@@ -1506,7 +1511,8 @@ class DialogDispatchStorage(QDialog, Ui_Form):
             format(DB_JARS, self.gross, move_hum_pac, move_hum_pac, self.jar[4], self.transfer_to_jar)
         print(sql)
         self.db.execute_write(sql)
-        play_sound(SND_OK)
+        sound_ok()
+        # play_sound(SND_OK)
         self.clear()
 
     def add(self):
@@ -1917,7 +1923,7 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
 
     def store_litres(self):
         if string_to_float(self.le_total_1.text()) == 0 or string_to_float(self.le_each_1.text()) == 0:
-            play_sound(SND_ERROR)
+            sound_error()
             return
         self.feed_control.feeds[self.area].change_mix_water(self.mix_number, string_to_float(self.le_each_1.text()))
         self._load()
@@ -2370,19 +2376,19 @@ class DialogEngineerCommandSender(QDialog, Ui_DialogEngineerCommandSender):
         v3 = self.le_value_3.text()
         v4 = self.le_value_4.text()
         to = self.cb_to.currentData()
-        if manual:
-            self.send_(cmd, v1, v2, v3, v4, pri, to)
-            return
-        if cmd == CMD_SWITCH:
-            if v1 == "" or v2 == "":
-                return
-            self.my_parent.coms_interface.send_command(CMD_SWITCH, int(v1), int(v2), pri, to)
-        if cmd == CMD_VALVE:
-            if v1 == "" or v2 == "":
-                return
-            if int(v2) > 90:
-                return
-            self.my_parent.coms_interface.send_command(CMD_VALVE, int(v1), int(v2), pri, to)
+        # if manual:
+        self.send_(cmd, v1, v2, v3, v4, pri, to)
+        return
+        # if cmd == CMD_SWITCH:
+        #     if v1 == "" or v2 == "":
+        #         return
+        #     self.my_parent.coms_interface.send_command(CMD_SWITCH, int(v1), int(v2), pri, to)
+        # if cmd == CMD_VALVE:
+        #     if v1 == "" or v2 == "":
+        #         return
+        #     if int(v2) > 90:
+        #         return
+        #     self.my_parent.coms_interface.send_command(CMD_VALVE, int(v1), int(v2), pri, to)
 
     def send_(self, cmd, v1, v2, v3, v4, p, to):
         if v4 != "":
@@ -3915,7 +3921,8 @@ class DialogSettings(QDialog, Ui_DialogSettings):
         self.main_panel.scales.get_port()
         self.main_panel.scales.coms_disconnect()
         self.main_panel.scales.connect()
-        play_sound(SND_OK)
+        # play_sound(SND_OK)
+        sound_ok()
 
     def us_set_tank(self):
         rb = self.sender()
@@ -4111,7 +4118,8 @@ class DialogSoilSensors(QDialog, Ui_DialogSoilSensors):
 
     def change_item(self, sensor):
         item = self.sender().currentData()
-        self.db.set_config_both(CFT_SOIL_SENSORS, sensor, item)
+        s = sensor + ((self.area - 1) * 4)
+        self.db.set_config_both(CFT_SOIL_SENSORS, s, item)
         self.main_panel.area_controller.soil_sensors.load_status()
 
     def change_all_active(self):

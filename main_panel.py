@@ -12,7 +12,7 @@ from defines import *
 from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan, DialogOutputSettings, \
     DialogSensorSettings, DialogProcessAdjustments, DialogWaterHeaterSettings, DialogWorkshopSettings, DialogElectMeter, \
     DialogJournal, DialogSoilSensors
-from functions import play_sound
+from functions import play_sound, sound_access_warn
 from scales_com import ScalesComs
 from ui.main import Ui_Form
 
@@ -205,7 +205,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
 
     def loop_15(self):  # 3 Min
         if self.main_window.access.has_status(ACS_COVER_OPEN):
-            play_sound(SND_ACCESS_WARN)
+            # play_sound(SND_ACCESS_WARN)
+            sound_access_warn()
         else:
             if self.feed_controller.feed_due_today():
                 if datetime.now().time() > (

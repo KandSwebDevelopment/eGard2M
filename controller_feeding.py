@@ -219,10 +219,11 @@ class FeedControl(QThread):
                 msg.setDefaultButton(QMessageBox.Cancel)
                 ret_val = msg.exec_()
                 if ret_val == QMessageBox.Yes:
-                    # print("Update with original date")
                     date_done = dt
                 elif ret_val == QMessageBox.No:
                     date_done = datetime.now()
+                else:
+                    return
             elif action_flag == 2:
                 msg.setWindowTitle("Confirm EARLY Feed Completed")
                 msg.setText("Confirm this feed has been completed")
