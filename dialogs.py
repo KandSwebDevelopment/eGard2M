@@ -4087,8 +4087,32 @@ class DialogSoilSensors(QDialog, Ui_DialogSoilSensors):
         self.area = area
         self.all_active = int(self.db.get_config(CFT_SOIL_SENSORS, "area {}".format(self.area), 0) == "True")
         self.pb_close.clicked.connect(lambda: self.sub.close())
-        self.ck_active_all.setChecked(self.all_active)
-        self.ck_active_all.clicked.connect(self.change_all_active)
+        self.lbl_name.setText("Soil Sensors Area" + str(self.area))
+        items = self.main_panel.area_controller.get_area_items(self.area)
+        self.cb_plant_1.addItem("Off", 0)
+        self.cb_plant_2.addItem("Off", 0)
+        self.cb_plant_3.addItem("Off", 0)
+        self.cb_plant_4.addItem("Off", 0)
+        for i in items:
+            for x in range(1, 5):
+                getattr(self, "cb_plant_{}".format(x)).addItem(str(i), i)
+        ss = self.main_panel.area_controller.soil_sensors.get_sensor_status(self.area)
+        for x in range(1, 5):
+            getattr(self, "cb_plant_{}".format(x)).setCurrentIndex(ss[x - 1])
+        self.cb_plant_1.currentIndexChanged.connect(lambda: self.change_item(1))
+        self.cb_plant_2.currentIndexChanged.connect(lambda: self.change_item(2))
+        self.cb_plant_3.currentIndexChanged.connect(lambda: self.change_item(3))
+        self.cb_plant_4.currentIndexChanged.connect(lambda: self.change_item(4))
+
+        self.pb_read.clicked.connect(lambda: self.main_panel.coms_interface.send_data(COM_SOIL_READ, True, MODULE_IO))
+        # self.cb_plant_1.currentIndexChanged.connect(self.change_item)
+        # self.ck_active_all.setChecked(self.all_active)
+        # self.ck_active_all.clicked.connect(self.change_all_active)
+
+    def change_item(self, sensor):
+        item = self.sender().currentData()
+        self.db.set_config_both(CFT_SOIL_SENSORS, sensor, item)
+        self.main_panel.area_controller.soil_sensors.load_status()
 
     def change_all_active(self):
         aa = self.ck_active_all.isChecked()

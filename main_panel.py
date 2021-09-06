@@ -195,7 +195,8 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.area_controller.output_controller.check_water_heaters()
 
     def loop_5(self):  # 60 secs
-        self.coms_interface.send_command(NWC_SOIL_READ)
+        if self.master_mode == MASTER:
+            self.coms_interface.send_command(NWC_SOIL_READ)
         self.update_next_feeds()
         # Check for new day
         if datetime.now().day != self.today:
@@ -288,7 +289,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.access.update_duration.connect(self.update_cover_duration)
         self.coms_interface.update_power.connect(self.update_power)
         self.coms_interface.update_other_readings.connect(self.update_others)
-        self.area_controller.soil_sensors.update_soil_reading.connect(self.update_soil_display)
+        # self.area_controller.soil_sensors.update_soil_reading.connect(self.update_soil_display)
         self.area_controller.fan_controller.update_fans_speed.connect(self.update_fans)
         self.coms_interface.update_float_switch.connect(self.update_float)
         self.coms_interface.update_from_relay.connect(self.process_relay_command)
@@ -810,18 +811,18 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         elif _input == AUD_AUTO_SET:
             pass
 
-    @pyqtSlot(int, collections.defaultdict, name="updateSoil")
-    def update_soil_display(self, area, lst):
-        try:
-            getattr(self, "le_avg_soil_%i" % area).setText(str(lst[5]))
-            for c in range(1, 5):
-                if int(lst[c]) > 1020:
-                    getattr(self, "le_soil_{}_{}".format(area, c)).setText("--")
-                else:
-                    getattr(self, "le_soil_{}_{}".format(area, c)).setText(str(lst[c]))
-        except Exception as e:
-            print("Update soil display - ", e.args)
-
+    # @pyqtSlot(int, collections.defaultdict, name="updateSoil")
+    # def update_soil_display(self, area, lst):
+    #     try:
+    #         # getattr(self, "le_avg_soil_%i" % area).setText(str(lst[5]))
+    #         for c in range(1, 5):
+    #             if int(lst[c]) > 1020:
+    #                 getattr(self, "le_soil_{}_{}".format(area, c)).setText("--")
+    #             else:
+    #                 getattr(self, "le_soil_{}_{}".format(area, c)).setText(str(lst[c]))
+    #     except Exception as e:
+    #         print("Update soil display - ", e.args)
+    #
     @pyqtSlot(list, name="updateSensors")
     def update_sensors(self, data):
         idx = 1
