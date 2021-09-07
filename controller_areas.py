@@ -213,11 +213,14 @@ class AreaController(QObject):
     def sensor_load_manual_ranges(self, area, item):
         """ Load the set manual ranges for an area"""
         sid = self.get_sid_from_item(area, item)
-        rows = self.db.execute('SELECT setting, value FROM {} WHERE area = {} AND day = 1 AND item = {}'.
+        rows = self.db.execute('SELECT setting, value FROM {} WHERE area = {} AND day = -1 AND item = {}'.
                                format(DB_PROCESS_TEMPERATURE, area, item))
         if len(rows) > 0:
             self.sensors[sid].set_range({'low': rows[0][1], 'set': rows[1][1], 'high': rows[2][1]})
             self.sensors[sid].update_status_ctrl()
+        else:
+            print("sensor_load_manual_ranges - Nothing found in db {} for area {} and item {}".
+                  format(DB_PROCESS_TEMPERATURE, area, item))
 
     def start_trans(self, area):
         s = self.get_light_status(area)

@@ -43,6 +43,14 @@ def sound_error():
     winsound.PlaySound(get_wave_path("sound78.wav"), winsound.SND_FILENAME)
 
 
+def sound_on():
+    winsound.PlaySound(get_wave_path("sound86.wav"), winsound.SND_FILENAME)
+
+
+def sound_off():
+    winsound.PlaySound(get_wave_path("sound87.wav"), winsound.SND_FILENAME)
+
+
 def sound_ok():
     winsound.PlaySound(get_wave_path("sound95.wav"), winsound.SND_FILENAME)
 

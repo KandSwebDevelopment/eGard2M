@@ -160,6 +160,9 @@ class OutputWaterHeater(OutputClass):
 
     def update_info(self):
         OutputClass.update_info(self)
+        if self.mode == 0:
+            getattr(self.output_controller.main_panel, "lbl_output_sensor_%i" % self.ctrl_id).setText("")
+            return
         getattr(self.output_controller.main_panel, "lbl_output_number_%i" % self.ctrl_id).setText(str(self.days_till_feed))
 
         getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.ctrl_id).\

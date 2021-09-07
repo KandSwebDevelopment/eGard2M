@@ -7,7 +7,7 @@ from PyQt5.QtGui import QIcon, QPixmap
 from defines import *
 from winsound import Beep
 
-from functions import play_sound, string_to_float
+from functions import play_sound, string_to_float, sound_on, sound_off
 
 
 class OutputClass(QObject):
@@ -261,9 +261,11 @@ class OutputClass(QObject):
         self.relay_position = state
         if state != self.status_last:
             if state == 1:
-                play_sound(SND_ON)
+                # play_sound(SND_ON)
+                sound_on()
             else:
-                play_sound(SND_OFF)
+                sound_off()
+                # play_sound(SND_OFF)
         self.status_last = state
 
     def soft_switch(self, state):
@@ -274,7 +276,8 @@ class OutputClass(QObject):
         self.status = state
         if state == ON:
             if self.status_last is not None:
-                play_sound(SND_ON)
+                sound_on()
+                # play_sound(SND_ON)
             if self.detection & DET_TIMER == DET_TIMER and self.type != 5:
                 if self.duration > 0:
                     self.off_time = (datetime.now() + timedelta(minutes=self.duration))
@@ -286,7 +289,8 @@ class OutputClass(QObject):
                 self.timer.stop()
                 self.output_controller.lbl_workshop_timer.setText("")
             if self.status_last is not None:
-                play_sound(SND_OFF)
+                sound_off()
+                # play_sound(SND_OFF)
 
     def timer_event(self):
         self.remaining = int(self.remaining - 1)

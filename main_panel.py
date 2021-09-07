@@ -298,14 +298,15 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.area_controller.fan_controller.update_fans_mode.connect(self.update_fan_mode)
 
     def test(self):
-        s = ["low", "set", "high"]
-        for a in range(1, 3):
-            for i in range(1, 5):
-                for se in range(1, 4):
-                    self.db.execute_write('INSERT INTO {} (area, `day`, `item`, `setting`, `value`)'
-                                          ' VALUES ({}, -1, {}, "{}", 20)'.format(DB_PROCESS_TEMPERATURE, a, i, s[se]))
-                    self.db.execute_write('INSERT INTO {} (area, `day`, `item`, `setting`, `value`)'
-                                          ' VALUES ({}, -2, {}, "{}", 20)'.format(DB_PROCESS_TEMPERATURE, a, i, s[se]))
+        pass
+        # s = ["low", "set", "high"]
+        # for a in range(1, 3):
+        #     for i in range(1, 5):
+        #         for se in range(0, 3):
+        #             self.db.execute_write('INSERT INTO {} (area, `day`, `item`, `setting`, `value`)'
+        #                                   ' VALUES ({}, -1, {}, "{}", 20)'.format(DB_PROCESS_TEMPERATURE, a, i, s[se]))
+        #             self.db.execute_write('INSERT INTO {} (area, `day`, `item`, `setting`, `value`)'
+        #                                   ' VALUES ({}, -2, {}, "{}", 20)'.format(DB_PROCESS_TEMPERATURE, a, i, s[se]))
         # self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].boost_start()
 
     def update_next_feeds(self):
