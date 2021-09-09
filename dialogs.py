@@ -34,11 +34,14 @@ from ui.dialogJournal import Ui_DialogJournal
 from ui.dialogOutputSettings import Ui_DialogOutputSetting
 from ui.dialogProcessAdjustments import Ui_DialogProcessAdjust
 from ui.dialogProcessInfo import Ui_DialogProcessInfo
+from ui.dialogProcessManager import Ui_dialogProcessManager
 from ui.dialogProcessPerformance import Ui_DialogProcessPreformance
+from ui.dialogSeedPicker import Ui_DialogSeedPicker
 from ui.dialogSensorSettings import Ui_DialogSensorSettings
 from ui.dialogSettings import Ui_DialogSettings
 from ui.dialogSoilSensors import Ui_DialogSoilSensors
 from ui.dialogStrainFinder import Ui_DialogStrainFinder
+from ui.dialogStrains import Ui_DialogStrains
 from ui.dialogWaterHeaterSettings import Ui_DialogWaterHeatertSetting
 from ui.dialogWorkshopSettings import Ui_DialogWorkshopSetting
 from ui.dialogsysInfo import Ui_DialogSysInfo
@@ -4080,20 +4083,255 @@ class DialogProcessPerformance(QDialog, Ui_DialogProcessPreformance):
         self.textEdit.setHtml(txt)
 
 
+class DialogProcessManager(QDialog, Ui_dialogProcessManager):
+    def __init__(self, parent):
+        super(DialogProcessManager, self).__init__()
+        self.setupUi(self)
+        self.sub = None
+        self.main_panel = parent
+        self.db = self.main_panel.db
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+
+        self.qty = 1
+        self.strains = collections.defaultdict()
+        self.pattern = 0
+        self.longest = 0    # The number of days for longest flowering
+        self.shortest = 0
+        self.total_days = 0     # Total days for process
+        self.edit_id = 0        # Id of process to edit
+        self.running = 0
+        self.location = 0
+        self.start = ""
+        self.earliest_start = None
+        self.end = ""
+        self.pattern = 0
+        self.stage = 0
+        self.feed_mode = 0
+        self.de_start.setDate(datetime.now().date())
+        rows = self.db.execute('SELECT `name`, `id` FROM {} ORDER BY `name`'.format(DB_PATTERN_NAMES))
+        self.cb_patterns.addItem("Select", 0)
+        for row in rows:
+            self.cb_patterns.addItem(row[0], row[1])
+        self.cb_patterns.currentIndexChanged.connect(self.change_pattern)
+
+        rows = self.db.execute_one_row("SELECT MAX(id) FROM processes")
+        if rows[0] is None:
+            # self.le_id.setText("1")
+            self.next_id = 1
+        else:
+            # self.le_id.setText(str(rows[0] + 1))
+            self.next_id = rows[0] + 1
+        rows = self.db.execute("SELECT id FROM {} WHERE running = 1 OR location = 0".format(DB_PROCESS))
+        self.cb_process.addItem("New ({})".format(self.next_id), 0)
+        for row in rows:
+            self.cb_process.addItem("{}".format(row[0]), row[0])
+
+        self.cb_process.currentIndexChanged.connect(self.change_process)
+
+        rows = self.db.execute('SELECT `name`, `breeder`, id, qty FROM {} WHERE qty > 0 ORDER BY `name`'.
+                               format(DB_STRAINS))
+        for i in range(1, 9):
+            ctrl = getattr(self, "cb_strain_%i" % i)
+            ctrl.addItem("Select", 0)
+            ctrl.setEnabled(True)
+            for row in rows:
+                ctrl.addItem("{} x {} ({})".format(row[3], row[0], row[1]), row[2])
+            ctrl.currentIndexChanged.connect(self.change_strains)
+
+    def find_earliest_start(self):
+        p = self.main_panel.area_controller.get_area_process(1)
+        if p > 0:
+            end = p.end
+            self.earliest_start = end - timedelta(weeks=10)
+        else:
+            self.earliest_start = datetime.now()
+
+    def cal_end(self):
+        end_date = self.de_start.date().toPyDate()
+        end_date = end_date + timedelta(days=self.total_days)
+        self.le_end_date.setText(datetime.strftime(end_date, "%d/%m/%Y"))
+        self.end = end_date
+
+    def change_process(self):
+        self.edit_id = int(self.cb_process.currentData())
+        if self.edit_id == 0:
+            # self.le_id.setText(str(self.next_id))
+            # self.cb_qty.setCurrentIndex(0)
+            # self.cb_location.setCurrentIndex(0)
+            # self.cb_stage.setCurrentIndex(0)
+            return
+        # self.le_id.setText("N/A")
+        rows = self.db.execute_one_row("SELECT id, running, location, start, end, pattern, "
+                                       "stage, qty, feed_mode  FROM {} WHERE id = {}".
+                                       format(DB_PROCESS, self.edit_id))
+        self.running = rows[1]
+        self.location = rows[2]
+        self.start = rows[3]
+        self.end = rows[4]
+        self.pattern = rows[5]
+        self.stage = rows[6]
+        self.qty = rows[7]
+        self.feed_mode = rows[8]
+
+        # self._new_qty()
+
+        # Quantity
+        # index = self.cb_qty.findText(str(rows[7]), QtCore.Qt.MatchFixedString)
+        # # if index >= 0:
+        # #     # self.cb_qty.blockSignals(True)
+        # #     self.cb_qty.setCurrentIndex(index)
+        # #     self.cb_qty.blockSignals(False)
+        # # stage
+        # index = self.cb_stage.findData(rows[6])
+        # if index >= 0:
+        #     self.cb_stage.blockSignals(True)
+        #     self.cb_stage.setCurrentIndex(index)
+        #     self.cb_stage.blockSignals(False)
+        # # location
+        # index = self.cb_location.findText(str(rows[2]), QtCore.Qt.MatchFixedString)
+        # if index >= 0:
+        #     self.cb_location.blockSignals(True)
+        #     self.cb_location.setCurrentIndex(index)
+        #     self.cb_location.blockSignals(False)
+
+        # Start
+        # x = (datetime.now().date() - self.my_parent.start).days
+        self.de_start.setDate(rows[3])
+        # if x >= 5:
+        if self.running == 1:
+            self.de_start.setEnabled(False)
+        else:
+            self.de_start.setEnabled(True)
+
+        # Strains
+        rows = self.db.execute("SELECT item, strain_id  FROM {} WHERE process_id = {}".
+                               format(DB_PROCESS_STRAINS, self.edit_id))
+        if len(rows) > 0:
+            for row in rows:
+                ctrl = getattr(self, "cb_strain_%i" % row[0])
+                index = ctrl.findData(row[1])
+                if index >= 0:
+                    ctrl.blockSignals(True)
+                    ctrl.setCurrentIndex(index)
+                    # if x >= 14:
+                    if self.running == 1:
+                        ctrl.setEnabled(False)
+                    else:
+                        ctrl.setEnabled(True)
+                    ctrl.blockSignals(False)
+                else:
+                    # No stock of seed so look up from db
+                    strain = self.db.execute_one_row('SELECT name, breeder FROM {} WHERE id = {}'.format(DB_STRAINS, row[1]))
+                    if len(strain) > 0:
+                        ctrl.addItem("{} ({})".format(strain[0], strain[1]), row[1])
+                        ctrl.setCurrentIndex(ctrl.findData(row[1]))
+        # pattern
+        index = self.cb_patterns.findData(self.pattern)
+        if index >= 0:
+            self.cb_patterns.blockSignals(True)
+            self.cb_patterns.setCurrentIndex(index)
+            self.cb_patterns.blockSignals(False)
+        self.calculate_duration()
+        self.pb_start.setEnabled(False)
+        self.pb_find.setEnabled(False)
+
+    def change_strains(self):
+        self.strains.clear()
+        for i in range(1, 9):
+            ctrl = getattr(self, "cb_strain_%i" % i)
+            if ctrl.currentData() != 0:
+                self.strains[i] = ctrl.currentData()
+        self.calculate_duration()
+        self.qty = len(self.strains)
+        self.le_qty.setText(str(self.qty))
+
+    def change_pattern(self):
+        self.calculate_duration()
+
+    def calculate_duration(self):
+        self.pattern = self.cb_patterns.currentData()
+        if self.pattern is None or self.pattern == 0:
+            return
+
+        cpt = self.cb_patterns.currentText()
+        dur = self.db.execute_single(
+            'SELECT SUM(duration) FROM {} WHERE pid = {}'.format(DB_STAGE_PATTERNS, self.pattern))
+        self.le_dur.setText(str(dur))
+        if cpt.find("Auto Cal") == 0:
+            self.frm_auto_cal.setEnabled(True)
+            self.le_longest.setText(str(self.max_day()))
+            self.le_shortest.setText(str(self.shortest))
+            self.total_days = int(dur) + self.longest
+        else:
+            self.frm_auto_cal.setEnabled(False)
+            self.longest = 0
+            self.total_days = int(dur)
+        self.le_total.setText(str(self.total_days))
+        self.cal_end()
+
+    def max_day(self):
+        s = ""
+        for x in self.strains:
+            s += str(self.strains[x]) + ", "
+        s = s[:len(s) - 2]      # Remove last comma
+        if len(s) == 0:     # No strains
+            self.longest = 0
+            self.longest = 0
+            return
+        sql = 'SELECT MAX(duration_max) FROM {} WHERE id IN ({})'.format(DB_STRAINS, s)
+        row = self.db.execute_single(sql)
+        if row is None:
+            self.longest = 0
+        else:
+            self.longest = row
+        sql = 'SELECT MIN(duration_min) FROM {} WHERE id IN ({})'.format(DB_STRAINS, s)
+        row = self.db.execute_single(sql)
+        # print(row)
+        if row is None:
+            self.longest = 0
+        else:
+            self.shortest = row
+        return self.longest
+
+    def save(self):
+        if self.edit_id == 0:
+            sql = 'INSERT INTO {} (running, location, start, end, pattern, stage, qty, feed_mode) VALUES({}, {}, "{}",' \
+                  ' "{}", {}, {}, {}, {})'.\
+                format(DB_PROCESS, self.running, self.location, self.start, self.end, self.pattern, self.stage,
+                       self.qty, self.feed_mode)
+            self.db.execute_write(sql)
+            self.edit_id = self.db.execute_single('SELECT LAST_INSERT_ID()')
+            # Enter strains in the process strains table
+            for x in range(1, self.qty + 1):
+                sid = getattr(self, "cb_strain_%i" % x).currentData()
+                sql = 'INSERT INTO {} (process_id, item, strain_id) VALUES ({}, {}, {})'.\
+                    format(DB_PROCESS_STRAINS, self.edit_id, x, sid)
+                self.db.execute_write(sql)
+                # Deduct from stock - NOT until it is started
+        else:
+            sql = 'UPDATE {} SET running = {}, location = {}, start = "{}", end = "{}", pattern = {}, stage = {}, ' \
+                  'qty = {}, feed_mode = {} WHERE id = {}'.\
+                format(DB_PROCESS, self.running, self.location, self.start, self.end, self.pattern, self.stage,
+                       self.qty, self.feed_mode, self.edit_id)
+            self.db.execute_write(sql)
+            # Delete any entries for this
+            sql = 'DELETE FROM {} WHERE process_id = {}'.format(DB_PROCESS_STRAINS, self.edit_id)
+            for x in range(1, self.qty + 1):
+                sql = 'INSERT INTO {} (strain_id, process_id, item) VALUES ({}, {}, {})'.\
+                    format(DB_PROCESS_STRAINS, getattr(self, "cb_strain_%i" % x).currentData(), self.edit_id, x)
+                self.db.execute_write(sql)
+
+
 class DialogSoilSensors(QDialog, Ui_DialogSoilSensors):
     def __init__(self, parent, area):
-        """
-
-        @type parent: MainWindow
-        """
         super(DialogSoilSensors, self).__init__()
         self.setupUi(self)
         self.sub = None
         self.main_panel = parent
         self.db = self.main_panel.db
+        self.pb_close.clicked.connect(lambda: self.sub.close())
         self.area = area
         self.all_active = int(self.db.get_config(CFT_SOIL_SENSORS, "area {}".format(self.area), 0) == "True")
-        self.pb_close.clicked.connect(lambda: self.sub.close())
         self.lbl_name.setText("Soil Sensors Area" + str(self.area))
         items = self.main_panel.area_controller.get_area_items(self.area)
         self.cb_plant_1.addItem("Off", 0)
@@ -4128,3 +4366,248 @@ class DialogSoilSensors(QDialog, Ui_DialogSoilSensors):
             return
         self.db.set_config_both(CFT_SOIL_SENSORS, "area {}".format(self.area), aa)
         self.main_panel.area_controller.soil_sensors.load_status()
+
+
+class DialogStrains(QDialog, Ui_DialogStrains):
+    def __init__(self, parent):
+        super(DialogStrains, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.main_panel = parent
+        self.db = self.main_panel.db
+        self.sub = None
+        self.is_new = False
+        self.id = None
+        self.filter = "name"
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.lw_strains.doubleClicked.connect(self.load_strain)
+        self.lw_strains.clicked.connect(self.show_strain)
+        self.pb_new.clicked.connect(self.new)
+        self.pb_save.clicked.connect(self.save)
+        self.pb_today.clicked.connect(lambda: self.de_pur_date.setDate(datetime.now().date()))
+        self.frame.setEnabled(False)
+
+        # self.cw = DialogCalendar()  # Holds calendar window
+        # self.cw.new_date.connect(self.calendar_callback)
+        # self.le_pur_date.installEventFilter(self)
+        # self.le_last_date.installEventFilter(self)
+
+        self.cb_filter.addItem("Name", "name")
+        self.cb_filter.addItem("Breeder", "breeder")
+        self.cb_starting.addItem("All")
+        for i in range(1, 27):
+            self.cb_starting.addItem(chr(i + 64))
+
+        self.cb_filter.currentIndexChanged.connect(self.load_list)
+        self.cb_starting.currentIndexChanged.connect(self.load_list)
+        self.load_list()
+
+    # def eventFilter(self, watched, event):
+    #     if watched == self.le_pur_date:
+    #         ctr = 0
+    #         # if event.type() == QtCore.QEvent.MouseButtonDblClick:
+    #         #     if watched.isEnabled():
+    #         #         self.cw.set_date(watched.text())
+    #         #         self.cw.ctrlID = ctr
+    #         #         self.cw.show()
+    #         # if event.type() == QtCore.QEvent.KeyPress:
+    #         #     key = event.key()
+    #         #     if key == QtCore.Qt.Key_Return:
+    #         #         self.cw.set_date(watched.text())
+    #         #         self.cw.ctrlID = ctr
+    #         #         self.cw.show()
+    #
+    #     return QWidget.eventFilter(self, watched, event)
+
+    # @pyqtSlot(datetime, int)
+    # def calendar_callback(self, d, c):
+    #     print("New date sender" + str(c))
+    #     if c == 0:
+    #         self.le_pur_date.setText(datetime.strftime(d, '%d/%m/%y'))
+    #
+    def load_list(self):
+        self.lw_strains.clear()
+        self.filter = self.cb_filter.currentData()
+        if self.filter == "name":
+            nf = self.cb_starting.currentText()
+            if nf == "All":
+                rows = self.db.execute("SELECT name, breeder, id FROM {} ORDER BY {}".format(DB_STRAINS, self.filter))
+            else:
+                rows = self.db.execute("SELECT name, breeder, id FROM {} WHERE  name LIKE '{}%'".
+                                       format(DB_STRAINS, nf))
+            self.cb_starting.setEnabled(True)
+        else:
+            self.cb_starting.setEnabled(False)
+            rows = self.db.execute("SELECT name, breeder, id FROM {} ORDER BY {}".format(DB_STRAINS, self.filter))
+        for row in rows:
+            lw_item = QListWidgetItem(row[0] + "(" + row[1] + ")")
+            v_item = QVariant(row[2])
+            lw_item.setData(Qt.UserRole, v_item)
+            self.lw_strains.addItem(lw_item)
+
+    def show_strain(self):
+        self.id = self.lw_strains.currentItem().data(Qt.UserRole)
+        if self.id is None:
+            return
+        strain = self.db.execute_one_row("SELECT * FROM {} WHERE id = {}".format(DB_STRAINS, self.id))
+        if strain is None:
+            return
+        self.le_breeder.setText(strain[1])
+        self.le_name.setText(strain[2])
+        self.le_qty.setText(str(strain[3]))
+        self.le_dur_min.setText(str(strain[4]))
+        self.le_dur_max.setText(str(strain[5]))
+        self.le_sativa.setText(strain[6])
+        self.le_indica.setText(strain[7])
+        self.le_height.setText(strain[8])
+        self.le_flavour.setText(strain[9])
+        self.le_effect.setText(strain[10])
+        self.le_yeild.setText(strain[11])
+        self.te_info.setText(strain[12])
+        self.te_notes.setText(strain[13])
+        self.le_supplier.setText(strain[14])
+        self.le_price.setText(str(strain[15]))
+        if strain[16] is not None:
+            self.de_pur_date.setDate(strain[16])
+        else:
+            self.de_pur_date.setDate(QDate(2000, 1, 1))
+        self.le_last_date.setText(str(strain[17]))
+        self.le_genetics.setText(strain[18])
+        self.le_thc.setText(strain[19])
+        self.le_cbd.setText(strain[20])
+
+    def load_strain(self):
+        self.show_strain()
+        self.frame.setEnabled(True)
+        self.pb_save.setEnabled(True)
+
+    def clear(self):
+        self.le_breeder.setText("")
+        self.le_name.setText("")
+        self.le_qty.setText("")
+        self.le_dur_min.setText("")
+        self.le_dur_max.setText("")
+        self.le_sativa.setText("")
+        self.le_indica.setText("")
+        self.le_height.setText("")
+        self.le_flavour.setText("")
+        self.le_effect.setText("")
+        self.le_yeild.setText("")
+        self.te_info.setText("")
+        self.te_notes.setText("")
+        self.le_supplier.setText("")
+        self.le_price.setText("")
+        self.de_pur_date.setDate(datetime.now().date())
+        self.le_last_date.setText("")
+        self.le_cbd.setText("")
+        self.le_thc.setText("")
+        self.le_genetics.setText("")
+
+    def new(self):
+        self.frame.setEnabled(True)
+        self.clear()
+        self.pb_save.setEnabled(True)
+        self.is_new = True
+
+    def save(self):
+        if self.is_new:
+            sql = 'INSERT INTO {} (breeder, name, qty, duration_min, duration_max, type_sativa, type_indica, height, ' \
+                  'flavour, effect, yeild, info, notes, supplier, price, last_used_id, genetics, thc, cbd) ' \
+                  'VALUES ("{}", "{}", {}, {}, {}, "{}", "{}", "{}", "{}", "{}", "{}", "{}", "{}", "{}", {}, {}, "{}", "{}", "{}") '
+        else:
+            sql = 'UPDATE {} SET breeder = "{}", name = "{}", qty = {}, duration_min = {}, duration_max = {}, type_sativa = "{}",' \
+                  ' type_indica = "{}", height = "{}", flavour = "{}", effect = "{}", yeild = "{}", info = "{}", notes = "{}", ' \
+                  'supplier = "{}", price = {}, last_used_id ={}, genetics = "{}", thc = "{}", cbd = "{}" WHERE id = {}'
+        qty = self.le_qty.text()
+        if qty == 'None' or qty == '':
+            qty = 0
+        price = self.le_price.text()
+        if price == "" or price == 'None':
+            price = 0
+        lid = self.le_last_date.text()
+        if lid == "" or lid == 'None':
+            lid = 0
+        min_ = self.le_dur_min.text()
+        if min_ == "":
+            min_ = 0
+        max_ = self.le_dur_max.text()
+        if max_ == "":
+            max_ = 0
+        sql = sql.format(DB_STRAINS, self.le_breeder.text()[:45],
+                         self.le_name.text()[:45],
+                         qty,
+                         min_,
+                         max_,
+                         self.le_sativa.text()[:5],
+                         self.le_indica.text()[:5],
+                         self.le_height.text()[:30],
+                         self.le_flavour.toPlainText(),
+                         self.le_effect.toPlainText(),
+                         self.le_yeild.text()[:30],
+                         self.te_info.toPlainText(),
+                         self.te_notes.toPlainText(),
+                         self.le_supplier.text()[:30],
+                         float(price),
+                         lid,
+                         self.le_genetics.text()[:100],
+                         self.le_thc.text()[:20],
+                         self.le_cbd.text()[:20],
+                         self.id)
+
+        self.db.execute_write(sql)
+        # if self.de_pur_date.date() != "":
+        sql = 'UPDATE {} SET date_add = "{}" WHERE id = {}'.format(DB_STRAINS, self.de_pur_date.date().toPyDate(), self.id)
+        self.db.execute_write(sql)
+        # if self.le_last_date.text() != "":
+        #     sql = 'UPDATE {} SET last_used_id = "{}" WHERE id = {}'.format(DB_STRAINS, self.le_last_date.text(), self.id)
+        #     self.db.execute_write(sql)
+
+        self.is_new = False
+        self.pb_save.setEnabled(False)
+        self.frame.setEnabled(False)
+        self.load_list()
+
+
+class DialogSeedPicker(QDialog, Ui_DialogSeedPicker):
+    def __init__(self, parent):
+        """
+        :type parent: MainWindow
+        """
+        super(DialogSeedPicker, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.main_panel = parent
+        self.sub = None
+        self.db = parent.db
+        self.sort_order = "qty"
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.ck_in_stock.clicked.connect(self.load_list)
+        self.cb_sort.addItem("Quantity", "qty")
+        self.cb_sort.addItem("Name", "name")
+        self.cb_sort.addItem("Min. Duration", "duration_min")
+        self.cb_sort.addItem("Breeder", "breeder")
+        self.load_list()
+        self.cb_sort.currentIndexChanged.connect(self.change_sort)
+
+    def load_list(self):
+        if self.ck_in_stock.isChecked():
+            qty = 1
+        else:
+            qty = 0
+        rows = self.db.execute("SELECT qty, name, breeder, duration_min, duration_max, type_indica, type_sativa,"
+                               " id FROM {} WHERE qty >= {} ORDER BY {}".format(DB_STRAINS, qty, self.sort_order))
+        text = '<table cellpadding = "3"  border = "1" cellspacing = "0" >'
+        text += "<tr><td>Qty</td><td>Name</td><td>Breeder</td><td>Min Dur</td><td>Max Dur</td><td>Indica</td><td>Sativa</td><td>ID</td></tr>"
+        for row in rows:
+            text += "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>".format(
+                row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7])
+        text += '</table>'
+        self.te_strains.setHtml(text)
+        qty = self.db.execute_single("SELECT SUM(qty) FROM {}".format(DB_STRAINS))
+        self.le_stock.setText(str(qty))
+
+    def change_sort(self):
+        self.sort_order = self.cb_sort.currentData()
+        self.load_list()
+
+

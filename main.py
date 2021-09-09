@@ -13,7 +13,8 @@ from controller_windows import WindowsController
 from dbController import MysqlDB
 from dialogs import DialogEngineerCommandSender, DialogEngineerIo, DialogDispatchInternal, DialogDispatchCounter, \
     DialogDispatchReports, DialogStrainFinder, DialogDispatchStorage, DialogDispatchOverview, DialogSysInfo, \
-    DialogSettings, DialogProcessPerformance, DialogDispatchLoadingBay
+    DialogSettings, DialogProcessPerformance, DialogDispatchLoadingBay, DialogProcessManager, DialogStrains, \
+    DialogSeedPicker
 from functions import multi_status_bar, get_last_friday
 from functions_colors import get_css_colours
 from status_codes import *
@@ -98,8 +99,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # Process
         self.actionPreformance_2.triggered.connect(lambda: self.wc.show(DialogProcessPerformance(self.main_panel)))
+        self.actionManager.triggered.connect(lambda: self.wc.show(DialogProcessManager(self)))
         # Materials
+        self.actionSeeds.triggered.connect(lambda: self.wc.show(DialogStrains(self)))
         self.actionFinder.triggered.connect(lambda: self.wc.show(DialogStrainFinder(self.main_panel)))
+        self.actionPicker.triggered.connect(lambda: self.wc.show(DialogSeedPicker(self)))
 
         self.coms_interface.update_que_status.connect(self.update_que)
 

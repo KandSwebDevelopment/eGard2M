@@ -14,10 +14,10 @@ from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogF
     DialogJournal, DialogSoilSensors
 from functions import play_sound, sound_access_warn
 from scales_com import ScalesComs
-from ui.main import Ui_Form
+from ui.mainPanel import Ui_MainPanel
 
 
-class MainPanel(QMdiSubWindow, Ui_Form):
+class MainPanel(QMdiSubWindow, Ui_MainPanel):
     def __init__(self, *args, **kwargs):
         QWidget.__init__(self, *args, **kwargs)
         self.setupUi(self)
@@ -411,20 +411,6 @@ class MainPanel(QMdiSubWindow, Ui_Form):
         self.check_stage(location)
         self.coms_interface.relay_send(NWC_RELOAD_PROCESSES)
 
-    # def check_drying(self):
-    #     for i in range(1, 9):
-    #         getattr(self, "pb_pm2_%i" % i).setEnabled(False)
-    #         getattr(self, "pb_pm2_%i" % i).setText("")
-    #         getattr(self, "pb_pm2_%i" % i).setToolTip("")
-    #     for i in self.area_controller.get_area_items(3):
-    #         getattr(self, "pb_pm2_%i" % i).setEnabled(True)
-    #         name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
-    #                                       "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
-    #                                       .format(DB_STRAINS, DB_PROCESS_STRAINS,
-    #                                               self.area_controller.get_area_pid(3), i))
-    #         getattr(self, "pb_pm2_%i" % i).setText(str(i))
-    #         getattr(self, "pb_pm2_%i" % i).setToolTip(name)
-    #
     def check_stage(self, location):
         if self.area_controller.get_area_process(location) == 0:
             return
@@ -653,6 +639,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
     def check_light(self):
         if self.area_controller.area_has_process(1):
             status = self.area_controller.get_area_process(1).check_light()
+            self.area_controller.get_area_process(1).check_trans()
             if self.area_controller.light_relay_1 != status:
                 if self.master_mode == MASTER:
                     self.coms_interface.send_switch(SW_LIGHT_1, status)
@@ -664,6 +651,7 @@ class MainPanel(QMdiSubWindow, Ui_Form):
 
         if self.area_controller.area_has_process(2):
             status = self.area_controller.get_area_process(2).check_light()
+            self.area_controller.get_area_process(2).check_trans()
             if self.area_controller.light_relay_2 != status:
                 if self.master_mode == MASTER:
                     self.coms_interface.send_switch(SW_LIGHT_2, status)
@@ -860,6 +848,27 @@ class MainPanel(QMdiSubWindow, Ui_Form):
                     self.area_controller.light_relay_2 = state
                 if self.area_controller.area_is_manual(2):
                     self.db.set_config(CFT_AREA, "mode {}".format(2), state + 1)
+
+    def update_trans(self, area, state):
+        if area == 1:
+            if state == WARM:
+                # Warm
+                self.lbl_transition_1.setStyleSheet("background-color: red; border-radius: 3px;")
+            elif state == COOL:
+                # Cool
+                self.lbl_transition_1.setStyleSheet("background-color: blue; border-radius: 3px;")
+            else:
+                self.lbl_transition_1.setStyleSheet("")
+
+        if area == 2:
+            if state == WARM:
+                # Warm
+                self.lbl_transition_2.setStyleSheet("background-color: red; border-radius: 3px;")
+            elif state == COOL:
+                # Cool
+                self.lbl_transition_2.setStyleSheet("background-color: blue; border-radius: 3px;")
+            else:
+                self.lbl_transition_2.setStyleSheet("")
 
     @pyqtSlot(str, float, name="updatePower")
     def update_power(self, action, val):

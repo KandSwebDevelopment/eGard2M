@@ -206,16 +206,10 @@ class OutputClass(QObject):
                 return
 
     def check(self, value):
-        # if self.output_controller.master_mode == SLAVE:
-
         try:
             self._check()
-            # if (0 < self.area < 4) and not self.has_process:
-            #     self.switch(OFF)
-            #     return  # Areas 1 to 3 but but NO process running
-
             if self.mode == 2 or self.mode == 4:  # Sensor or both
-                if self.detection & DET_RISE == DET_RISE:   # and self.off_time is not None:
+                if self.detection & DET_RISE == DET_RISE:
                     if value >= self.temp_off_adjusted:
                         self.switch(OFF)
                     elif value <= self.temp_on_adjusted:
@@ -226,7 +220,6 @@ class OutputClass(QObject):
                     elif value >= self.temp_off_adjusted:
                         self.switch(OFF)
             if self.detection & DET_TIMER == DET_TIMER and self.off_time is not None:
-                # self.remaining = (self.off_time - datetime.now()).seconds
                 if self.remaining <= 0 or self.off_time <= datetime.now():
                     self.switch(OFF)
                 self.update_control(self.status)

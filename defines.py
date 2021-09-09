@@ -26,6 +26,9 @@ FLUSH = 2
 TAB = "    "
 OPEN = 1
 CLOSED = 0
+COOL = 1
+WARM = 2
+NORMAL = 0
 
 # Date formats
 DF_DMY = "%d/%m/%y"

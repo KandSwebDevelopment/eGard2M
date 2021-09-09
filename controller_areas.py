@@ -35,14 +35,9 @@ class AreaController(QObject):
         self.soil_sensors = SoilSensorClass(self)
         self.light_relay_1 = UNSET      # Hold the actual position of the relay, this is only changed by switch updates
         self.light_relay_2 = UNSET
-        self.cool_warm_1 = 0        # Area is is cool = 1, warm = 2, normal = 0
-        self.cool_warm_2 = 0
-        self.trans_timer_1 = QTimer()
-        self.trans_timer_1.setInterval(int(self.db.get_config(CFT_AREA, "trans 1", 60)) * 60000)
-        self.trans_timer_1.timeout.connect(self.trans_end_1)
-        self.trans_timer_2 = QTimer()
-        self.trans_timer_2.setInterval(int(self.db.get_config(CFT_AREA, "trans 2", 60)) * 60000)
-        self.trans_timer_2.timeout.connect(self.trans_end_2)
+        self.cool_warm = collections.defaultdict(int)        # Area is is cool = 1, warm = 2, normal = 0
+        self.cool_warm[1] = NORMAL
+        self.cool_warm[2] = NORMAL
 
         self.main_panel.timer.start()
 
@@ -222,27 +217,6 @@ class AreaController(QObject):
             print("sensor_load_manual_ranges - Nothing found in db {} for area {} and item {}".
                   format(DB_PROCESS_TEMPERATURE, area, item))
 
-    def start_trans(self, area):
-        s = self.get_light_status(area)
-        if area == 1:
-            if s == ON:
-                self.cool_warm_1 = 2
-            else:
-                self.cool_warm_1 = 1
-            self.trans_timer_1.start()
-        if area == 2:
-            if s == ON:
-                self.cool_warm_2 = 2
-            else:
-                self.cool_warm_2 = 1
-            self.trans_timer_2.start()
-
-    def trans_end_1(self):
-        self.cool_warm_1 = 0
-
-    def trans_end_2(self):
-        self.cool_warm_2 = 0
-
     def get_area_pid(self, area):
         """ Returns the PID in the area"""
         return self.areas_pid[area]
@@ -270,6 +244,9 @@ class AreaController(QObject):
         :rtype: list
         """
         return self.areas_items[area]
+
+    def get_area_trans(self, area):
+        return self.cool_warm[area]
 
     def get_area_process(self, area):
         """ Returns the process in the area
