@@ -9,7 +9,8 @@ import serial.tools.list_ports
 from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import *
 from PyQt5.QtGui import QTextCursor
-from PyQt5.QtWidgets import QWidget, QDialog, QMessageBox, QListWidgetItem
+from PyQt5.QtPrintSupport import QPrinter, QPrintDialog, QPrintPreviewDialog
+from PyQt5.QtWidgets import QWidget, QDialog, QMessageBox, QListWidgetItem, QTextEdit
 
 from class_process import ProcessClass
 from defines import *
@@ -31,6 +32,7 @@ from ui.dialogFan import Ui_DialogFan
 from ui.dialogFeedMix import Ui_DialogFeedMix
 from ui.area_manual import Ui_frm_area_manual
 from ui.dialogJournal import Ui_DialogJournal
+from ui.dialogJournelViewer import Ui_DialogJournalViewer
 from ui.dialogOutputSettings import Ui_DialogOutputSetting
 from ui.dialogProcessAdjustments import Ui_DialogProcessAdjust
 from ui.dialogProcessInfo import Ui_DialogProcessInfo
@@ -1611,6 +1613,7 @@ class DialogDispatchOverview(QDialog, Ui_DialogLogistics):
         self.rb_sort_3.toggled.connect(self.change_sort_order)
         self.lw_available.doubleClicked.connect(self.display_strain)
         self.lw_available.currentItemChanged.connect(self.display_strain)
+        self.le_weekly.editingFinished.connect(self.change_weekly)
 
     def refresh(self):
         self.load_stock()
@@ -1618,6 +1621,10 @@ class DialogDispatchOverview(QDialog, Ui_DialogLogistics):
         # self.get_up_coming()
         self.get_future()
         self.load_available()
+
+    def change_weekly(self):
+        self.weekly_total = string_to_float(self.le_weekly.text())
+        self.get_future()
 
     def change_sort_order(self):
         rb_tn = self.sender()
@@ -1687,7 +1694,6 @@ class DialogDispatchOverview(QDialog, Ui_DialogLogistics):
             self.lw_clients.addItem(lw_item)
 
         self.le_weekly.setText(str(round(total, 1)))
-        self.weekly_total = total
 
     def get_up_coming(self):
         self.te_upcomming.clear()
@@ -1933,6 +1939,8 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         self.le_each_1.clear()
         self.le_total_1.clear()
         self.is_changed = True
+        self.main_panel.lbl_water_required.setText(
+            str(self.main_panel.main_window.feed_controller.get_next_water_required()))
 
     def change_qty(self):
         count = 0
@@ -2817,10 +2825,10 @@ class DialogProcessInfo(QDialog, Ui_DialogProcessInfo):
     def __init__(self, parent, process=None):
         super(DialogProcessInfo, self).__init__()
         self.sub = None
-        self.my_parent = parent
+        self.main_panel = parent
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setupUi(self)
-        self.db = self.my_parent.db
+        self.db = self.main_panel.db
         self.pb_close.clicked.connect(lambda: self.sub.close())
 
         if process is not None:
@@ -2834,7 +2842,7 @@ class DialogProcessInfo(QDialog, Ui_DialogProcessInfo):
             p_class.stage_days_elapsed, round(p_class.running_days / 7, 1), p_class.stage_total_duration,
             round(p_class.stage_total_duration / 7, 1), p_class.current_stage, p_class.stage_name,
             p_class.stage_days_remaining)
-        table += "Started on {} and is due om <b>{}</b> ".format(p_class.start, p_class.due_date)
+        table += "Started on {} and is due om <b>{}</b><br> ".format(p_class.start, p_class.due_date.date())
         table += "It has been running a total of {} days or {} weeks".format(p_class.running_days,
                                                                              round(p_class.running_days / 7, 1))
         self.tetime.setHtml(table)
@@ -2929,86 +2937,87 @@ class DialogProcessInfo(QDialog, Ui_DialogProcessInfo):
                         temps[4]['set']) + "&deg;</b>  &gt;  " + str(temps[4]['high']) + "&deg;<br>")
 
         # Feed
-        # if p_class.location != 3:
-        #     sql = "SELECT name FROM {} WHERE id = {}".format(DB_FEED_SCHEDULE_NAMES, p_class.current_feed_schedule_id)
-        #     fs_name = self.db.execute_single(sql)
-        #     if fs_name is not None:
-        #         if p_class.recipe_id == WATER_ONLY_IDX:
-        #             r_name = WATER_ONLY
-        #         else:
-        #             sql = "SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, p_class.recipe_id)
-        #             r_name = self.db.execute_single(sql)
-        #             if r_name is None:
-        #                 r_name = "Error None"
-        #         if p_class.current_feed_schedule_id == 0:
-        #             txt = "Error None"
-        #         else:
-        #             txt = str(p_class.current_feed_schedule_id)
-        #         table = "<table cellpadding='3' border='1'><tr><td>Current Feed Schedule</td><td><b>" + fs_name + \
-        #                 "</b> [" + txt + "]</td></tr>"
-        #         table += "<tr><td>Current Recipe</td><td><b>" + r_name + "</b> [" + str(
-        #             p_class.recipe_id) + "]</td></tr>"
-        #         table += "<tr><td>Recipe changes on day</td><td><b>" + str(
-        #             p_class.recipe_expires_day) + "</b></td></tr>"
-        #         if p_class.recipe_next_id == WATER_ONLY_IDX:
-        #             r_name = WATER_ONLY
-        #         elif p_class.recipe_next_id is None:
-        #             r_name = "None"
-        #         else:
-        #             sql = "SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, p_class.recipe_next_id)
-        #             r_name = self.db.execute_single(sql)
-        #         table += "<tr><td>Next Recipe</td><td><b>" + r_name + "</b> [" + str(
-        #             p_class.recipe_next_id) + "]</td></tr>"
-        #         table += "<tr><td>Starts in</td><td><b>" + str(
-        #             p_class.recipe_expires_day - p_class.stage_days_elapsed) + "</b> days</td></tr>"
-        #         table += "</table><br>"
-        #         # Today
-        #         table += "<table cellpadding='3' border='1'><tr><td colspan='3'>Current Recipe " + str(
-        #             p_class.recipe_original[0][2]) + "Litre(s) Each</td></tr>"
-        #         table += '<tr><td>Nutrient</td><td>Amount</td><td>Freq</td></tr>'
-        #         for row in p_class.recipe_final:
-        #             if row[0] == 100:
-        #                 table += '<tr><td colspan="3" Font="3">Water Only</td></tr>'
-        #                 continue
-        #             sql = "SELECT name FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, row[0])
-        #             n_name = self.db.execute_single(sql)
-        #             colour = ""
-        #             if row[5] != 0:
-        #                 colour = " bgcolor='light gray'"
-        #             table += '<tr><td>' + n_name + '</td><td' + colour + '>' + str(
-        #                 row[1] + row[5]) + 'ml</td><td>' + str(
-        #                 row[4]) + '</td></tr>'
-        #         table += "</table><br><br>"
-        #
-        #         if len(p_class.recipe_next) > 0:
-        #             table += "<table cellpadding='3' border='1'><tr><td colspan='3'>Next Recipe " + str(
-        #                 p_class.recipe_next[0][2]) + "Litre(s) Each</td></tr>"
-        #             table += '<tr><td>Nutrient</td><td>Amount</td><td>Freq</td></tr>'
-        #             for row in p_class.recipe_next:
-        #                 if row[3] == 100:
-        #                     table += '<tr><td colspan="3" Font="3">Water Only</td></tr>'
-        #                     continue
-        #                 sql = "SELECT name FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, row[0])
-        #                 n_name = self.db.execute_single(sql)
-        #                 colour = ""
-        #                 if row[5] != 0:
-        #                     colour = " bgcolor='#00FF00'"
-        #                 table += '<tr><td>' + n_name + '</td><td' + colour + '>' + str(
-        #                     row[1] + row[5]) + 'ml</td><td>' + str(
-        #                     row[4]) + '</td></tr>'
-        #             table += "</table><br><br>"
-        #         self.tefeed.textCursor().insertHtml(table)
-        #     else:
-        #         table = "<table cellpadding='3' border='1'><tr><td>Current Feed Schedule</td><td><b>Missing</b> </td></tr>"
-        #         table += "</table><br><br>"
-        #         self.tefeed.textCursor().insertHtml(table)
+        if p_class.location != 3:
+            feed = self.main_panel.area_controller.main_window.feed_controller.feeds[p_class.location]
+            sql = "SELECT name FROM {} WHERE id = {}".format(DB_FEED_SCHEDULE_NAMES, feed.feed_schedule)
+            fs_name = self.db.execute_single(sql)
+            if fs_name is not None:
+                if feed.recipe_id == WATER_ONLY_IDX:
+                    r_name = WATER_ONLY
+                else:
+                    sql = "SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, feed.recipe_id)
+                    r_name = self.db.execute_single(sql)
+                    if r_name is None:
+                        r_name = "Error None"
+                if feed.feed_schedule == 0:
+                    txt = "Error None"
+                else:
+                    txt = str(feed.feed_schedule)
+                table = "<table cellpadding='3' border='1'><tr><td>Current Feed Schedule</td><td><b>" + fs_name + \
+                        "</b> [" + txt + "]</td></tr>"
+                table += "<tr><td>Current Recipe</td><td><b>" + r_name + "</b> [" + str(
+                    feed.recipe_id) + "]</td></tr>"
+                table += "<tr><td>Recipe changes on day</td><td><b>" + str(
+                    p_class.recipe_expires_day) + "</b></td></tr>"
+                if p_class.recipe_next_id == WATER_ONLY_IDX:
+                    r_name = WATER_ONLY
+                elif p_class.recipe_next_id is None:
+                    r_name = "None"
+                else:
+                    sql = "SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, p_class.recipe_next_id)
+                    r_name = self.db.execute_single(sql)
+                table += "<tr><td>Next Recipe</td><td><b>" + r_name + "</b> [" + str(
+                    p_class.recipe_next_id) + "]</td></tr>"
+                table += "<tr><td>Starts in</td><td><b>" + str(
+                    p_class.recipe_expires_day - p_class.stage_days_elapsed) + "</b> days</td></tr>"
+                table += "</table><br>"
+                # Today
+                table += "<table cellpadding='3' border='1'><tr><td colspan='3'>Current Recipe " + str(
+                    p_class.recipe_original[0][2]) + "Litre(s) Each</td></tr>"
+                table += '<tr><td>Nutrient</td><td>Amount</td><td>Freq</td></tr>'
+                for row in p_class.recipe_final:
+                    if row[0] == 100:
+                        table += '<tr><td colspan="3" Font="3">Water Only</td></tr>'
+                        continue
+                    sql = "SELECT name FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, row[0])
+                    n_name = self.db.execute_single(sql)
+                    colour = ""
+                    if row[5] != 0:
+                        colour = " bgcolor='light gray'"
+                    table += '<tr><td>' + n_name + '</td><td' + colour + '>' + str(
+                        row[1] + row[5]) + 'ml</td><td>' + str(
+                        row[4]) + '</td></tr>'
+                table += "</table><br><br>"
+
+                if len(p_class.recipe_next) > 0:
+                    table += "<table cellpadding='3' border='1'><tr><td colspan='3'>Next Recipe " + str(
+                        p_class.recipe_next[0][2]) + "Litre(s) Each</td></tr>"
+                    table += '<tr><td>Nutrient</td><td>Amount</td><td>Freq</td></tr>'
+                    for row in p_class.recipe_next:
+                        if row[3] == 100:
+                            table += '<tr><td colspan="3" Font="3">Water Only</td></tr>'
+                            continue
+                        sql = "SELECT name FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, row[0])
+                        n_name = self.db.execute_single(sql)
+                        colour = ""
+                        if row[5] != 0:
+                            colour = " bgcolor='#00FF00'"
+                        table += '<tr><td>' + n_name + '</td><td' + colour + '>' + str(
+                            row[1] + row[5]) + 'ml</td><td>' + str(
+                            row[4]) + '</td></tr>'
+                    table += "</table><br><br>"
+                self.tefeed.textCursor().insertHtml(table)
+            else:
+                table = "<table cellpadding='3' border='1'><tr><td>Current Feed Schedule</td><td><b>Missing</b> </td></tr>"
+                table += "</table><br><br>"
+                self.tefeed.textCursor().insertHtml(table)
 
         # Water supply
         table = "<table cellpadding='3' border='1'><tr><td colspan='2'><b>Total</b> Water<br>Requirement </td></tr>"
         table += '<tr><td>Tank</td><td>Litres</td></tr>'
-        # table += '<tr><td> 1 </td><td>' + str(self.my_parent.water_supply.tank_required_litres[0]) + '</td></tr>'
-        # table += '<tr><td> 2 </td><td>' + str(self.my_parent.water_supply.tank_required_litres[1]) + '</td></tr>'
-        # table += '<tr><td> Total </td><td>' + str(self.my_parent.feed_control.get_next_water_required()) + '</td></tr>'
+        # table += '<tr><td> 1 </td><td>' + str(self.main_panel.water_supply.tank_required_litres[0]) + '</td></tr>'
+        # table += '<tr><td> 2 </td><td>' + str(self.main_panel.water_supply.tank_required_litres[1]) + '</td></tr>'
+        # table += '<tr><td> Total </td><td>' + str(self.main_panel.feed_control.get_next_water_required()) + '</td></tr>'
         table += "</table>"
         self.tewater.textCursor().insertHtml(table)
 
@@ -3028,7 +3037,7 @@ class DialogProcessInfo(QDialog, Ui_DialogProcessInfo):
                 tt = "None"
             else:
                 tt = self.db.execute_single("SELECT `name` FROM {} WHERE `id` = {}".format(DB_SENSORS_CONFIG, row[2]))
-                s = self.my_parent.area_controller.sensors[row[2]]
+                s = self.main_panel.area_controller.sensors[row[2]]
             table += "<tr><td>{}</td><td>{}</td><td>{}<br>Low:{}  Set:{}  High:{}</td><td>{}</td></tr>" \
                 .format(row[0], OUT_TYPE[row[1]], tt, s.low, s.set, s.high, row[3])
         table += "</table>"
@@ -3083,7 +3092,7 @@ class DialogFan(QDialog, Ui_DialogFan):
         self.main_panel.area_controller.fan_controller.refresh_info(self.id)
         self.main_panel.coms_interface.relay_send(NWC_FAN_SENSOR, self.id, sid)
         # Change Arduino fan sensor
-        self.my_parent.coms_interface.send_data(CMD_SET_FAN_SENSOR, True, MODULE_IO, self.id, sid)
+        self.main_panel.coms_interface.send_data(CMD_SET_FAN_SENSOR, True, MODULE_IO, self.id, sid)
 
     def power(self):
         if self.fan_controller.master_power == ON:
@@ -3385,8 +3394,6 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
 
         # get day or night
         self.on_day = self.main_panel.area_controller.get_light_status(self.area)
-        if self.on_day == -1:
-            self.on_day = 1
         self.day_night = self.on_day    # Holds the day night value. Will be same as on_day unless inverted
 
         # Is sensor used by fan
@@ -4107,7 +4114,9 @@ class DialogProcessManager(QDialog, Ui_dialogProcessManager):
         self.pattern = 0
         self.stage = 0
         self.feed_mode = 0
+        self.pb_save.clicked.connect(self.save)
         self.de_start.setDate(datetime.now().date())
+        self.de_start.dateChanged.connect(self.date_change)
         rows = self.db.execute('SELECT `name`, `id` FROM {} ORDER BY `name`'.format(DB_PATTERN_NAMES))
         self.cb_patterns.addItem("Select", 0)
         for row in rows:
@@ -4135,8 +4144,12 @@ class DialogProcessManager(QDialog, Ui_dialogProcessManager):
             ctrl.addItem("Select", 0)
             ctrl.setEnabled(True)
             for row in rows:
-                ctrl.addItem("{} x {} ({})".format(row[3], row[0], row[1]), row[2])
+                ctrl.addItem("{} x {}({})".format(row[0], row[3], row[1]), row[2])
             ctrl.currentIndexChanged.connect(self.change_strains)
+
+    def date_change(self):
+        self.cal_end()
+        self.start = self.de_start.date().toPyDate()
 
     def find_earliest_start(self):
         p = self.main_panel.area_controller.get_area_process(1)
@@ -4225,6 +4238,7 @@ class DialogProcessManager(QDialog, Ui_dialogProcessManager):
                     if len(strain) > 0:
                         ctrl.addItem("{} ({})".format(strain[0], strain[1]), row[1])
                         ctrl.setCurrentIndex(ctrl.findData(row[1]))
+            self.change_strains()
         # pattern
         index = self.cb_patterns.findData(self.pattern)
         if index >= 0:
@@ -4246,10 +4260,12 @@ class DialogProcessManager(QDialog, Ui_dialogProcessManager):
         self.le_qty.setText(str(self.qty))
 
     def change_pattern(self):
+        self.pattern = self.cb_patterns.currentData()
+        if self.pattern is None or self.pattern == 0:
+            return
         self.calculate_duration()
 
     def calculate_duration(self):
-        self.pattern = self.cb_patterns.currentData()
         if self.pattern is None or self.pattern == 0:
             return
 
@@ -4316,6 +4332,7 @@ class DialogProcessManager(QDialog, Ui_dialogProcessManager):
             self.db.execute_write(sql)
             # Delete any entries for this
             sql = 'DELETE FROM {} WHERE process_id = {}'.format(DB_PROCESS_STRAINS, self.edit_id)
+            self.db.execute_write(sql)
             for x in range(1, self.qty + 1):
                 sql = 'INSERT INTO {} (strain_id, process_id, item) VALUES ({}, {}, {})'.\
                     format(DB_PROCESS_STRAINS, getattr(self, "cb_strain_%i" % x).currentData(), self.edit_id, x)
@@ -4568,6 +4585,41 @@ class DialogStrains(QDialog, Ui_DialogStrains):
         self.load_list()
 
 
+class DialogJournalViewer(QDialog, Ui_DialogJournalViewer):
+    def __init__(self, parent):
+        """
+        :type parent: MainWindow
+        """
+        super(DialogJournalViewer, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.main_window = parent
+        self.sub = None
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.log_name = ""
+        files = self.main_window.logger.get_log_list(LOG_JOURNAL)
+        self.cb_process.clear()
+        # self.cb_process.blockSignals(True)
+        self.cb_process.addItem("Select", 0)
+        for f in files:
+            self.cb_process.addItem(f[0:-4], f)
+        # self.cb_process.blockSignals(False)
+        self.cb_process.currentIndexChanged.connect(self.change_log)
+        self.pb_save.clicked.connect(self.save_file)
+
+    def change_log(self):
+        log = self.cb_process.currentData()
+        if log == 0:
+            self.te_log.setHtml("")
+            return
+        self.log_name = self.cb_process.currentText()
+        self.te_log.setHtml(self.main_window.logger.get_log_contents(LOG_JOURNAL, log))
+
+    def save_file(self):
+        with open(self.main_window.logger.journal_path + "\\" + self.log_name + ".jrn", 'w') as yourFile:
+            yourFile.write(str(self.te_log.toPlainText()))
+
+
 class DialogSeedPicker(QDialog, Ui_DialogSeedPicker):
     def __init__(self, parent):
         """
@@ -4586,8 +4638,11 @@ class DialogSeedPicker(QDialog, Ui_DialogSeedPicker):
         self.cb_sort.addItem("Name", "name")
         self.cb_sort.addItem("Min. Duration", "duration_min")
         self.cb_sort.addItem("Breeder", "breeder")
+        self.print_contents = QTextEdit(self)
+        self.print_contents.setVisible(False)
         self.load_list()
         self.cb_sort.currentIndexChanged.connect(self.change_sort)
+        self.pb_print.clicked.connect(self.print_stock)
 
     def load_list(self):
         if self.ck_in_stock.isChecked():
@@ -4596,18 +4651,43 @@ class DialogSeedPicker(QDialog, Ui_DialogSeedPicker):
             qty = 0
         rows = self.db.execute("SELECT qty, name, breeder, duration_min, duration_max, type_indica, type_sativa,"
                                " id FROM {} WHERE qty >= {} ORDER BY {}".format(DB_STRAINS, qty, self.sort_order))
-        text = '<table cellpadding = "3"  border = "1" cellspacing = "0" >'
-        text += "<tr><td>Qty</td><td>Name</td><td>Breeder</td><td>Min Dur</td><td>Max Dur</td><td>Indica</td><td>Sativa</td><td>ID</td></tr>"
+        text = p_text = '<table cellpadding = "3"  border = "1" cellspacing = "0" >'
+        text += "<tr><td>Qty</td><td>Name</td><td>Breeder</td><td>Min Dur</td><td>Max Dur</td><td>Indica</td>" \
+                "<td>Sativa</td><td>ID</td></tr>"
+        p_text += "<tr><td>Qty</td><td>Stock</td><td>Name</td><td>Breeder</td><td>ID</td></tr>"
         for row in rows:
-            text += "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>".format(
-                row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7])
+            text += "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>"\
+                .format(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7])
+            p_text += "<tr><td> </td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>".format(
+                row[0], row[1], row[2], row[7])
         text += '</table>'
         self.te_strains.setHtml(text)
+        self.print_contents.setHtml(p_text)
         qty = self.db.execute_single("SELECT SUM(qty) FROM {}".format(DB_STRAINS))
         self.le_stock.setText(str(qty))
 
     def change_sort(self):
         self.sort_order = self.cb_sort.currentData()
         self.load_list()
+
+    def print_stock(self):
+        printer = QPrinter(QPrinter.HighResolution)
+        printer.setFontEmbeddingEnabled(True)
+        printer.setOrientation(QPrinter.Portrait)
+        printer.setPageMargins(2, 2, 2, 2, QPrinter.Millimeter)
+        printer.setFullPage(True)
+        printer.setPaperSize(QPrinter.A4)
+        dialog = QPrintDialog(printer)
+        dialog.setModal(True)
+        dialog.setWindowTitle("Print Feed Schedule")
+        # if dialog.exec_() == QDialog.Accepted:
+        #    self.editor.print_(dialog.printer())
+
+        dialog = QPrintPreviewDialog()
+        dialog.paintRequested.connect(self.handle_paint_request)
+        dialog.exec_()
+
+    def handle_paint_request(self, printer):
+        self.print_contents.print_(printer)
 
 

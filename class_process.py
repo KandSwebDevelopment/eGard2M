@@ -125,7 +125,7 @@ class ProcessClass(QObject):
         self.logging_available = True   # self.area_controller.logger.available
         self.new_line = '\n'
         if self.logging_available:
-            self.journal_filename = self.area_controller.logger.journal_file_template.format(self.id)
+            self.journal_filename = self.area_controller.main_window.logger.journal_file_template.format(self.id)
             # The following will create the file if it does not exist
             f = open(self.journal_filename, "a")
             f.close()
@@ -397,9 +397,7 @@ class ProcessClass(QObject):
         msg.setInformativeText("Process Number - " + str(self.id))
         msg.setWindowTitle("Confirm Process End")
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
-        retval = msg.exec_()
-        print(retval)
-        if retval == QMessageBox.Yes:
+        if msg.exec_() == QMessageBox.Yes:
             # Update event log
             text = "Process Finished\nTotal duration " + str(self.days_total) + " days " + str(
                 round(self.days_total / 7, 1)) + " weeks\n"

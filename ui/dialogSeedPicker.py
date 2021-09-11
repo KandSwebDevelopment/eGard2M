@@ -42,6 +42,9 @@ class Ui_DialogSeedPicker(object):
         self.pb_close = QtWidgets.QPushButton(DialogSeedPicker)
         self.pb_close.setObjectName("pb_close")
         self.gridLayout.addWidget(self.pb_close, 2, 4, 1, 1)
+        self.pb_print = QtWidgets.QPushButton(DialogSeedPicker)
+        self.pb_print.setObjectName("pb_print")
+        self.gridLayout.addWidget(self.pb_print, 2, 0, 1, 1)
 
         self.retranslateUi(DialogSeedPicker)
         QtCore.QMetaObject.connectSlotsByName(DialogSeedPicker)
@@ -52,6 +55,7 @@ class Ui_DialogSeedPicker(object):
         self.ck_in_stock.setText(_translate("DialogSeedPicker", "In stock only"))
         self.label.setText(_translate("DialogSeedPicker", "Stock"))
         self.pb_close.setText(_translate("DialogSeedPicker", "Close"))
+        self.pb_print.setText(_translate("DialogSeedPicker", "Print Stock"))
 
 
 if __name__ == "__main__":

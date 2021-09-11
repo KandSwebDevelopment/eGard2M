@@ -241,14 +241,15 @@ class Logger(QObject):
         if text == "":
             return "There as no entries in this journal"
         entries = text.split("\n")
-        result = '<table  cellpadding = "5"  border = "1" cellspacing = "0">'
+        result = ''    # '<table  cellpadding = "5"  border = "1" cellspacing = "0">'
         for line in entries:
-            if line != "":
-                parts = line.split(",")
-                cols = len(parts)
-                result += "<tr>"
-                for x in range(0, cols):
-                    result += "<td>" + parts[x] + "</td>"
-                result += "</tr>"
-        result += "</table>"
+            result += line + '<br>'
+            # if line != "":
+            #     parts = line.split(",")
+            #     cols = len(parts)
+            #     result += "<tr>"
+            #     for x in range(0, cols):
+            #         result += "<td>" + parts[x] + "</td>"
+            #     result += "</tr>"
+        # result += "</table>"
         return result

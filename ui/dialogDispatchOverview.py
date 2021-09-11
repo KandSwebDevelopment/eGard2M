@@ -79,7 +79,7 @@ class Ui_DialogLogistics(object):
         font.setFamily("Oblivious font")
         font.setPointSize(12)
         self.le_weekly.setFont(font)
-        self.le_weekly.setReadOnly(True)
+        # self.le_weekly.setReadOnly(True)
         self.le_weekly.setObjectName("le_weekly")
         self.le_weeks = QtWidgets.QLineEdit(self.tab_3)
         self.le_weeks.setGeometry(QtCore.QRect(100, 120, 31, 20))

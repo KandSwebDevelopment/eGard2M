@@ -228,6 +228,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.update_duration_texts()
         self.area_controller.output_controller.water_heater_update_info()   # Required here it init things
         self.loop_15()  # Instant feed due check
+        self.lbl_water_required.setText(str(self.main_window.feed_controller.get_next_water_required()))
+        self.check_upcoming_starts()
 
     def connect_signals(self):
         self.pb_cover.clicked.connect(lambda: self.access.open())
@@ -514,6 +516,42 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                                                               self.area_controller.areas_pid[3], row[0]))
                         getattr(self, "pb_pm2_%i" % row[0]).setToolTip("{}\r\nDay {} drying".format(name, days))
 
+    def check_light(self):
+        if self.area_controller.area_has_process(1):
+            status = self.area_controller.get_area_process(1).check_light()
+            self.area_controller.get_area_process(1).check_trans()
+            if self.area_controller.light_relay_1 != status:
+                if self.master_mode == MASTER:
+                    self.coms_interface.send_switch(SW_LIGHT_1, status)
+                else:
+                    self.coms_interface.relay_send(NWC_SWITCH_REQUEST, SW_LIGHT_1)
+        else:
+            if self.area_controller.light_relay_1 != OFF:
+                self.coms_interface.send_switch(SW_LIGHT_1, OFF)
+
+        if self.area_controller.area_has_process(2):
+            status = self.area_controller.get_area_process(2).check_light()
+            self.area_controller.get_area_process(2).check_trans()
+            if self.area_controller.light_relay_2 != status:
+                if self.master_mode == MASTER:
+                    self.coms_interface.send_switch(SW_LIGHT_2, status)
+                else:
+                    self.coms_interface.relay_send(NWC_SWITCH_REQUEST, SW_LIGHT_2)
+        else:
+            if self.area_controller.light_relay_2 != OFF:
+                self.coms_interface.send_switch(SW_LIGHT_2, OFF)
+
+    def check_upcoming_starts(self):
+        rows = self.db.execute(
+            'SELECT id, start FROM {} WHERE `start` >= "{}" AND running = 0'.
+            format(DB_PROCESS, datetime.now().date() - timedelta(days=10)))
+        for row in rows:
+            if row[1] <= (datetime.now() + timedelta(days=7)).date():
+                m = ("New process No:{} is due to start on {}\n\rPre-start due on {}"
+                     .format(row[0], datetime.strftime(row[1], "%a %d/%m/%y"),
+                             datetime.strftime(row[1] - timedelta(days=3), "%a %d/%m/%y")))
+                self.msg_sys.add(m, MSG_UPCOMING, INFO)
+
     def change_to_flushing(self, item):
         sql = "SELECT start FROM {} WHERE item = {}".format(DB_FLUSHING, item)
         row = self.db.execute_one_row(sql)
@@ -636,31 +674,6 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.update_next_feeds()
         self.coms_interface.relay_send(NWC_FEED, loc)
 
-    def check_light(self):
-        if self.area_controller.area_has_process(1):
-            status = self.area_controller.get_area_process(1).check_light()
-            self.area_controller.get_area_process(1).check_trans()
-            if self.area_controller.light_relay_1 != status:
-                if self.master_mode == MASTER:
-                    self.coms_interface.send_switch(SW_LIGHT_1, status)
-                else:
-                    self.coms_interface.relay_send(NWC_SWITCH_REQUEST, SW_LIGHT_1)
-        else:
-            if self.area_controller.light_relay_1 != OFF:
-                self.coms_interface.send_switch(SW_LIGHT_1, OFF)
-
-        if self.area_controller.area_has_process(2):
-            status = self.area_controller.get_area_process(2).check_light()
-            self.area_controller.get_area_process(2).check_trans()
-            if self.area_controller.light_relay_2 != status:
-                if self.master_mode == MASTER:
-                    self.coms_interface.send_switch(SW_LIGHT_2, status)
-                else:
-                    self.coms_interface.relay_send(NWC_SWITCH_REQUEST, SW_LIGHT_2)
-        else:
-            if self.area_controller.light_relay_2 != OFF:
-                self.coms_interface.send_switch(SW_LIGHT_2, OFF)
-
     def io_reboot(self):
         # Send all parameters to the IO unit as it has rebooted
         self.coms_interface.send_switch(SW_LIGHT_1, self.area_controller.light_relay_1)
@@ -690,6 +703,66 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.update_duration_texts()
         self.check_stage(area)
         self.coms_interface.relay_send(NWC_STAGE_ADJUST)
+
+    def start_new_process(self, pid):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Question)
+        if self.area_controller.area_has_process(1):
+            msg.setText("Area 1 is not free")
+            msg.setWindowTitle("Start Error")
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
+            return
+        msg.setText("Confirm you wish to start this process")
+        msg.setWindowTitle("Confirm Stage Start")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        msg.setDefaultButton(QMessageBox.Cancel)
+        if msg.exec_() == QMessageBox.Cancel:
+            return
+        rsd = datetime.strftime(datetime.now(), "%Y-%m-%d")
+        # rsd = self.db.reverse_date(sd)
+        # Update processes table
+        sql = 'UPDATE {} SET running = 1, start = "{}", location = 1, stage = 1, feed_mode = 1 WHERE id = {}'.format(
+            DB_PROCESS, rsd, pid)
+        self.db.execute_write(sql)  # This does not seem to be working
+        # Set last feed date
+        sql = 'UPDATE {} SET dt = "{}" WHERE item = "feed date" AND id = 1'.format(DB_PROCESS_ADJUSTMENTS, rsd)
+        self.db.execute_write(sql)
+        # Reset feed litres
+        sql = 'UPDATE {} SET offset = 0 WHERE item = "feed litres" AND id = 1'.format(DB_PROCESS_ADJUSTMENTS)
+        self.db.execute_write(sql)
+        # Set process strains location
+        sql = 'UPDATE {} SET location = 1 WHERE process_id = {}'.format(DB_PROCESS_STRAINS, pid)
+        self.db.execute_write(sql)
+        # Add to areas table
+        self.db.execute_write("DELETE FROM {} WHERE area = 1".format(DB_AREAS))
+        self.db.execute_write(sql)
+        qty = self.db.execute_single(
+            "SELECT COUNT(process_id) FROM {} WHERE process_id = {}".format(DB_PROCESS_STRAINS, pid))
+        for i in range(1, qty + 1):
+            self.db.execute_write("INSERT INTO {} (area, process_id, item) VALUES (1, {}, {})".format(DB_AREAS, pid, i))
+            # Deduct seeds from stock
+            sid = self.db.execute_single(
+                "SELECT strain_id FROM {} WHERE process_id ={} and item = {}".format(DB_PROCESS_STRAINS, pid, i))
+            sql = 'UPDATE {} SET qty = qty - 1 WHERE id = {} LIMIT 1'.format(DB_STRAINS, sid)
+            self.db.execute_write(sql)
+            # update last used
+            sql = 'UPDATE {} SET last_used_id = {} WHERE id = {} LIMIT 1'.format(DB_STRAINS, pid, sid)
+            self.db.execute_write(sql)
+        # performance
+        self.area_controller.load_areas()
+        self.area_controller.load_sensors(1)
+        self.area_controller.load_outputs(1)
+        self.area_controller.load_processes()
+        p = self.area_controller.get_area_process(1)
+        p.journal_write("Process Number {}".format(p.id))
+        p.journal_write("Started   Quantity {} on {}".format(p.quantity, datetime.now().date()))
+        s = collections.OrderedDict(sorted(p.strains.items()))
+        for i in range(1, p.quantity + 1):
+            p.journal_write(
+                "  No.{} {}  Id:{}  {} to {} days".format(s[i]['item'], s[i]['name'], s[i]['id'], s[i]['min'],
+                                                          s[i]['max']))
+        p.journal_write("---------------------------------")
 
     def coms_indicator(self):
         self.coms_counter += 1
@@ -995,6 +1068,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.update_duration_texts()
         self.area_controller.output_controller.outputs[OUT_WATER_HEATER_1].new_day()
         self.area_controller.output_controller.outputs[OUT_WATER_HEATER_2].new_day()
+        self.check_upcoming_starts()
         # # Reset feeder for new day
         # self.water_control.new_day()
         # self.water_control.start()

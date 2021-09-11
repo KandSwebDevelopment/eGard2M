@@ -128,14 +128,25 @@ class FeedControl(QThread):
     def get_recipe(self, area, mix_num=1):
         return self.feeds[area].area_data['mixes'][mix_num]['recipe']
 
-    def get_water_total(self, area, mix_num=1):
-        return self.feeds[area].area_data['mixes'][mix_num]['water total']
-
     def get_lpp(self, area, mix_num=1):
         return self.feeds[area].area_data['mixes'][mix_num]['lpp']
 
     def get_lpp_org(self, area):
         return self.feeds[area].feed_litres
+
+    def get_water_total(self, area, mix_num=1):
+        """ Get the water require for a specific mix in an area"""
+        return self.feeds[area].area_data['mixes'][mix_num]['water total']
+
+    def get_next_water_required(self):
+        """ Get the total water required for next feed date"""
+        a1 = self.days_till_feed(1)
+        a2 = self.days_till_feed(2)
+        if a1 == a2:
+            return self.get_area_water_total(1) + self.get_area_water_total(2)
+        if a1 < a2:
+            return self.get_area_water_total(1)
+        return self.get_area_water_total(2)
 
     def get_area_water_total(self, area):
         """ Calculates the total amount of water required for the area for all mixes for said area """
@@ -143,7 +154,8 @@ class FeedControl(QThread):
         mixes = self.feeds[area].area_data['mixes']
         for m in mixes:
             t += mixes[m]['water total']
-        self.area_data[area]['water total'] = t
+        # self.feeds[area].area_data['water total'] = t
+        return t
 
     def set_last_feed_date(self, area, feed_date):
         self.feeds[area].set_last_feed_date(feed_date)
@@ -238,9 +250,6 @@ class FeedControl(QThread):
 
         # Do for all modes
         self.feeds[area].set_last_feed_date(date_done)
-        self.log_txt = "{}      Feed    {} Mix{}  Area: {}   Mode: {}\r".\
-            format(datetime.now().strftime('%d %b %y %H:%M'), len(mixes), "" if len(mixes) == 1 else "es", area,
-                   self.get_feed_mode(area))
 
         if self.get_feed_mode(area) == 1:  # Manual
             self.deduct_fed_feed(area)
@@ -248,14 +257,16 @@ class FeedControl(QThread):
             if self.main_window.master_mode == MASTER:
                 pass
         # save feed details to the log
+        self.log_txt = "{}      Feed    {} Mix{}  Area: {}   Mode: {}\r".\
+            format(datetime.now().strftime('%d %b %y %H:%M'), len(mixes), "" if len(mixes) == 1 else "es",
+                   area, self.get_feed_mode(area))
         self.log_txt += "\r\n"
-        # self.main_window.logger.save_feed(self.main_window.area_controller.get_area_pid(), self.log_txt)
+        self.main_window.logger.save_feed(self.main_window.area_controller.get_area_pid(area), self.log_txt)
         self.feeds[area].cycles_reduce()
         self.feeds[area].get_recipe_status()
         # self._check_feed_due_today()
-        # self.main_window.lbl_water_required.setText(str(self.get_next_water_required()))
+        self.main_window.main_panel.lbl_water_required.setText(str(self.get_next_water_required()))
         self.main_window.main_panel.update_next_feeds()
-        # self.main_window.process_from_location(area).load_feed_date()
 
     def deduct_fed_feed(self, area):
         """ Deducts the nutrients used by all the mixes in this feed from stock levels, also builds

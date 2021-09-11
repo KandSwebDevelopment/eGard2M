@@ -144,7 +144,7 @@ class AreaController(QObject):
 
     def reload_process(self, area):
         if self.areas_pid[area] > 0:
-            self.areas_processes[area] = ProcessClass(self.areas_pid[area], self.main_window)
+            self.areas_processes[area] = ProcessClass(self.areas_pid[area], self)
             # Put process id in process id button
             ctrl = getattr(self.main_panel, "pb_pid_{}".format(area))
             ctrl.setText(str(self.areas_processes[area].id))
