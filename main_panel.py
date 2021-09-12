@@ -80,7 +80,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.loop_15_flag = True  # To give every other loop 15
 
         self.has_scales = int(self.db.get_config(CFT_MODULES, "ss unit", 0))
-        self.scales = ScalesComs(self)
+        if self.main_window.factory:
+            self.has_scales = 0
         if not self.has_scales:
             # self.panel_9.hide()
             self.main_window.actionCounter.setEnabled(False)
@@ -89,6 +90,9 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.main_window.actionStorage.setEnabled(False)
             self.main_window.actionReconcilation.setEnabled(False)
             self.main_window.actionLoading.setEnabled(False)
+            self.scales = None
+        else:
+            self.scales = ScalesComs(self)
 
     def eventFilter(self, source, event):
         # Remember to install event filter for control first
@@ -204,7 +208,9 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.db.execute("select name from " + DB_NUTRIENTS_NAMES)  # This is only to keep the database connection alive
 
     def loop_15(self):  # 3 Min
-        if self.main_window.access.has_status(ACS_COVER_OPEN):
+        if self.main_window.access.has_status(ACS_COVER_OPEN) and \
+                self.main_window.access.mute == False and \
+                self.main_window.factory == False:
             # play_sound(SND_ACCESS_WARN)
             sound_access_warn()
         else:
@@ -752,7 +758,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         # performance
         self.area_controller.load_areas()
         self.area_controller.load_sensors(1)
-        self.area_controller.load_outputs(1)
+        self.area_controller.output_controller.load_outputs(1)
         self.area_controller.load_processes()
         p = self.area_controller.get_area_process(1)
         p.journal_write("Process Number {}".format(p.id))
@@ -1115,7 +1121,9 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.area_controller.output_controller.water_heater_update_info()
         elif cmd == NWC_FEED:
             self.feed_controller.feeds[data[0]].load_feed_date()
+            self.area_controller.output_controller.water_heater_update_info()
             self.update_next_feeds()
+            self.lbl_water_required.setText(str(self.feed_controller.get_next_water_required()))
         elif cmd == NWC_SWITCH_REQUEST:
             self.get_switch_position(data[0])
         elif cmd == NWC_WH_DURATION:

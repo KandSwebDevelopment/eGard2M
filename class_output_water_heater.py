@@ -178,7 +178,7 @@ class OutputWaterHeater(OutputClass):
             getattr(self.my_parent, "pb_output_mode_%i" % self.ctrl_id).setIcon(QIcon(":/normal/next_feed.png"))
 
     def set_days_till_feed(self, days):
-        """ Set the days_till_feed. It will only do this if frequency is As Required
+        """ Set the days_till_feed. It will only do this if frequency = As Required
             Otherwise it set it = frequency - days_since"""
         if self.frequency == 0:
             self.days_till_feed = days
