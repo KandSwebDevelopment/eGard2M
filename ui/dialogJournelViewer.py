@@ -36,16 +36,23 @@ class Ui_DialogJournalViewer(object):
         self.te_log = QtWidgets.QTextEdit(DialogJournalViewer)
         self.te_log.setGeometry(QtCore.QRect(10, 40, 771, 431))
         self.te_log.setObjectName("te_log")
+        self.label_13 = QtWidgets.QLabel(DialogJournalViewer)
+        self.label_13.setGeometry(QtCore.QRect(260, 0, 61, 31))
+        self.label_13.setObjectName("label_13")
+        self.cb_feed = QtWidgets.QComboBox(DialogJournalViewer)
+        self.cb_feed.setGeometry(QtCore.QRect(320, 10, 141, 22))
+        self.cb_feed.setObjectName("cb_feed")
 
         self.retranslateUi(DialogJournalViewer)
         QtCore.QMetaObject.connectSlotsByName(DialogJournalViewer)
 
     def retranslateUi(self, DialogJournalViewer):
         _translate = QtCore.QCoreApplication.translate
-        DialogJournalViewer.setWindowTitle(_translate("DialogJournalViewer", "Journel Viewer"))
+        DialogJournalViewer.setWindowTitle(_translate("DialogJournalViewer", "Process Log Viewer"))
         self.pb_close.setText(_translate("DialogJournalViewer", "Close"))
-        self.label_12.setText(_translate("DialogJournalViewer", "Process"))
+        self.label_12.setText(_translate("DialogJournalViewer", "Journal"))
         self.pb_save.setText(_translate("DialogJournalViewer", "Save"))
+        self.label_13.setText(_translate("DialogJournalViewer", "Feeding"))
 
 
 if __name__ == "__main__":

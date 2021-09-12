@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_DialogDEmodule(object):
     def setupUi(self, DialogDEmodule):
         DialogDEmodule.setObjectName("DialogDEmodule")
-        DialogDEmodule.resize(354, 226)
+        DialogDEmodule.resize(354, 262)
         font = QtGui.QFont()
         font.setPointSize(11)
         DialogDEmodule.setFont(font)
@@ -31,7 +31,7 @@ class Ui_DialogDEmodule(object):
         self.pb_reboot.setGeometry(QtCore.QRect(10, 180, 75, 26))
         self.pb_reboot.setObjectName("pb_reboot")
         self.pb_close = QtWidgets.QPushButton(DialogDEmodule)
-        self.pb_close.setGeometry(QtCore.QRect(250, 180, 75, 26))
+        self.pb_close.setGeometry(QtCore.QRect(250, 220, 75, 26))
         self.pb_close.setObjectName("pb_close")
         self.line = QtWidgets.QFrame(DialogDEmodule)
         self.line.setGeometry(QtCore.QRect(20, 80, 321, 16))
@@ -42,7 +42,7 @@ class Ui_DialogDEmodule(object):
         self.p_save.setGeometry(QtCore.QRect(190, 30, 75, 26))
         self.p_save.setObjectName("p_save")
         self.pb_query = QtWidgets.QPushButton(DialogDEmodule)
-        self.pb_query.setGeometry(QtCore.QRect(140, 180, 75, 26))
+        self.pb_query.setGeometry(QtCore.QRect(140, 220, 75, 26))
         self.pb_query.setCheckable(False)
         self.pb_query.setChecked(False)
         self.pb_query.setAutoDefault(False)
@@ -70,6 +70,12 @@ class Ui_DialogDEmodule(object):
         self.line_4.setFrameShape(QtWidgets.QFrame.HLine)
         self.line_4.setFrameShadow(QtWidgets.QFrame.Sunken)
         self.line_4.setObjectName("line_4")
+        self.label_3 = QtWidgets.QLabel(DialogDEmodule)
+        self.label_3.setGeometry(QtCore.QRect(130, 180, 81, 16))
+        self.label_3.setObjectName("label_3")
+        self.cb_mute = QtWidgets.QComboBox(DialogDEmodule)
+        self.cb_mute.setGeometry(QtCore.QRect(230, 180, 91, 22))
+        self.cb_mute.setObjectName("cb_mute")
 
         self.retranslateUi(DialogDEmodule)
         QtCore.QMetaObject.connectSlotsByName(DialogDEmodule)
@@ -90,6 +96,7 @@ class Ui_DialogDEmodule(object):
         self.pb_door_close.setText(_translate("DialogDEmodule", "Door Lock"))
         self.pb_cover_unlock.setText(_translate("DialogDEmodule", "Cover Unlock"))
         self.pb_cover_lock.setText(_translate("DialogDEmodule", "Cover Lock"))
+        self.label_3.setText(_translate("DialogDEmodule", "Mute Alert"))
 
 
 if __name__ == "__main__":

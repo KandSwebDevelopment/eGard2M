@@ -204,7 +204,9 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.db.execute("select name from " + DB_NUTRIENTS_NAMES)  # This is only to keep the database connection alive
 
     def loop_15(self):  # 3 Min
-        if self.main_window.access.has_status(ACS_COVER_OPEN):
+        if self.main_window.access.has_status(ACS_COVER_OPEN) and \
+                self.main_window.access.mute == False and \
+                self.main_window.factory == False:
             # play_sound(SND_ACCESS_WARN)
             sound_access_warn()
         else:
@@ -1115,7 +1117,9 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.area_controller.output_controller.water_heater_update_info()
         elif cmd == NWC_FEED:
             self.feed_controller.feeds[data[0]].load_feed_date()
+            self.area_controller.output_controller.water_heater_update_info()
             self.update_next_feeds()
+            self.lbl_water_required.setText(str(self.feed_controller.get_next_water_required()))
         elif cmd == NWC_SWITCH_REQUEST:
             self.get_switch_position(data[0])
         elif cmd == NWC_WH_DURATION:

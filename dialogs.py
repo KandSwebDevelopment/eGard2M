@@ -2619,13 +2619,12 @@ class DialogEngineerIo(QDialog, Ui_DialogMessage):
 
 class DialogAccessModule(QDialog, Ui_DialogDEmodule):
     def __init__(self, parent):
-        """ :type parent: MainWindow """
         super(DialogAccessModule, self).__init__()
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setupUi(self)
         self.sub = None
-        self.my_parent = parent
-        self.db = self.my_parent.db
+        self.main_panel = parent
+        self.db = self.main_panel.db
         self.pb_close.clicked.connect(lambda: self.sub.close())
         self.pb_reboot.clicked.connect(self.reboot)
         self.p_save.clicked.connect(self.save)
@@ -2635,54 +2634,52 @@ class DialogAccessModule(QDialog, Ui_DialogDEmodule):
         self.pb_door_open.clicked.connect(self.door_open)
         self.pb_door_close.clicked.connect(self.door_lock)
         self.pb_cover_lock.clicked.connect(
-            lambda: self.my_parent.coms_interface.send_switch(SW_COVER_LOCK, ON_RELAY, MODULE_DE))
+            lambda: self.main_panel.coms_interface.send_switch(SW_COVER_LOCK, ON_RELAY, MODULE_DE))
         self.pb_cover_unlock.clicked.connect(
-            lambda: self.my_parent.coms_interface.send_switch(SW_COVER_LOCK, OFF_RELAY, MODULE_DE))
-        self.le_cover_dur.setText(str(self.my_parent.db.get_config(CFT_ACCESS, "cover time", 30)))
-        self.le_auto_delay.setText(str(self.my_parent.db.get_config(CFT_ACCESS, "auto delay", 15)))
+            lambda: self.main_panel.coms_interface.send_switch(SW_COVER_LOCK, OFF_RELAY, MODULE_DE))
+        self.le_cover_dur.setText(str(self.main_panel.db.get_config(CFT_ACCESS, "cover time", 30)))
+        self.le_auto_delay.setText(str(self.main_panel.db.get_config(CFT_ACCESS, "auto delay", 15)))
+        self.cb_mute.addItem("Off", 0)
+        self.cb_mute.addItem("30 Minutes", 30)
+        self.cb_mute.addItem("1 Hour", 60)
+        self.cb_mute.addItem("2 Hours", 120)
+        self.cb_mute.currentIndexChanged.connect(self.change_mute)
 
-    #     self.my_parent.coms_interface.update_access_settings.connect(self.setting_received)
-    #
-    # @pyqtSlot(str, float)
-    # def setting_received(self, cmd, value):
-    #     if cmd == COM_KWH_DIF:
-    #         self.le_watts.setText(str(value * 1000))
-    #         self.watt_dif_org = value * 1000
-    #     elif cmd == COM_SEND_FREQ:
-    #         self.le_seconds.setText(str(value / 1000))
-    #         self.send_org = value / 1000
-    #     elif cmd == COM_PULSES:
-    #         self.pulses_pkw = int(value)
-    #         self.le_pp_kw.setText(str(self.pulses_pkw))
+    def change_mute(self):
+        d = self.cb_mute.currentData()
+        if d == 0:
+            self.main_panel.main_window.access.mute_timeout()
+        else:
+            self.main_panel.main_window.access.mute_start(d)
 
     def query(self):
-        self.my_parent.coms_interface.send_data(COM_COVER_CLOSED, True, MODULE_DE)
-        self.my_parent.coms_interface.send_data(COM_COVER_POSITION, True, MODULE_DE)
-        self.my_parent.coms_interface.send_data(COM_DOOR_POSITION, True, MODULE_DE)
+        self.main_panel.coms_interface.send_data(COM_COVER_CLOSED, True, MODULE_DE)
+        self.main_panel.coms_interface.send_data(COM_COVER_POSITION, True, MODULE_DE)
+        self.main_panel.coms_interface.send_data(COM_DOOR_POSITION, True, MODULE_DE)
 
     def re_scan(self):
-        self.my_parent.coms_interface.send_data(COM_SEND_FREQ, True, MODULE_DE)
-        self.my_parent.coms_interface.send_data(COM_KWH_DIF, True, MODULE_DE)
-        self.my_parent.coms_interface.send_data(COM_PULSES, True, MODULE_DE)
+        self.main_panel.coms_interface.send_data(COM_SEND_FREQ, True, MODULE_DE)
+        self.main_panel.coms_interface.send_data(COM_KWH_DIF, True, MODULE_DE)
+        self.main_panel.coms_interface.send_data(COM_PULSES, True, MODULE_DE)
 
     def cover_open(self):
-        self.my_parent.coms_interface.send_switch(SW_COVER_OPEN, ON_RELAY, MODULE_DE)
+        self.main_panel.coms_interface.send_switch(SW_COVER_OPEN, ON_RELAY, MODULE_DE)
 
     def cover_close(self):
-        self.my_parent.coms_interface.send_switch(SW_COVER_CLOSE, ON_RELAY, MODULE_DE)
+        self.main_panel.coms_interface.send_switch(SW_COVER_CLOSE, ON_RELAY, MODULE_DE)
 
     def door_open(self):
-        self.my_parent.coms_interface.send_switch(SW_DOOR_LOCK, OFF_RELAY, MODULE_DE)
+        self.main_panel.coms_interface.send_switch(SW_DOOR_LOCK, OFF_RELAY, MODULE_DE)
 
     def door_lock(self):
-        self.my_parent.coms_interface.send_switch(SW_DOOR_LOCK, ON_RELAY, MODULE_DE)
+        self.main_panel.coms_interface.send_switch(SW_DOOR_LOCK, ON_RELAY, MODULE_DE)
 
     def update(self):
         # v = float(self.le_kwh_total.text())
         # if v != self
         v = float(self.le_seconds.text())
         if v != self.send_org:
-            self.my_parent.coms_interface.send_data(CMD_SEND_FREQ, False, MODULE_DE, v * 1000)
+            self.main_panel.coms_interface.send_data(CMD_SEND_FREQ, False, MODULE_DE, v * 1000)
 
     def update_diff(self):
         v = string_to_float(self.le_watts.text())
@@ -2690,25 +2687,25 @@ class DialogAccessModule(QDialog, Ui_DialogDEmodule):
             v /= 1000  # has to be split into 2 ints as network code does not pass floats
             i = int(v)
             d = int((v - i) * 1000)
-            self.my_parent.coms_interface.send_data(CMD_KWH_DIF, False, MODULE_DE, i, d)
+            self.main_panel.coms_interface.send_data(CMD_KWH_DIF, False, MODULE_DE, i, d)
 
     def update_pulses(self):
         v = string_to_float(self.le_pp_kw.text())
         if v != self.pulses_pkw:
-            self.my_parent.coms_interface.send_data(CMD_SET_PULSES, False, MODULE_DE, int(v))
+            self.main_panel.coms_interface.send_data(CMD_SET_PULSES, False, MODULE_DE, int(v))
 
     def save(self):
-        self.my_parent.db.set_config_both(CFT_ACCESS, "cover time", self.le_cover_dur.text())
-        self.my_parent.access.cover_duration = int(self.le_cover_dur.text())
-        self.my_parent.db.set_config_both(CFT_ACCESS, "auto delay", self.le_auto_delay.text())
-        self.my_parent.access.auto_close_duration = int(self.le_auto_delay.text())
+        self.main_panel.db.set_config_both(CFT_ACCESS, "cover time", self.le_cover_dur.text())
+        self.main_panel.access.cover_duration = int(self.le_cover_dur.text())
+        self.main_panel.db.set_config_both(CFT_ACCESS, "auto delay", self.le_auto_delay.text())
+        self.main_panel.access.auto_close_duration = int(self.le_auto_delay.text())
 
     def store(self):
         v = string_to_float(self.le_kwh_total.text())
         fp = int(v)
         sp = v - fp  # has to be split into 2 ints as network code does not pass floats
         sp *= 1000
-        self.my_parent.coms_interface.send_data(CMD_SET_KWH, False, MODULE_DE, fp, int(sp))
+        self.main_panel.coms_interface.send_data(CMD_SET_KWH, False, MODULE_DE, fp, int(sp))
 
     def reboot(self):
         msg = QMessageBox()
@@ -2718,7 +2715,7 @@ class DialogAccessModule(QDialog, Ui_DialogDEmodule):
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
         msg.setDefaultButton(QMessageBox.Cancel)
         if msg.exec_() == QMessageBox.Yes:
-            self.my_parent.coms_interface.send_data(CMD_REBOOT, False, MODULE_DE)
+            self.main_panel.coms_interface.send_data(CMD_REBOOT, False, MODULE_DE)
 
 
 class DialogElectMeter(QDialog, Ui_DialogElectMeter):
@@ -2728,8 +2725,8 @@ class DialogElectMeter(QDialog, Ui_DialogElectMeter):
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setupUi(self)
         self.sub = None
-        self.my_parent = parent
-        self.db = self.my_parent.db
+        self.main_panel = parent
+        self.db = self.main_panel.db
         self.watt_dif_org = 0
         self.send_org = 0
         self.pulses_pkw = 0
@@ -2740,14 +2737,14 @@ class DialogElectMeter(QDialog, Ui_DialogElectMeter):
         self.pb_update_pulses.clicked.connect(self.update_pulses)
         self.pb_scan.clicked.connect(self.re_scan)
         self.pb_store.clicked.connect(self.store)
-        self.le_kwh_total.setText(self.my_parent.le_pwr_total_1.text())
+        self.le_kwh_total.setText(self.main_panel.le_pwr_total_1.text())
 
-        self.my_parent.coms_interface.send_data(COM_SEND_FREQ, True, MODULE_DE)
-        self.my_parent.coms_interface.send_data(COM_KWH_DIF, True, MODULE_DE)
-        self.my_parent.coms_interface.send_data(COM_READ_KWH, True, MODULE_DE)
-        self.my_parent.coms_interface.send_data(COM_PULSES, True, MODULE_DE)
+        self.main_panel.coms_interface.send_data(COM_SEND_FREQ, True, MODULE_DE)
+        self.main_panel.coms_interface.send_data(COM_KWH_DIF, True, MODULE_DE)
+        self.main_panel.coms_interface.send_data(COM_READ_KWH, True, MODULE_DE)
+        self.main_panel.coms_interface.send_data(COM_PULSES, True, MODULE_DE)
         self.le_pp_kw.setToolTip("Increase this value if software is ahead of actual meter, otherwise decrease")
-        self.my_parent.coms_interface.update_access_settings.connect(self.setting_received)
+        self.main_panel.coms_interface.update_access_settings.connect(self.setting_received)
 
     @pyqtSlot(str, float)
     def setting_received(self, cmd, value):
@@ -2762,14 +2759,14 @@ class DialogElectMeter(QDialog, Ui_DialogElectMeter):
             self.le_pp_kw.setText(str(self.pulses_pkw))
 
     def re_scan(self):
-        self.my_parent.coms_interface.send_data(COM_SEND_FREQ, True, MODULE_DE)
-        self.my_parent.coms_interface.send_data(COM_KWH_DIF, True, MODULE_DE)
-        self.my_parent.coms_interface.send_data(COM_PULSES, True, MODULE_DE)
+        self.main_panel.coms_interface.send_data(COM_SEND_FREQ, True, MODULE_DE)
+        self.main_panel.coms_interface.send_data(COM_KWH_DIF, True, MODULE_DE)
+        self.main_panel.coms_interface.send_data(COM_PULSES, True, MODULE_DE)
 
     def update_freq(self):
         v = float(self.le_seconds.text())
         if v != self.send_org:
-            self.my_parent.coms_interface.send_data(CMD_SEND_FREQ, False, MODULE_DE, v * 1000)
+            self.main_panel.coms_interface.send_data(CMD_SEND_FREQ, False, MODULE_DE, v * 1000)
 
     def update_diff(self):
         v = string_to_float(self.le_watts.text())
@@ -2777,19 +2774,19 @@ class DialogElectMeter(QDialog, Ui_DialogElectMeter):
             v /= 1000  # has to be split into 2 ints as network code does not pass floats
             i = int(v)
             d = int((v - i) * 1000)
-            self.my_parent.coms_interface.send_data(CMD_KWH_DIF, False, MODULE_DE, i, d)
+            self.main_panel.coms_interface.send_data(CMD_KWH_DIF, False, MODULE_DE, i, d)
 
     def update_pulses(self):
         v = string_to_float(self.le_pp_kw.text())
         if v != self.pulses_pkw:
-            self.my_parent.coms_interface.send_data(CMD_SET_PULSES, False, MODULE_DE, int(v))
+            self.main_panel.coms_interface.send_data(CMD_SET_PULSES, False, MODULE_DE, int(v))
 
     def store(self):
         v = string_to_float(self.le_kwh_total.text())
         fp = int(v)
         sp = v - fp  # has to be split into 2 ints as network code does not pass floats
         sp *= 1000
-        self.my_parent.coms_interface.send_data(CMD_SET_KWH, False, MODULE_DE, fp, int(sp))
+        self.main_panel.coms_interface.send_data(CMD_SET_KWH, False, MODULE_DE, fp, int(sp))
 
     def reboot(self):
         msg = QMessageBox()
@@ -2799,7 +2796,7 @@ class DialogElectMeter(QDialog, Ui_DialogElectMeter):
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
         msg.setDefaultButton(QMessageBox.Cancel)
         if msg.exec_() == QMessageBox.Yes:
-            self.my_parent.coms_interface.send_data(CMD_REBOOT, False, MODULE_DE)
+            self.main_panel.coms_interface.send_data(CMD_REBOOT, False, MODULE_DE)
 
 
 class DialogStrainFinder(QWidget, Ui_DialogStrainFinder):
@@ -4115,6 +4112,7 @@ class DialogProcessManager(QDialog, Ui_dialogProcessManager):
         self.stage = 0
         self.feed_mode = 0
         self.pb_save.clicked.connect(self.save)
+        self.pb_start.clicked.connect(self.start_now)
         self.de_start.setDate(datetime.now().date())
         self.de_start.dateChanged.connect(self.date_change)
         rows = self.db.execute('SELECT `name`, `id` FROM {} ORDER BY `name`'.format(DB_PATTERN_NAMES))
@@ -4146,6 +4144,9 @@ class DialogProcessManager(QDialog, Ui_dialogProcessManager):
             for row in rows:
                 ctrl.addItem("{} x {}({})".format(row[0], row[3], row[1]), row[2])
             ctrl.currentIndexChanged.connect(self.change_strains)
+
+    def start_now(self):
+        self.main_panel.start_new_process(self.edit_id)
 
     def date_change(self):
         self.cal_end()
@@ -4186,31 +4187,7 @@ class DialogProcessManager(QDialog, Ui_dialogProcessManager):
         self.qty = rows[7]
         self.feed_mode = rows[8]
 
-        # self._new_qty()
-
-        # Quantity
-        # index = self.cb_qty.findText(str(rows[7]), QtCore.Qt.MatchFixedString)
-        # # if index >= 0:
-        # #     # self.cb_qty.blockSignals(True)
-        # #     self.cb_qty.setCurrentIndex(index)
-        # #     self.cb_qty.blockSignals(False)
-        # # stage
-        # index = self.cb_stage.findData(rows[6])
-        # if index >= 0:
-        #     self.cb_stage.blockSignals(True)
-        #     self.cb_stage.setCurrentIndex(index)
-        #     self.cb_stage.blockSignals(False)
-        # # location
-        # index = self.cb_location.findText(str(rows[2]), QtCore.Qt.MatchFixedString)
-        # if index >= 0:
-        #     self.cb_location.blockSignals(True)
-        #     self.cb_location.setCurrentIndex(index)
-        #     self.cb_location.blockSignals(False)
-
-        # Start
-        # x = (datetime.now().date() - self.my_parent.start).days
         self.de_start.setDate(rows[3])
-        # if x >= 5:
         if self.running == 1:
             self.de_start.setEnabled(False)
         else:
@@ -4246,7 +4223,7 @@ class DialogProcessManager(QDialog, Ui_dialogProcessManager):
             self.cb_patterns.setCurrentIndex(index)
             self.cb_patterns.blockSignals(False)
         self.calculate_duration()
-        self.pb_start.setEnabled(False)
+        # self.pb_start.setEnabled(False)
         self.pb_find.setEnabled(False)
 
     def change_strains(self):
@@ -4585,12 +4562,12 @@ class DialogStrains(QDialog, Ui_DialogStrains):
         self.load_list()
 
 
-class DialogJournalViewer(QDialog, Ui_DialogJournalViewer):
+class DialogProcessLogs(QDialog, Ui_DialogJournalViewer):
     def __init__(self, parent):
         """
         :type parent: MainWindow
         """
-        super(DialogJournalViewer, self).__init__()
+        super(DialogProcessLogs, self).__init__()
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setupUi(self)
         self.main_window = parent
@@ -4604,16 +4581,30 @@ class DialogJournalViewer(QDialog, Ui_DialogJournalViewer):
         for f in files:
             self.cb_process.addItem(f[0:-4], f)
         # self.cb_process.blockSignals(False)
-        self.cb_process.currentIndexChanged.connect(self.change_log)
+        files = self.main_window.logger.get_log_list(LOG_FEED)
+        self.cb_feed.clear()
+        self.cb_process.addItem("Select", 0)
+        for f in files:
+            self.cb_feed.addItem(f[0:-4], f)
+        self.cb_process.currentIndexChanged.connect(self.change_journal)
+        self.cb_feed.currentIndexChanged.connect(self.change_feed)
         self.pb_save.clicked.connect(self.save_file)
 
-    def change_log(self):
+    def change_journal(self):
         log = self.cb_process.currentData()
         if log == 0:
             self.te_log.setHtml("")
             return
         self.log_name = self.cb_process.currentText()
         self.te_log.setHtml(self.main_window.logger.get_log_contents(LOG_JOURNAL, log))
+
+    def change_feed(self):
+        log = self.cb_feed.currentData()
+        if log == 0:
+            self.te_log.setHtml("")
+            return
+        self.log_name = self.cb_feed.currentText()
+        self.te_log.setHtml(self.main_window.logger.get_log_contents(LOG_FEED, log))
 
     def save_file(self):
         with open(self.main_window.logger.journal_path + "\\" + self.log_name + ".jrn", 'w') as yourFile:

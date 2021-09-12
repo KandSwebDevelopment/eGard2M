@@ -25,16 +25,20 @@ class Access(QObject):
         self.cover_closed_sw = 0
         self.cover_open_sw = 0
         self.duration_remaining = 0
+        self.mute = False
 
-        self.timer_cover = QTimer()         # Cover move timer
+        self.timer_mute = QTimer(self)
+        self.timer_mute.timeout.connect(self.mute_timeout)
+
+        self.timer_cover = QTimer(self)         # Cover move timer
         self.timer_cover.setInterval(1000)     # mS
         self.timer_cover.timeout.connect(self.cover_finished)
 
-        self.timer_close = QTimer()         # The time the door has to be shut for before auto closing
+        self.timer_close = QTimer(self)         # The time the door has to be shut for before auto closing
         self.timer_close.setInterval(int(self.my_parent.db.get_config(CFT_ACCESS, "auto delay", 10)) * int(1000 / 2))  # mS
         self.timer_close.timeout.connect(self.close_timeout)
 
-        self.timer_auto_close = QTimer()    # Times from auto set is pressed, stopped by door open, timeout cancels auto close
+        self.timer_auto_close = QTimer(self)    # Times from auto set is pressed, stopped by door open, timeout cancels auto close
         self.timer_auto_close.setInterval(int(self.my_parent.db.get_config(CFT_ACCESS, "auto delay", 10)) * 1000)   # mS
         self.timer_auto_close.timeout.connect(self.auto_timeout)
 
@@ -163,6 +167,14 @@ class Access(QObject):
             else:   # Closing
                 self.my_parent.coms_interface.send_switch(SW_COVER_CLOSE, OFF_RELAY, MODULE_DE)
                 self.my_parent.coms_interface.send_switch(SW_COVER_LOCK, ON_RELAY, MODULE_DE)
+
+    def mute_timeout(self):
+        self.mute = False
+        self.timer_mute.stop()
+
+    def mute_start(self, minutes):
+        self.mute = True
+        self.timer_mute.start(minutes * 60000)
 
     def open(self):
         self.add_status(ACM_OPENING)

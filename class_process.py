@@ -469,24 +469,15 @@ class ProcessClass(QObject):
             if self.running_days == 0:
                 self.running_days = 1
             # print("Days running = ", self.running_days)
-            if self.end > datetime.now():
-                self.running = True
-                # print("Running")
-            else:
-                # print("Stopped 1")
-                self.running = True     # @ToDo if process is not in valid location this should return false
-        else:
-            self.running = False
-
-    # def is_feed_due_today(self):
-    #     if not self.running:
-    #         return False
-    #     dt = self.get_next_feed_date()  # type: datetime
-    #     if dt is None:
-    #         return False
-    #     if datetime.now().date() >= dt.date():
-    #         return True
-    #     return False
+            # if self.end > datetime.now():
+            #     self.running = True
+            #     # print("Running")
+            # else:
+            #     # print("Stopped 1")
+            #     self.running = True
+        # else:
+        #     self.running = False
+        return self.running
 
     def journal_read(self):
         if not self.logging_available:
@@ -496,8 +487,6 @@ class ProcessClass(QObject):
             text = f.read()
             f.close()
         except FileNotFoundError:
-            # self.area_controller.notifier.add(WARNING, "The journal for this process can not be opened", FC_P_JOURNAL_MISSING,
-            #                             "May be missing")
             return "File Missing " + self.journal_filename
         if text == "":
             return "There as no entries in this journal"

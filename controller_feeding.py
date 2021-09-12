@@ -251,15 +251,15 @@ class FeedControl(QThread):
         # Do for all modes
         self.feeds[area].set_last_feed_date(date_done)
 
+        # save feed details to the log
+        self.log_txt = "{}      Feed    \r\n{} Mix{}  Area: {}   Mode: {}\r\n".\
+            format(datetime.now().strftime('%d %b %y %H:%M'), len(mixes), "" if len(mixes) == 1 else "es",
+                   area, self.get_feed_mode(area))
         if self.get_feed_mode(area) == 1:  # Manual
-            self.deduct_fed_feed(area)
+            self.deduct_fed_feed(area)  # This adds to the log_text
         else:  # Semi auto and auto
             if self.main_window.master_mode == MASTER:
                 pass
-        # save feed details to the log
-        self.log_txt = "{}      Feed    {} Mix{}  Area: {}   Mode: {}\r".\
-            format(datetime.now().strftime('%d %b %y %H:%M'), len(mixes), "" if len(mixes) == 1 else "es",
-                   area, self.get_feed_mode(area))
         self.log_txt += "\r\n"
         self.main_window.logger.save_feed(self.main_window.area_controller.get_area_pid(area), self.log_txt)
         self.feeds[area].cycles_reduce()
