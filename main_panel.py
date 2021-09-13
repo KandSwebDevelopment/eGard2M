@@ -681,8 +681,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
 
     def io_reboot(self):
         # Send all parameters to the IO unit as it has rebooted
-        self.coms_interface.send_switch(SW_LIGHT_1, self.area_controller.light_relay_1)
-        self.coms_interface.send_switch(SW_LIGHT_2, self.area_controller.light_relay_2)
+        self.coms_interface.send_switch(SW_LIGHT_1, self.area_controller.get_area_process(1).check_light())
+        self.coms_interface.send_switch(SW_LIGHT_2, self.area_controller.get_area_process(2).check_light())
 
         outputs = self.area_controller.output_controller.outputs
         for o in outputs:   # o = index
