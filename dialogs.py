@@ -2934,80 +2934,80 @@ class DialogProcessInfo(QDialog, Ui_DialogProcessInfo):
                         temps[4]['set']) + "&deg;</b>  &gt;  " + str(temps[4]['high']) + "&deg;<br>")
 
         # Feed
-        if p_class.location != 3:
-            feed = self.main_panel.area_controller.main_window.feed_controller.feeds[p_class.location]
-            sql = "SELECT name FROM {} WHERE id = {}".format(DB_FEED_SCHEDULE_NAMES, feed.feed_schedule)
-            fs_name = self.db.execute_single(sql)
-            if fs_name is not None:
-                if feed.recipe_id == WATER_ONLY_IDX:
-                    r_name = WATER_ONLY
-                else:
-                    sql = "SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, feed.recipe_id)
-                    r_name = self.db.execute_single(sql)
-                    if r_name is None:
-                        r_name = "Error None"
-                if feed.feed_schedule == 0:
-                    txt = "Error None"
-                else:
-                    txt = str(feed.feed_schedule)
-                table = "<table cellpadding='3' border='1'><tr><td>Current Feed Schedule</td><td><b>" + fs_name + \
-                        "</b> [" + txt + "]</td></tr>"
-                table += "<tr><td>Current Recipe</td><td><b>" + r_name + "</b> [" + str(
-                    feed.recipe_id) + "]</td></tr>"
-                table += "<tr><td>Recipe changes on day</td><td><b>" + str(
-                    p_class.recipe_expires_day) + "</b></td></tr>"
-                if p_class.recipe_next_id == WATER_ONLY_IDX:
-                    r_name = WATER_ONLY
-                elif p_class.recipe_next_id is None:
-                    r_name = "None"
-                else:
-                    sql = "SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, p_class.recipe_next_id)
-                    r_name = self.db.execute_single(sql)
-                table += "<tr><td>Next Recipe</td><td><b>" + r_name + "</b> [" + str(
-                    p_class.recipe_next_id) + "]</td></tr>"
-                table += "<tr><td>Starts in</td><td><b>" + str(
-                    p_class.recipe_expires_day - p_class.stage_days_elapsed) + "</b> days</td></tr>"
-                table += "</table><br>"
-                # Today
-                table += "<table cellpadding='3' border='1'><tr><td colspan='3'>Current Recipe " + str(
-                    p_class.recipe_original[0][2]) + "Litre(s) Each</td></tr>"
-                table += '<tr><td>Nutrient</td><td>Amount</td><td>Freq</td></tr>'
-                for row in p_class.recipe_final:
-                    if row[0] == 100:
-                        table += '<tr><td colspan="3" Font="3">Water Only</td></tr>'
-                        continue
-                    sql = "SELECT name FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, row[0])
-                    n_name = self.db.execute_single(sql)
-                    colour = ""
-                    if row[5] != 0:
-                        colour = " bgcolor='light gray'"
-                    table += '<tr><td>' + n_name + '</td><td' + colour + '>' + str(
-                        row[1] + row[5]) + 'ml</td><td>' + str(
-                        row[4]) + '</td></tr>'
-                table += "</table><br><br>"
-
-                if len(p_class.recipe_next) > 0:
-                    table += "<table cellpadding='3' border='1'><tr><td colspan='3'>Next Recipe " + str(
-                        p_class.recipe_next[0][2]) + "Litre(s) Each</td></tr>"
-                    table += '<tr><td>Nutrient</td><td>Amount</td><td>Freq</td></tr>'
-                    for row in p_class.recipe_next:
-                        if row[3] == 100:
-                            table += '<tr><td colspan="3" Font="3">Water Only</td></tr>'
-                            continue
-                        sql = "SELECT name FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, row[0])
-                        n_name = self.db.execute_single(sql)
-                        colour = ""
-                        if row[5] != 0:
-                            colour = " bgcolor='#00FF00'"
-                        table += '<tr><td>' + n_name + '</td><td' + colour + '>' + str(
-                            row[1] + row[5]) + 'ml</td><td>' + str(
-                            row[4]) + '</td></tr>'
-                    table += "</table><br><br>"
-                self.tefeed.textCursor().insertHtml(table)
-            else:
-                table = "<table cellpadding='3' border='1'><tr><td>Current Feed Schedule</td><td><b>Missing</b> </td></tr>"
-                table += "</table><br><br>"
-                self.tefeed.textCursor().insertHtml(table)
+        # if p_class.location != 3:
+        #     feed = self.main_panel.area_controller.main_window.feed_controller.feeds[p_class.location]
+        #     sql = "SELECT name FROM {} WHERE id = {}".format(DB_FEED_SCHEDULE_NAMES, feed.feed_schedule)
+        #     fs_name = self.db.execute_single(sql)
+        #     if fs_name is not None:
+        #         if feed.recipe_id == WATER_ONLY_IDX:
+        #             r_name = WATER_ONLY
+        #         else:
+        #             sql = "SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, feed.recipe_id)
+        #             r_name = self.db.execute_single(sql)
+        #             if r_name is None:
+        #                 r_name = "Error None"
+        #         if feed.feed_schedule == 0:
+        #             txt = "Error None"
+        #         else:
+        #             txt = str(feed.feed_schedule)
+        #         table = "<table cellpadding='3' border='1'><tr><td>Current Feed Schedule</td><td><b>" + fs_name + \
+        #                 "</b> [" + txt + "]</td></tr>"
+        #         table += "<tr><td>Current Recipe</td><td><b>" + r_name + "</b> [" + str(
+        #             feed.recipe_id) + "]</td></tr>"
+        #         table += "<tr><td>Recipe changes on day</td><td><b>" + str(
+        #             p_class.recipe_expires_day) + "</b></td></tr>"
+        #         if p_class.recipe_next_id == WATER_ONLY_IDX:
+        #             r_name = WATER_ONLY
+        #         elif p_class.recipe_next_id is None:
+        #             r_name = "None"
+        #         else:
+        #             sql = "SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, p_class.recipe_next_id)
+        #             r_name = self.db.execute_single(sql)
+        #         table += "<tr><td>Next Recipe</td><td><b>" + r_name + "</b> [" + str(
+        #             p_class.recipe_next_id) + "]</td></tr>"
+        #         table += "<tr><td>Starts in</td><td><b>" + str(
+        #             p_class.recipe_expires_day - p_class.stage_days_elapsed) + "</b> days</td></tr>"
+        #         table += "</table><br>"
+        #         # Today
+        #         table += "<table cellpadding='3' border='1'><tr><td colspan='3'>Current Recipe " + str(
+        #             p_class.recipe_original[0][2]) + "Litre(s) Each</td></tr>"
+        #         table += '<tr><td>Nutrient</td><td>Amount</td><td>Freq</td></tr>'
+        #         for row in p_class.recipe_final:
+        #             if row[0] == 100:
+        #                 table += '<tr><td colspan="3" Font="3">Water Only</td></tr>'
+        #                 continue
+        #             sql = "SELECT name FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, row[0])
+        #             n_name = self.db.execute_single(sql)
+        #             colour = ""
+        #             if row[5] != 0:
+        #                 colour = " bgcolor='light gray'"
+        #             table += '<tr><td>' + n_name + '</td><td' + colour + '>' + str(
+        #                 row[1] + row[5]) + 'ml</td><td>' + str(
+        #                 row[4]) + '</td></tr>'
+        #         table += "</table><br><br>"
+        #
+        #         if len(p_class.recipe_next) > 0:
+        #             table += "<table cellpadding='3' border='1'><tr><td colspan='3'>Next Recipe " + str(
+        #                 p_class.recipe_next[0][2]) + "Litre(s) Each</td></tr>"
+        #             table += '<tr><td>Nutrient</td><td>Amount</td><td>Freq</td></tr>'
+        #             for row in p_class.recipe_next:
+        #                 if row[3] == 100:
+        #                     table += '<tr><td colspan="3" Font="3">Water Only</td></tr>'
+        #                     continue
+        #                 sql = "SELECT name FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, row[0])
+        #                 n_name = self.db.execute_single(sql)
+        #                 colour = ""
+        #                 if row[5] != 0:
+        #                     colour = " bgcolor='#00FF00'"
+        #                 table += '<tr><td>' + n_name + '</td><td' + colour + '>' + str(
+        #                     row[1] + row[5]) + 'ml</td><td>' + str(
+        #                     row[4]) + '</td></tr>'
+        #             table += "</table><br><br>"
+        #         self.tefeed.textCursor().insertHtml(table)
+        #     else:
+        #         table = "<table cellpadding='3' border='1'><tr><td>Current Feed Schedule</td><td><b>Missing</b> </td></tr>"
+        #         table += "</table><br><br>"
+        #         self.tefeed.textCursor().insertHtml(table)
 
         # Water supply
         table = "<table cellpadding='3' border='1'><tr><td colspan='2'><b>Total</b> Water<br>Requirement </td></tr>"

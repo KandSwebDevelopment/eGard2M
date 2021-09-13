@@ -46,13 +46,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.wc = WindowsController(self)
         self.settings = QSettings(FN_SETTINGS, QSettings.IniFormat)
         self.master_mode = int(self.settings.value("mode"))  # 1=Master, arduino and server  2=Slave, client only
+        f_ip = self.db.get_config(CFT_SYSTEM, "factory ip")
+        if f_ip == MyIp:
+            self.factory = True
+        else:
+            self.factory = False
+
         self.main_panel = MainPanel(self)
 
         if self.master_mode == MASTER:
             self.update_status_bar(SBP_MODE, "Master", OK)
         else:
             self.update_status_bar(SBP_MODE, "Slave", OK)
-
         self.logger = Logger(self)
         self.msg_sys = MessageSystem(self, self.main_panel.listWidget)
         self.coms_interface = CommunicationInterface(self)
@@ -60,11 +65,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.area_controller = AreaController(self)
         self.feed_controller = FeedControl(self)
 
-        f_ip = self.db.get_config(CFT_SYSTEM, "factory ip")
-        if f_ip == MyIp:
-            self.factory = True
-        else:
-            self.factory = False
         # This can only be called after the feed_control has initialised, it sets the days_till_feed
         # self.area_controller.output_controller.outputs[OUT_WATER_HEATER_1].new_day()
         # self.area_controller.output_controller.outputs[OUT_WATER_HEATER_2].new_day()

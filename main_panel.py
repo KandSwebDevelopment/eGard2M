@@ -211,7 +211,6 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         if self.main_window.access.has_status(ACS_COVER_OPEN) and \
                 self.main_window.access.mute == False and \
                 self.main_window.factory == False:
-            # play_sound(SND_ACCESS_WARN)
             sound_access_warn()
         else:
             if self.feed_controller.feed_due_today():
@@ -527,10 +526,10 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             status = self.area_controller.get_area_process(1).check_light()
             self.area_controller.get_area_process(1).check_trans()
             if self.area_controller.light_relay_1 != status:
-                if self.master_mode == MASTER:
-                    self.coms_interface.send_switch(SW_LIGHT_1, status)
-                else:
-                    self.coms_interface.relay_send(NWC_SWITCH_REQUEST, SW_LIGHT_1)
+                # if self.master_mode == MASTER:
+                self.coms_interface.send_switch(SW_LIGHT_1, status)
+                # else:
+                #     self.coms_interface.relay_send(NWC_SWITCH_REQUEST, SW_LIGHT_1)
         else:
             if self.area_controller.light_relay_1 != OFF:
                 self.coms_interface.send_switch(SW_LIGHT_1, OFF)
@@ -730,7 +729,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         # Update processes table
         sql = 'UPDATE {} SET running = 1, start = "{}", location = 1, stage = 1, feed_mode = 1 WHERE id = {}'.format(
             DB_PROCESS, rsd, pid)
-        self.db.execute_write(sql)  # This does not seem to be working
+        self.db.execute_write(sql)
         # Set last feed date
         sql = 'UPDATE {} SET dt = "{}" WHERE item = "feed date" AND id = 1'.format(DB_PROCESS_ADJUSTMENTS, rsd)
         self.db.execute_write(sql)
@@ -755,7 +754,10 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             # update last used
             sql = 'UPDATE {} SET last_used_id = {} WHERE id = {} LIMIT 1'.format(DB_STRAINS, pid, sid)
             self.db.execute_write(sql)
-        # performance
+        # Remove any feed info left over for area 1
+        sql = 'DELETE FROM {} WHERE area = 1'.format(DB_PROCESS_FEED_ADJUSTMENTS)
+        self.db.execute_write(sql)
+
         self.area_controller.load_areas()
         self.area_controller.load_sensors(1)
         self.area_controller.output_controller.load_outputs(1)

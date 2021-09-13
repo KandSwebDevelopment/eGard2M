@@ -425,7 +425,7 @@ class ProcessClass(QObject):
                 idx += 1
             self.journal_write(text)
             ed = datetime.now()
-            ed = ed.strftime("%d-%m-%y")
+            ed = ed.strftime("%Y-%m-%d")
             # Update process table
             sql = "UPDATE " + DB_PROCESS + ' SET running = "0", location = "50", stage = "0", end = "' + str(
                 ed) + '" WHERE id = ' + str(self.id)
