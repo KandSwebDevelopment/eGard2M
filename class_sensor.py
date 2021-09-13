@@ -227,7 +227,8 @@ class SensorClass(object):
                         self.display_ctrl.setText("Err")
                         if self.id < 9:     # DHT sensors so reset power to them
                             # Switch relay on to break power, when sw on is received back it will switch it off
-                            self.area_controller.main_window.coms_interface.send_switch(SW_DHT_POWER, ON)
+                            if self.area_controller.master_mode == MASTER:
+                                self.area_controller.main_window.coms_interface.send_switch(SW_DHT_POWER, ON)
                     return
 
                 self.error_count = 0
