@@ -113,7 +113,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.coms_interface.update_que_status.connect(self.update_que)
 
         # Scales
-        self.main_panel.scales.update_status.connect(self.update_scales_status)
+        if not self.factory:
+            self.main_panel.scales.update_status.connect(self.update_scales_status)
 
     def reconnect(self):
         self.db.reconnect()
