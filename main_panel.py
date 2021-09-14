@@ -129,13 +129,13 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 else:
                     self.wc.show(DialogAreaManual(self, 2))
             elif source is self.tesstatus_6.viewport():
-                self.wc.show(DialogSensorSettings(self, 2, 5))
-            elif source is self.tesstatus_7.viewport():
                 self.wc.show(DialogSensorSettings(self, 2, 6))
+            elif source is self.tesstatus_7.viewport():
+                self.wc.show(DialogSensorSettings(self, 2, 7))
             elif source is self.tesstatus_8.viewport():
-                self.wc.show(DialogSensorSettings(self, 2, 12))
+                self.wc.show(DialogSensorSettings(self, 2, 8))
             elif source is self.tesstatus_9.viewport():
-                self.wc.show(DialogSensorSettings(self, 2, 13))
+                self.wc.show(DialogSensorSettings(self, 2, 9))
             elif source is self.lbl_soil_2:
                 self.wc.show(DialogSoilSensors(self, 2))
             # Area 3, drying

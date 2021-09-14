@@ -3351,7 +3351,7 @@ class DialogWaterHeaterSettings(QWidget, Ui_DialogWaterHeatertSetting):
 
 
 class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
-    def __init__(self, parent, area, s_id):
+    def __init__(self, parent, area, ctrl_id):
         """ :type parent: MainWindow """
         super(DialogSensorSettings, self).__init__()
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
@@ -3362,7 +3362,7 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self.sub = None
 
         self.area = area
-        self.s_id = s_id
+        self.ctrl_id = ctrl_id
 
         self.process = self.main_panel.area_controller.get_area_process(self.area)
         self.sensors = self.main_panel.area_controller.sensors
@@ -3383,9 +3383,11 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
 
         # Load sensor config from db
         self.config = self.db.execute_one_row('SELECT id, name, maps_to, calibration, step, area, area_range, '
-                                              'short_name FROM {} WHERE id = {}'.format(DB_SENSORS_CONFIG, self.s_id))
+                                              'short_name FROM {} WHERE maps_to = {}'.
+                                              format(DB_SENSORS_CONFIG, self.ctrl_id))
         if self.config is None:
             return
+        self.s_id = self.config[0]
         self.item = self.config[6]
         self.lbl_name.setText(self.config[1])
 
