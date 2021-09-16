@@ -811,10 +811,10 @@ class ProcessClass(QObject):
                 self.light_off = self.light_off + timedelta(days=1)
                 print("to new times on at {} off at {}".format(self.light_on, self.light_off))
                 # self.cool_warm = COOL
-                self.trans_timer.start(1800000)
-            if self.light_status == ON and self.light_status_last == OFF:
-                # self.cool_warm = WARM
-                self.trans_timer.start(1800000)
+                # self.trans_timer.start(1800000)
+            # if self.light_status == ON and self.light_status_last == OFF:
+            #     # self.cool_warm = WARM
+            #     self.trans_timer.start(1800000)
 
             self.light_status_last = self.light_status
             if self.light_status == 1:

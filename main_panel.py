@@ -1,4 +1,5 @@
 import collections
+import threading
 from datetime import *
 from time import strftime
 import time as _time
@@ -129,13 +130,13 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 else:
                     self.wc.show(DialogAreaManual(self, 2))
             elif source is self.tesstatus_6.viewport():
-                self.wc.show(DialogSensorSettings(self, 2, 6))
+                self.wc.show(DialogSensorSettings(self, 2, 5))
             elif source is self.tesstatus_7.viewport():
-                self.wc.show(DialogSensorSettings(self, 2, 7))
+                self.wc.show(DialogSensorSettings(self, 2, 6))
             elif source is self.tesstatus_8.viewport():
-                self.wc.show(DialogSensorSettings(self, 2, 8))
+                self.wc.show(DialogSensorSettings(self, 2, 12))
             elif source is self.tesstatus_9.viewport():
-                self.wc.show(DialogSensorSettings(self, 2, 9))
+                self.wc.show(DialogSensorSettings(self, 2, 13))
             elif source is self.lbl_soil_2:
                 self.wc.show(DialogSoilSensors(self, 2))
             # Area 3, drying
@@ -389,8 +390,6 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             ctrl.setToolTip("Number of days the current recipe will be used for<br>Or {} feeds".
                             format(self.feed_controller.feeds[loc].get_feeds_remaining()))
 
-            # ctrl = getattr(self, "lblsp_%i_1" % loc)
-            # text = "Not Set"
             ctrl = getattr(self, "lbl_feed_mode_%i" % loc)
             if self.feed_controller.get_feed_mode(loc) == 1:
                 ctrl.setPixmap(QtGui.QPixmap(":/normal/001-hand.png"))
@@ -410,13 +409,14 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 # text = "Full Auto"
             # ctrl.setText(text)
 
-    def stage_advance(self, location):
+    def stage_advance(self, area):
         # Advances the the process to the next stage
-        self.area_controller.get_area_process(location).advance_stage()
-        self.area_controller.load_processes()
-        self.update_duration_texts()
-        self.check_stage(location)
-        self.coms_interface.relay_send(NWC_RELOAD_PROCESSES)
+        if self.area_controller.area_has_process(area):
+            self.area_controller.get_area_process(area).advance_stage()
+            # self.area_controller.load_processes()
+            self.update_duration_texts()
+            self.check_stage(area)
+            self.coms_interface.relay_send(NWC_RELOAD_PROCESSES)
 
     def check_stage(self, location):
         if self.area_controller.get_area_process(location) == 0:
@@ -680,21 +680,20 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.coms_interface.relay_send(NWC_FEED, loc)
 
     def io_reboot(self):
+        th = threading.Thread(target=self.io_sync)
+        th.start()
+
+    def io_sync(self):
         # Send all parameters to the IO unit as it has rebooted
         self.coms_interface.send_switch(SW_LIGHT_1, self.area_controller.get_area_process(1).check_light())
+        _time.sleep(1)
         self.coms_interface.send_switch(SW_LIGHT_2, self.area_controller.get_area_process(2).check_light())
+        _time.sleep(1)
 
         outputs = self.area_controller.output_controller.outputs
         for o in outputs:   # o = index
             self.coms_interface.send_switch(outputs[o].output_pin, outputs[o].relay_position)
-
-    def stage_advance(self, area):
-        # Advances the the process to the next stage
-        if self.area_controller.area_has_process(area):
-            self.area_controller.get_area_process(area).advance_stage()
-            self.update_duration_texts()
-            self.check_stage(area)
-            self.coms_interface.relay_send(NWC_RELOAD_PROCESSES)
+            _time.sleep(1)
 
     def stage_adjust(self, area, val):
         # Adjusts the current stage by val days for process in location
@@ -882,18 +881,6 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         elif _input == AUD_AUTO_SET:
             pass
 
-    # @pyqtSlot(int, collections.defaultdict, name="updateSoil")
-    # def update_soil_display(self, area, lst):
-    #     try:
-    #         # getattr(self, "le_avg_soil_%i" % area).setText(str(lst[5]))
-    #         for c in range(1, 5):
-    #             if int(lst[c]) > 1020:
-    #                 getattr(self, "le_soil_{}_{}".format(area, c)).setText("--")
-    #             else:
-    #                 getattr(self, "le_soil_{}_{}".format(area, c)).setText(str(lst[c]))
-    #     except Exception as e:
-    #         print("Update soil display - ", e.args)
-    #
     @pyqtSlot(list, name="updateSensors")
     def update_sensors(self, data):
         idx = 1
@@ -1066,7 +1053,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 p = self.area_controller.get_area_process(a)
                 p.day_advance()
                 self.check_stage(a)
-        if self.area_controller.area_has_process(a):
+        if self.area_controller.area_has_process(3):
             self.check_stage(3)
             # self.check_drying()
 

@@ -36,8 +36,8 @@ class AreaController(QObject):
         self.light_relay_1 = UNSET      # Hold the actual position of the relay, this is only changed by switch updates
         self.light_relay_2 = UNSET
         self.cool_warm = collections.defaultdict(int)        # Area is is cool = 1, warm = 2, normal = 0
-        self.cool_warm[1] = NORMAL
-        self.cool_warm[2] = NORMAL
+        self.cool_warm[1] = UNSET
+        self.cool_warm[2] = UNSET
 
         self.main_panel.timer.start()
 

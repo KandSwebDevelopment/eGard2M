@@ -34,7 +34,7 @@ class OutputWaterHeater(OutputClass):
             self.float = FLOAT_UP
         self.db.set_config_both(CFT_WATER_HEATER, "float {}".format(self.heater_id), in_use)
 
-    def set_duration(self, duration):   # Only for timer
+    def set_duration(self, duration):
         """ Set timer duration and update display """
         if duration == self.duration:
             return
@@ -175,7 +175,7 @@ class OutputWaterHeater(OutputClass):
             txt = "D{}".format(self.frequency)
         getattr(self.output_controller.main_panel, "lbl_output_sensor_%i" % self.ctrl_id).setText(txt)
         if self.is_feeding:
-            getattr(self.my_parent, "pb_output_mode_%i" % self.ctrl_id).setIcon(QIcon(":/normal/next_feed.png"))
+            getattr(self.output_controller.main_panel, "pb_output_mode_%i" % self.ctrl_id).setIcon(QIcon(":/normal/next_feed.png"))
 
     def set_days_till_feed(self, days):
         """ Set the days_till_feed. It will only do this if frequency = As Required
