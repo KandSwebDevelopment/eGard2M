@@ -3847,7 +3847,7 @@ class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
         self.main_panel.coms_interface.relay_send(NWC_FEED_DATE, self.area)
 
     def remove(self):
-        self.main_panel.main_panel.wc.show(DialogRemoveItem(self.main_panel))
+        self.main_panel.main_window.wc.show(DialogRemoveItem(self.main_panel, self.process))
 
 
 class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
