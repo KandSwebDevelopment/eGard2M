@@ -10,15 +10,16 @@ from PyQt5 import QtCore, QtGui
 from PyQt5.QtCore import *
 from PyQt5.QtGui import QTextCursor
 from PyQt5.QtPrintSupport import QPrinter, QPrintDialog, QPrintPreviewDialog
-from PyQt5.QtWidgets import QWidget, QDialog, QMessageBox, QListWidgetItem, QTextEdit
+from PyQt5.QtWidgets import QWidget, QDialog, QMessageBox, QListWidgetItem, QTextEdit, QTableWidgetItem
 
 from class_process import ProcessClass
 from defines import *
+# from main import MainWindow
 from plotter import *
 from status_codes import FC_MESSAGE
 from ui.dialogDispatchCounter import Ui_DialogDispatchCounter
 from ui.dialogDispatchInternal import Ui_DialogDispatchInternal
-from functions import string_to_float, m_box, play_sound, auto_capital, sound_click, minutes_to_hhmm, sound_check_out, \
+from functions import string_to_float, m_box, auto_capital, sound_click, minutes_to_hhmm, sound_check_out, \
     sound_error, sound_ok
 from ui.dialogAccess import Ui_DialogDEmodule
 from ui.dialogDispatchLoadingBay import Ui_DialogDispatchLoading
@@ -31,13 +32,16 @@ from ui.dialogEngineerIO import Ui_DialogMessage
 from ui.dialogFan import Ui_DialogFan
 from ui.dialogFeedMix import Ui_DialogFeedMix
 from ui.area_manual import Ui_frm_area_manual
+from ui.dialogIOVC import Ui_Dialog_IO_VC
 from ui.dialogJournal import Ui_DialogJournal
 from ui.dialogJournelViewer import Ui_DialogJournalViewer
 from ui.dialogOutputSettings import Ui_DialogOutputSetting
+from ui.dialogPatterns import Ui_DialogPatterns
 from ui.dialogProcessAdjustments import Ui_DialogProcessAdjust
 from ui.dialogProcessInfo import Ui_DialogProcessInfo
 from ui.dialogProcessManager import Ui_dialogProcessManager
 from ui.dialogProcessPerformance import Ui_DialogProcessPreformance
+from ui.dialogRemoveItem import Ui_DialogRemoveItem
 from ui.dialogSeedPicker import Ui_DialogSeedPicker
 from ui.dialogSensorSettings import Ui_DialogSensorSettings
 from ui.dialogSettings import Ui_DialogSettings
@@ -2526,7 +2530,7 @@ class DialogEngineerIo(QDialog, Ui_DialogMessage):
         if self.ck_to_de.isChecked():
             self.show_de_to = True
         else:
-            self.show_de = False
+            self.show_de_to = False
         if self.ck_from_de.isChecked():
             self.show_de = True
         else:
@@ -2615,6 +2619,113 @@ class DialogEngineerIo(QDialog, Ui_DialogMessage):
             cmd = cmd.replace(">", ", ")
             t += "[" + str(x['client']) + "] " + cmd
         return t
+
+
+class DialogIOVC(QDialog, Ui_Dialog_IO_VC):
+    def __init__(self, parent):
+        super(DialogIOVC, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.sub = None
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.main_window = parent
+        self.db = self.main_window.db
+
+        self.sw_que = collections.defaultdict(int)
+        self.sw_que = {0, 8, 9, 30, 15, 1, 7, 4, 31, 14}
+        self.main_window.coms_interface.update_switch_pos.connect(self.update_switch)
+        self.get_set()
+        self.request()
+        self.pb_request.clicked.connect(self.request)
+
+    def get_set(self):
+        for a in range(1, 3):
+            getattr(self, "le_out_s_{}_0".format(a)).setText(
+                "Off" if self.main_window.area_controller.get_light_status(a) == 0 else "On")
+
+    @pyqtSlot(int, int, int, name="updateSwitch")
+    def update_switch(self, sw, state, module):
+        if module == MODULE_IO:
+            if sw == OUT_LIGHT_1:
+                getattr(self, "le_out_a_{}_0".format(1)).setText("Off" if state == 0 else "On")
+            if sw == OUT_LIGHT_2:
+                getattr(self, "le_out_a_{}_0".format(2)).setText("Off" if state == 0 else "On")
+            if sw == OUT_HEATER_11:
+                self.le_out_a_1_1.setText("Off" if state == 0 else "On")
+            if sw == OUT_HEATER_12:
+                self.le_out_a_1_2.setText("Off" if state == 0 else "On")
+            if sw == OUT_AUX_1:
+                self.le_out_a_1_3.setText("Off" if state == 0 else "On")
+            if sw == OUT_SPARE_1:
+                self.le_out_a_1_4.setText("Off" if state == 0 else "On")
+
+    def request(self):
+        for sw in self.sw_que:
+            self.main_window.coms_interface.send_data(COM_SWITCH_POS, True, MODULE_IO, sw)
+
+
+class DialogPatternMaker(QDialog, Ui_DialogPatterns):
+    def __init__(self, parent):
+        super(DialogPatternMaker, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.sub = None
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.main_panel = parent
+        self.db = self.main_panel.db
+
+        self.pattern_name = ""
+        self.pattern_id = UNSET
+        self.load_patterns()
+        self.cb_patterns.editTextChanged.connect(self.check_pattern)
+        self.cb_patterns.installEventFilter(self)
+
+        self.tw_pattern_stages.resizeColumnsToContents()
+        self.tw_pattern_stages.resizeRowsToContents()
+        self.tw_pattern_stages.setHorizontalHeaderLabels(["Stage", "Duration", "Lighting", "Temperature", "Feeding", "Location"])
+
+    def eventFilter(self, source, event):
+        # Remember to install event filter for control first
+        # print("Event ", event.type())
+        if event.type() == QtCore.QEvent.FocusOut:
+            if source is self.cb_patterns:
+                self.add_pattern()
+        return QWidget.eventFilter(self, source, event)
+
+    def load_patterns(self):
+        self.cb_patterns.blockSignals(True)
+        self.cb_patterns.clear()
+        rows = self.db.execute('SELECT name, id FROM {}'.format(DB_PATTERN_NAMES))
+        self.cb_patterns.addItem("Select or Type", 0)
+        for row in rows:
+            self.cb_patterns.addItem(row[0], row[1])
+        self.cb_patterns.blockSignals(False)
+
+    def check_pattern(self, txt):
+        self.pattern_id = self.cb_patterns.findText(txt)
+        self.pattern_name = txt
+
+    def add_pattern(self):
+        if self.pattern_id < 1:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("Do you wish to create a new pattern " + self.pattern_name)
+            msg.setWindowTitle("Confirm New Pattern")
+            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+            msg.setDefaultButton(QMessageBox.Cancel)
+            if msg.exec_() == QMessageBox.Cancel:
+                return
+        else:
+            self.load_stages()
+
+    def load_stages(self):
+        rows = self.db.execute('SELECT stage, duration, lighting, temperature, feeding, location FROM {}'
+                               ' WHERE pid = {}'.format(DB_STAGE_PATTERNS, self.pattern_id))
+        r = 0
+        for row in rows:
+            for c in range(0, 7):
+                ti = QTableWidgetItem(row[c])
+                self.tw_pattern_stages.setItem(r, c, ti)
 
 
 class DialogAccessModule(QDialog, Ui_DialogDEmodule):
@@ -3626,6 +3737,54 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self.main_panel.coms_interface.relay_send(NWC_FAN_SENSOR, self.area, self.s_id)
 
 
+class DialogRemoveItem(QDialog, Ui_DialogRemoveItem):
+    def __init__(self, parent, process: ProcessClass):
+
+        super(DialogRemoveItem, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint)
+        self.setupUi(self)
+        self.setFixedSize(self.width(), self.height())
+        self.main_panel = parent
+        self.sub = None
+        self.db = self.main_panel.db
+        self.process = process
+        self.pb_cancel.clicked.connect(lambda: self.sub.close())
+        self.pb_apply.clicked.connect(self.apply)
+        self.lbl_info.setText("Remove item from Process {} in area {}".format(self.process.id, self.process.location))
+        items = self.main_panel.area_controller.get_area_items(self.process.location)
+        self.cb_item.addItem("Select", 0)
+        for i in items:
+            self.cb_item.addItem(str(i), i)
+
+    def apply(self):
+        reason = self.te_reason.toPlainText()
+        item = self.cb_item.currentData()
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Warning)
+        if item == 0 or len(reason) == 0:
+            msg.setText("Please select an item number and enter a reason")
+            msg.setWindowTitle("Invalid Selection")
+            msg.setStandardButtons(QMessageBox.Ok)
+            msg.exec_()
+            return
+        msg.setText("Confirm you wish to remove item {}".format(item))
+        msg.setWindowTitle("Confirm Item Removal")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        msg.setDefaultButton(QMessageBox.Cancel)
+        if msg.exec_() == QMessageBox.Cancel:
+            return
+        dt = datetime.strftime(datetime.now(), '%d/%m/%y')
+        self.process.journal_write(dt + "    Number " + str(item) + " Removed on day  "
+                                   + str(self.process.stage_days_elapsed) + "  " + reason)
+        self.process.remove(item)
+        sql = "DELETE FROM {} WHERE process_id = {} AND item = {} AND area = 2".format(DB_AREAS, self.process.id, item)
+        self.db.execute_write(sql)
+        sql = "UPDATE {} SET location = 0, total_days = {} WHERE process_id = {} and item = {}". \
+            format(DB_PROCESS_STRAINS, self.process.days_total, self.process.id, item)
+        self.db.execute_write(sql)
+
+
 class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
     def __init__(self, parent, area):
         """ :type parent: MainWindow """
@@ -3660,6 +3819,7 @@ class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
             self.cb_feed_mode.setEnabled(False)
             self.de_feed_date.setEnabled(False)
         self.pb_delay.clicked.connect(self.delay_feed)
+        self.pb_remove.clicked.connect(self.remove)
         self.de_feed_date.dateChanged.connect(self.new_date)
 
     def delay_feed(self):
@@ -3685,6 +3845,9 @@ class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
         self.main_panel.update_next_feeds()
         self.main_panel.area_controller.output_controller.water_heater_update_info()
         self.main_panel.coms_interface.relay_send(NWC_FEED_DATE, self.area)
+
+    def remove(self):
+        self.main_panel.main_panel.wc.show(DialogRemoveItem(self.main_panel))
 
 
 class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):

@@ -190,8 +190,7 @@ class OutputWaterHeater(OutputClass):
 
     def new_day(self):
         self.days_since += 1
-        if self.frequency != 0:  # Set days freq, call this to update
-            self.set_days_till_feed(0)
+        self.set_days_till_feed(self.output_controller.area_controller.main_window.feed_controller.get_days_till_feed())
         self.db.set_config_both(CFT_WATER_HEATER, "days since {}".format(self.heater_id), self.days_since)
         self.update_info()
 

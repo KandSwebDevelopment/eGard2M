@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'C:/py/_MDI/main_window.ui'
+# Form implementation generated from reading ui file 'C:/py/main_window.ui'
 #
 # Created by: PyQt5 UI code generator 5.6
 #
@@ -112,10 +112,15 @@ class Ui_MainWindow(object):
         self.actionSync_IO.setObjectName("actionSync_IO")
         self.actionReboot_DHT_s = QtWidgets.QAction(MainWindow)
         self.actionReboot_DHT_s.setObjectName("actionReboot_DHT_s")
+        self.actionPatterns = QtWidgets.QAction(MainWindow)
+        self.actionPatterns.setObjectName("actionPatterns")
+        self.actionI_O_VC = QtWidgets.QAction(MainWindow)
+        self.actionI_O_VC.setObjectName("actionI_O_VC")
         self.menuEngineer.addAction(self.actionI_O_Data)
         self.menuEngineer.addAction(self.actionSend_Command)
         self.menuEngineer.addSeparator()
         self.menuEngineer.addAction(self.actionReboot_DHT_s)
+        self.menuEngineer.addAction(self.actionI_O_VC)
         self.menuSystem.addAction(self.actionSettings)
         self.menuSystem.addAction(self.menuEngineer.menuAction())
         self.menuSystem.addAction(self.actionReconnect)
@@ -139,7 +144,9 @@ class Ui_MainWindow(object):
         self.menuReports.addAction(self.actionJournals)
         self.menuProcess.addAction(self.actionWizzard)
         self.menuProcess.addAction(self.actionManager)
+        self.menuProcess.addSeparator()
         self.menuProcess.addAction(self.menuReports.menuAction())
+        self.menuProcess.addAction(self.actionPatterns)
         self.menuFeeding.addAction(self.actionStock)
         self.menuFeeding.addAction(self.actionLow_Stock)
         self.menuFeeding.addAction(self.actionCalculator)
@@ -212,6 +219,8 @@ class Ui_MainWindow(object):
         self.actionSchedules.setText(_translate("MainWindow", "Schedules"))
         self.actionSync_IO.setText(_translate("MainWindow", "Sync IO"))
         self.actionReboot_DHT_s.setText(_translate("MainWindow", "Reboot DHT\'s"))
+        self.actionPatterns.setText(_translate("MainWindow", "Patterns"))
+        self.actionI_O_VC.setText(_translate("MainWindow", "I/O VC"))
 
 
 if __name__ == "__main__":

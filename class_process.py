@@ -37,10 +37,6 @@ class ProcessClass(QObject):
         self.days_total = 0  # Total days in this process
         self.due_date = None  # Date due to finish with no adjustments
         self.cool_warm = 0        # Area is is cool = 1, warm = 2, normal = 0
-        self.trans_timer = QTimer(self)
-        self.trans_timer.timeout.connect(self.trans_timeout)
-        self.cool_time = 4500000
-        self.warm_time = 4500000
         self.current_stage = 0  # The current stage running
         self.stage_required = 0  # The stage that should be running
         # self.stage_adjustments = []  # Holds the number of days a stage is delayed (+) or advanced (-)
@@ -761,17 +757,18 @@ class ProcessClass(QObject):
                            format(from_loc, new_loc, self.stage_days_elapsed))
 
     def check_trans(self):
+        """ This only check for warm up and normal. Cool is detected by check_light as it changes the switching times"""
         ct = datetime.now()
         if self.light_on < ct < (self.light_on + timedelta(milliseconds=self.warm_time)):
             if self.cool_warm != WARM:
                 self.cool_warm = WARM
                 self.area_controller.main_panel.update_trans(self.location, WARM)
                 self.area_controller.cool_warm[self.location] = WARM
-        elif self.light_off < ct < (self.light_off + timedelta(milliseconds=self.cool_time)):
-            if self.cool_warm != COOL:
-                self.cool_warm = COOL
-                self.area_controller.main_panel.update_trans(self.location, COOL)
-                self.area_controller.cool_warm[self.location] = COOL
+        # elif self.light_off < ct < (self.light_off + timedelta(milliseconds=self.cool_time)):
+        #     if self.cool_warm != COOL:
+        #         self.cool_warm = COOL
+        #         self.area_controller.main_panel.update_trans(self.location, COOL)
+        #         self.area_controller.cool_warm[self.location] = COOL
         else:
             if self.cool_warm != NORMAL:
                 self.cool_warm = NORMAL
@@ -810,11 +807,9 @@ class ProcessClass(QObject):
                 self.light_on = self.light_on + timedelta(days=1)
                 self.light_off = self.light_off + timedelta(days=1)
                 print("to new times on at {} off at {}".format(self.light_on, self.light_off))
-                # self.cool_warm = COOL
-                # self.trans_timer.start(1800000)
-            # if self.light_status == ON and self.light_status_last == OFF:
-            #     # self.cool_warm = WARM
-            #     self.trans_timer.start(1800000)
+                self.cool_warm = COOL
+                self.area_controller.main_panel.update_trans(self.location, COOL)
+                self.area_controller.cool_warm[self.location] = COOL
 
             self.light_status_last = self.light_status
             if self.light_status == 1:

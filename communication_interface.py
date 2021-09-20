@@ -34,6 +34,7 @@ class CommunicationInterface(QObject):
     update_mix_weight = pyqtSignal(float, name="update_mix_weight")
     update_from_relay = pyqtSignal(str, list, name="updateForHelper")
     update_switch = pyqtSignal(int, int, int, name="updateSwitch")   # Sw No, State, From Module
+    update_switch_pos = pyqtSignal(int, int, int, name="updateSwitchPos")   # Sw No, State, From Module
     update_fan_speed = pyqtSignal(int, int, name="updateFanSpeed")     # Fan no, speed
 
     def __init__(self, parent=None):
@@ -254,6 +255,8 @@ class CommunicationInterface(QObject):
                     if len(prams) > 1:
                         self.main_window.area_controller.fan_controller.update_temperature(2, string_to_float(prams[1]))
             return
+        if command == COM_SWITCH_POS:
+            self.update_switch_pos.emit(int(prams[0]), int(prams[1]), module)
         if command == CMD_SWITCH:
             self.update_switch.emit(int(prams[0]), int(prams[1]), module)
             if module != MODULE_SL:

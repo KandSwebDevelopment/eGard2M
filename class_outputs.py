@@ -215,7 +215,7 @@ class OutputClass(QObject):
                     elif value <= self.temp_on_adjusted:
                         self.switch(ON)
                 elif self.detection & DET_FALL == DET_FALL:
-                    if (self.area < 3 and self.output_controller.area_controller.cool_warm[self.area] == NORMAL) or self.area > 2:
+                    if (self.area < 3 and self.output_controller.area_controller.cool_warm[self.area] <= NORMAL) or self.area > 2:
                         if value <= self.temp_on_adjusted and value <= self.temp_off_adjusted:
                             self.switch(ON)
                         elif value >= self.temp_off_adjusted:
