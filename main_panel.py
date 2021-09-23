@@ -79,6 +79,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.timer.setInterval(1000)
         self.timer.timeout.connect(self.recurring_timer)
         self.loop_15_flag = True  # To give every other loop 15
+        self.last_sensor_data = None
 
         self.has_scales = int(self.db.get_config(CFT_MODULES, "ss unit", 0))
         if self.main_window.factory:
@@ -206,6 +207,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         # Check for new day
         if datetime.now().day != self.today:
             self.new_day()
+        if self.last_sensor_data is not None:
+            self.main_window.logger.save_log(self.last_sensor_data)
         self.db.execute("select name from " + DB_NUTRIENTS_NAMES)  # This is only to keep the database connection alive
 
     def loop_15(self):  # 3 Min
@@ -890,6 +893,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                     self.area_controller.sensors[idx].update(d)
                 idx += 1
             # print("Data in ", self.current_data)
+            self.last_sensor_data = data
         except Exception as e:
             print("Update display error - ", e.args)
 

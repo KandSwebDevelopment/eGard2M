@@ -15,17 +15,12 @@ class Logger(QObject):
         self.my_parent = parent
         self.db = parent.db
         self.today_name = datetime.strftime(datetime.now(), "%Y%m%d")
-        self.data_filename = "data_" + self.today_name + ".log"
+        self.data_filename = self.today_name + ".cvs"
         self.new_line = '\n'
         self.fan_file = ""
         self.available = True       # Set False if unable to connect to file system
         doc_folder = self.db.get_config(CFT_LOGGER, "doc path")
         try:
-            # if self.my_parent.master_mode == MASTER:
-            #     pass
-            #     # self.doc_folder = os.path.expanduser("~\\Documents") + doc_folder
-            #     self.doc_folder = doc_folder
-            # else:
             self.doc_folder = doc_folder
             if not os.path.exists(self.doc_folder):
                 os.makedirs(self.doc_folder)
@@ -116,11 +111,15 @@ class Logger(QObject):
                 data.append(line)
         return data
 
-    def save_log(self, data):  # Log file  contains all sensor readings ect for graphs
+    def save_log(self, data):
+        """Log file  contains all sensor readings etc for graphs"""
         if not self.available:
             return
         f = open(self.log_file, "a")
-        text = datetime.strftime(datetime.now(), "%H:%M:%S ") + data + self.new_line
+        s = ""
+        for d in data:
+            s += d + ", "
+        text = datetime.strftime(datetime.now(), "%H:%M ") + s + self.new_line
         # print(text)
         f.write(text)
         f.close()
@@ -157,7 +156,7 @@ class Logger(QObject):
         if not self.available:
             return
         self.today_name = datetime.strftime(datetime.now(), "%Y%m%d")
-        self.data_filename = "data_" + self.today_name + ".log"
+        self.data_filename = self.today_name + ".cvs"
         self.log_file = self.log_path + "\\" + self.data_filename
 
     def save_dispatch_counter(self, client, amount, jar, strain_name, strain_id, weight_r, weight_a):

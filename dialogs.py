@@ -32,6 +32,7 @@ from ui.dialogEngineerIO import Ui_DialogMessage
 from ui.dialogFan import Ui_DialogFan
 from ui.dialogFeedMix import Ui_DialogFeedMix
 from ui.area_manual import Ui_frm_area_manual
+from ui.dialogGraphEnviroment import Ui_DialogGraphEnv
 from ui.dialogIOVC import Ui_Dialog_IO_VC
 from ui.dialogJournal import Ui_DialogJournal
 from ui.dialogJournelViewer import Ui_DialogJournalViewer
@@ -2635,7 +2636,7 @@ class DialogIOVC(QDialog, Ui_Dialog_IO_VC):
         self.sw_que = {0, 8, 9, 30, 15, 1, 7, 4, 31, 14}
         self.main_window.coms_interface.update_switch_pos.connect(self.update_switch)
         self.get_set()
-        self.request()
+        # self.request()
         self.pb_request.clicked.connect(self.request)
 
     def get_set(self):
@@ -2648,20 +2649,41 @@ class DialogIOVC(QDialog, Ui_Dialog_IO_VC):
         if module == MODULE_IO:
             if sw == OUT_LIGHT_1:
                 getattr(self, "le_out_a_{}_0".format(1)).setText("Off" if state == 0 else "On")
-            if sw == OUT_LIGHT_2:
+            elif sw == OUT_LIGHT_2:
                 getattr(self, "le_out_a_{}_0".format(2)).setText("Off" if state == 0 else "On")
-            if sw == OUT_HEATER_11:
+            elif sw == OUT_HEATER_11:
                 self.le_out_a_1_1.setText("Off" if state == 0 else "On")
-            if sw == OUT_HEATER_12:
+            elif sw == OUT_HEATER_12:
                 self.le_out_a_1_2.setText("Off" if state == 0 else "On")
-            if sw == OUT_AUX_1:
+            elif sw == OUT_AUX_1:
                 self.le_out_a_1_3.setText("Off" if state == 0 else "On")
-            if sw == OUT_SPARE_1:
+            elif sw == OUT_SPARE_1:
                 self.le_out_a_1_4.setText("Off" if state == 0 else "On")
 
+            elif sw == OUT_HEATER_21:
+                self.le_out_a_2_1.setText("Off" if state == 0 else "On")
+            elif sw == OUT_HEATER_22:
+                self.le_out_a_2_2.setText("Off" if state == 0 else "On")
+            elif sw == OUT_AUX_2:
+                self.le_out_a_2_3.setText("Off" if state == 0 else "On")
+            elif sw == OUT_SPARE_2:
+                self.le_out_a_2_4.setText("Off" if state == 0 else "On")
+
     def request(self):
+        return
         for sw in self.sw_que:
             self.main_window.coms_interface.send_data(COM_SWITCH_POS, True, MODULE_IO, sw)
+
+
+class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
+    def __init__(self, parent):
+        super(DialogGraphEnv, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.sub = None
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.main_panel = parent
+        self.db = self.main_panel.db
 
 
 class DialogPatternMaker(QDialog, Ui_DialogPatterns):

@@ -13,7 +13,7 @@ from dbController import MysqlDB
 from dialogs import DialogEngineerCommandSender, DialogEngineerIo, DialogDispatchInternal, DialogDispatchCounter, \
     DialogDispatchReports, DialogStrainFinder, DialogDispatchStorage, DialogDispatchOverview, DialogSysInfo, \
     DialogSettings, DialogProcessPerformance, DialogDispatchLoadingBay, DialogProcessManager, DialogStrains, \
-    DialogSeedPicker, DialogProcessLogs, DialogPatternMaker, DialogIOVC
+    DialogSeedPicker, DialogProcessLogs, DialogPatternMaker, DialogIOVC, DialogGraphEnv
 from functions import multi_status_bar, get_last_friday
 from functions_colors import get_css_colours
 from status_codes import *
@@ -93,6 +93,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionSystem_Info.triggered.connect(lambda: self.wc.show(DialogSysInfo(self)))
         self.actionSync_IO.triggered.connect(lambda: self.main_panel.io_reboot())
         self.actionI_O_VC.triggered.connect(lambda: self.wc.show(DialogIOVC(self)))
+
+        # Logs
+        self.actionEnviroment.triggered.connect(lambda: self.wc.show(DialogGraphEnv(self)))
 
         # Dispatch
         self.actionCounter.triggered.connect(lambda: self.wc.show(DialogDispatchCounter(self.main_panel)))

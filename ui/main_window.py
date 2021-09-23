@@ -42,6 +42,8 @@ class Ui_MainWindow(object):
         self.menuModules.setObjectName("menuModules")
         self.menuWindows = QtWidgets.QMenu(self.menubar)
         self.menuWindows.setObjectName("menuWindows")
+        self.menuLogs = QtWidgets.QMenu(self.menubar)
+        self.menuLogs.setObjectName("menuLogs")
         MainWindow.setMenuBar(self.menubar)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
@@ -116,6 +118,8 @@ class Ui_MainWindow(object):
         self.actionPatterns.setObjectName("actionPatterns")
         self.actionI_O_VC = QtWidgets.QAction(MainWindow)
         self.actionI_O_VC.setObjectName("actionI_O_VC")
+        self.actionEnviroment = QtWidgets.QAction(MainWindow)
+        self.actionEnviroment.setObjectName("actionEnviroment")
         self.menuEngineer.addAction(self.actionI_O_Data)
         self.menuEngineer.addAction(self.actionSend_Command)
         self.menuEngineer.addSeparator()
@@ -163,7 +167,9 @@ class Ui_MainWindow(object):
         self.menuWindows.addAction(self.actionCascade)
         self.menuWindows.addAction(self.actionClose_All)
         self.menuWindows.addSeparator()
+        self.menuLogs.addAction(self.actionEnviroment)
         self.menubar.addAction(self.menuSystem.menuAction())
+        self.menubar.addAction(self.menuLogs.menuAction())
         self.menubar.addAction(self.menuDispatch.menuAction())
         self.menubar.addAction(self.menuProcess.menuAction())
         self.menubar.addAction(self.menuFeeding.menuAction())
@@ -186,6 +192,7 @@ class Ui_MainWindow(object):
         self.menuMaterials.setTitle(_translate("MainWindow", "Materials"))
         self.menuModules.setTitle(_translate("MainWindow", "Modules"))
         self.menuWindows.setTitle(_translate("MainWindow", "Windows"))
+        self.menuLogs.setTitle(_translate("MainWindow", "Logs"))
         self.actionCascade.setText(_translate("MainWindow", "Cascade"))
         self.actionClose_All.setText(_translate("MainWindow", "Close All"))
         self.actionI_O_Data.setText(_translate("MainWindow", "I/O Data"))
@@ -221,6 +228,7 @@ class Ui_MainWindow(object):
         self.actionReboot_DHT_s.setText(_translate("MainWindow", "Reboot DHT\'s"))
         self.actionPatterns.setText(_translate("MainWindow", "Patterns"))
         self.actionI_O_VC.setText(_translate("MainWindow", "I/O VC"))
+        self.actionEnviroment.setText(_translate("MainWindow", "Enviroment"))
 
 
 if __name__ == "__main__":
