@@ -208,7 +208,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         if datetime.now().day != self.today:
             self.new_day()
         if self.last_sensor_data is not None:
-            self.main_window.logger.save_log(self.last_sensor_data)
+            self.main_window.logger.save_log(self.area_controller.get_sensor_log_values())
         self.db.execute("select name from " + DB_NUTRIENTS_NAMES)  # This is only to keep the database connection alive
 
     def loop_15(self):  # 3 Min
@@ -1048,7 +1048,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         print("*********** New day ***********")
         self.today = datetime.now().day
         # if self.master_mode == MASTER:
-        #     self.logger.new_day()
+        self.logger.new_day()
         # self.outputs[OP_W_HEATER_1].new_day()
         # self.outputs[OP_W_HEATER_2].new_day()
         for a in range(1, 3):

@@ -1,4 +1,7 @@
 from PyQt5 import QtWidgets
+import matplotlib
+matplotlib.use('Qt5Agg')
+
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as Canvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import numpy as np
@@ -7,26 +10,26 @@ import matplotlib.dates as m_dates
 import matplotlib as plt
 
 
-class MplCanvas(Canvas):        # Matplotlib canvas class to create figure
+class MplCanvas(Canvas):  # Matplotlib canvas class to create figure
     axes = ...  # type: Figure.axes
 
     def __init__(self, width=3.0, height=2.0, dpi=100):
         self.fig = Figure(figsize=(width, height), dpi=dpi, constrained_layout=True)
         self.axes = self.fig.add_subplot(111)
-        # super(MplCanvas, self).__init__(self.fig)
-        Canvas.__init__(self, self.fig)
-        Canvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
-        Canvas.updateGeometry(self)
+        super(MplCanvas, self).__init__(self.fig)
+        # Canvas.__init__(self, self.fig)
+        # Canvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
+        # Canvas.updateGeometry(self)
 
 
-class MplWidget(QtWidgets.QWidget):     # Matplotlib widget
+class MplWidget(QtWidgets.QWidget):  # Matplotlib widget
 
     canvas = ...  # type: MplCanvas
 
     def __init__(self, parent=None, width=3.0, height=2.0, dpi=100):
-        QtWidgets.QWidget.__init__(self, parent)   # Inherit from QWidget
-        self.canvas = MplCanvas(width, height, dpi)                  # Create canvas object
-        self.vbl = QtWidgets.QVBoxLayout(parent)         # Set box for plotting
+        QtWidgets.QWidget.__init__(self, parent)  # Inherit from QWidget
+        self.canvas = MplCanvas(width, height, dpi)  # Create canvas object
+        self.vbl = QtWidgets.QVBoxLayout(parent)  # Set box for plotting
         self.vbl.addWidget(self.canvas)
         self.setLayout(self.vbl)
         self.rect = None

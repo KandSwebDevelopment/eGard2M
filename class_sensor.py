@@ -215,14 +215,15 @@ class SensorClass(object):
     def update(self, new_value):
         try:
             new_value = string_to_float(new_value)
-            self.value = round(new_value + self.calibration, 2)
+            new_value = round(new_value + self.calibration, 2)
 
             if self.display_ctrl is None:
                 return
             if self.display_id < 13:
                 # Temperatures
-                if self.value < - 100:
+                if new_value < - 100:
                     self.error_count += 1
+                    self.value = self.value_last
                     if self.error_count > 5:
                         self.display_ctrl.setText("Err")
                         if self.id < 9:     # DHT sensors so reset power to them
@@ -230,6 +231,8 @@ class SensorClass(object):
                             if self.area_controller.master_mode == MASTER:
                                 self.area_controller.main_window.coms_interface.send_switch(SW_DHT_POWER, ON)
                     return
+                else:
+                    self.value = new_value
 
                 self.error_count = 0
                 self.display_ctrl.setText(str(round(self.value, 1)))

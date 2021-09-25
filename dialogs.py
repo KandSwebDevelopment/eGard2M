@@ -1,4 +1,5 @@
 import collections
+import fnmatch
 import os
 import socket
 import sys
@@ -11,6 +12,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import QTextCursor
 from PyQt5.QtPrintSupport import QPrinter, QPrintDialog, QPrintPreviewDialog
 from PyQt5.QtWidgets import QWidget, QDialog, QMessageBox, QListWidgetItem, QTextEdit, QTableWidgetItem
+from matplotlib.ticker import MultipleLocator
 
 from class_process import ProcessClass
 from defines import *
@@ -2682,8 +2684,107 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.setupUi(self)
         self.sub = None
         self.pb_close.clicked.connect(lambda: self.sub.close())
-        self.main_panel = parent
-        self.db = self.main_panel.db
+        self.main_window = parent
+        self.db = self.main_window.db
+
+        self.logger = self.main_window.logger
+        self.times = []
+        self.values = collections.defaultdict(list)
+        self.weeks_use = collections.defaultdict()
+        self.legend = []
+        self.values['oh'] = []
+        self.values['ot'] = []
+        self.values['1h'] = []
+        self.values['1t'] = []
+        self.values['1c'] = []
+        self.values['1r'] = []
+        self.plot = None
+        self.plot2 = None
+        self.plot_by_strain = None
+        self.logs = fnmatch.filter(os.listdir(self.logger.log_path), '*.cvs')
+        for lg in self.logs:
+            self.cb_logs.addItem(lg[0:8], lg)
+        self.cb_logs.currentIndexChanged.connect(self.load_log)
+        self.temp_1_1.clicked.connect(self.plot_output)
+        self.temp_1_2.clicked.connect(self.plot_output)
+        self.temp_1_3.clicked.connect(self.plot_output)
+
+    def plot_internal(self):
+        sql = 'SELECT d.grams, d.strain, d.date FROM dispatch d WHERE DATE >= "{}" AND client = 1 ORDER BY date' \
+            .format(datetime.now() - timedelta(days=7))
+        rows = self.db.execute(sql)
+        for row in rows:
+            if self.weeks_use.get(row[1]) is None:
+                strain = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_STRAINS, row[1]))
+                self.weeks_use[row[1]] = [row[0], strain]
+                self.legend.append(strain)
+            else:
+                self.weeks_use[row[1]][0] += row[0]
+        amounts = []
+        legend = []
+        for item in self.weeks_use:
+            amounts.append(round(self.weeks_use[item][0], 1))
+            legend.append(self.weeks_use[item][1])
+
+        self.plot_by_strain = MplWidget(self.frame, 3, 5)
+        self.plot_by_strain.canvas.axes.plot(legend, amounts)
+        self.plot_by_strain.canvas.axes.tick_params(
+            axis='x', which='major', labelcolor='Green', rotation=90, labelsize=7)
+        # self.plot_by_strain.auto_label()
+        # self.plot_by_strain.grid(True)
+
+    def load_log(self):
+        log = self.cb_logs.currentData()
+        txt = self.logger.get_log(LOG_DATA, log)
+        values = []
+        self.values.clear()
+        self.times.clear()
+        for row in txt:
+            if row == "":
+                break
+            self.times.append(row[0: 5])
+            row = row[6:]
+            v = row.split(",")
+            values.append(v)
+        for r in values:
+            if len(r) < 13:
+                break
+            self.values['1h'].append(r[0])
+            self.values['1t'].append(r[1])
+            self.values['1c'].append(r[2])
+            self.values['1r'].append(r[3])
+            self.values['2h'].append(r[10])
+            self.values['2t'].append(r[11])
+        self.plot_internal()
+        self.plot_output()
+
+    def draw_plot(self):
+        self.plot2 = MplWidget(self.frame, 3.5, 1.5)
+        # plt_dates = m_dates.date2num(list(legend))
+        self.plot2.plot_bar(self.times, self.values['1t'])
+        # self.plot2.canvas.axes.tick_params(
+        #     axis='x', which='major', labelcolor='Green', rotation=90, labelsize=7)
+        # self.plot.canvas.axes.xaxis.set_major_formatter(self.plot_by_out.date_fmt)
+
+    def plot_output(self):
+        self.plot = MplWidget(self.wg_graph_1, 10, 3.6)
+        # plt_dates = m_dates.date2num(list(legend))
+        self.plot.canvas.axes.yaxis.set_major_locator(MultipleLocator(10))
+        self.plot.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
+        if self.temp_1_1.isChecked():
+            self.plot.canvas.axes.plot(self.times, self.values['1t'], color='green', label='Area 1 Temperature')
+        if self.temp_1_2.isChecked():
+            self.plot.canvas.axes.plot(self.times, self.values['1c'], color='yellow', label='Area 1 Canopy', linestyle='dotted')
+        if self.temp_1_3.isChecked():
+            self.plot.canvas.axes.plot(self.times, self.values['1r'], color='brown', label='Area 1 Root', linestyle='dashed')
+        # self.plot.canvas.axes.ylable("Temperature")
+        self.plot.canvas.axes.legend()
+        self.plot.canvas.axes.tick_params(
+            axis='x', which='major', labelcolor='Green', rotation=90, labelsize=7)
+        self.plot.canvas.axes.invert_yaxis()
+        self.plot.canvas.axes.xaxis.grid(True, which='minor')
+        self.plot.grid(True)
+        self.plot.show()
 
 
 class DialogPatternMaker(QDialog, Ui_DialogPatterns):

@@ -16,7 +16,7 @@ class Logger(QObject):
         self.db = parent.db
         self.today_name = datetime.strftime(datetime.now(), "%Y%m%d")
         self.data_filename = self.today_name + ".cvs"
-        self.new_line = '\n'
+        self.new_line = '\n'    # os.linesep
         self.fan_file = ""
         self.available = True       # Set False if unable to connect to file system
         doc_folder = self.db.get_config(CFT_LOGGER, "doc path")
@@ -117,9 +117,10 @@ class Logger(QObject):
             return
         f = open(self.log_file, "a")
         s = ""
-        for d in data:
-            s += d + ", "
-        text = datetime.strftime(datetime.now(), "%H:%M ") + s + self.new_line
+        # for d in data:
+        #     s += d + ", "
+        # s = s[0: len(s) - 2]
+        text = datetime.strftime(datetime.now(), "%H:%M ") + data + self.new_line
         # print(text)
         f.write(text)
         f.close()
@@ -209,6 +210,38 @@ class Logger(QObject):
             return []
         files = os.listdir(p)
         return files
+
+    def get_log(self, log_type, log_file) -> str:
+        if not self.available:
+            return ""
+        p = ""
+        if log_type == LOG_DATA:
+            p = self.log_path
+        elif log_type == LOG_EVENTS:
+            p = self.events_path
+        elif log_type == LOG_JOURNAL:
+            p = self.journal_path
+        elif log_type == LOG_SYSTEM:
+            p = self.system_path
+        elif log_type == LOG_FEED:
+            p = self.feeding_path
+        elif log_type == LOG_DISPATCH:
+            p = self.dispatch_path
+        elif log_type == LOG_ACCESS:
+            p = ""
+        if p == "" or log_file is None or log_file == 0:
+            return ""
+        log = p + "\\" + log_file
+        try:
+            f = open(log)
+            text = f.read()
+            f.close()
+        except FileNotFoundError:
+            return "File Missing " + log
+        if text == "":
+            return "There as no entries in this journal"
+        entries = text.split("\n")
+        return entries
 
     def get_log_contents(self, log_type, log_file) -> str:
         if not self.available:

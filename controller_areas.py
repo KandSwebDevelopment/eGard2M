@@ -205,6 +205,12 @@ class AreaController(QObject):
         else:
             self.sensor_load_manual_ranges(area, sid)
 
+    def get_sensor_log_values(self):
+        r = ""
+        for s in self.sensors:
+            r += str(self.sensors[s].get_value()) + ", "
+        return r[0: len(r) - 2]
+
     def sensor_load_manual_ranges(self, area, item):
         """ Load the set manual ranges for an area"""
         sid = self.get_sid_from_item(area, item)
