@@ -35,7 +35,7 @@ class MplWidget(QtWidgets.QWidget):  # Matplotlib widget
         self.rect = None
         self.date_fmt = m_dates.DateFormatter("%a %d %b")
         self.week_loc = m_dates.WeekdayLocator()
-        self.toolbar = NavigationToolbar(self.canvas, self)
+        # self.toolbar = NavigationToolbar(self.canvas, self)
 
     def plot_bar(self, legend, data):
         self.rect = self.canvas.axes.bar(legend, data)

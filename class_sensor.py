@@ -266,7 +266,7 @@ class SensorClass(object):
             print("Class Sensor - Update value ERROR ", e.args)
 
     def get_value(self):
-        return self.value
+        return round(self.value, 1)
 
     def get_colour_offset(self):
         dif = self.value - self.set

@@ -1,6 +1,7 @@
 import collections
 import fnmatch
 import os
+import pprint
 import socket
 import sys
 from datetime import *
@@ -12,6 +13,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import QTextCursor
 from PyQt5.QtPrintSupport import QPrinter, QPrintDialog, QPrintPreviewDialog
 from PyQt5.QtWidgets import QWidget, QDialog, QMessageBox, QListWidgetItem, QTextEdit, QTableWidgetItem
+from matplotlib import ticker
 from matplotlib.ticker import MultipleLocator
 
 from class_process import ProcessClass
@@ -2688,6 +2690,9 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.db = self.main_window.db
 
         self.logger = self.main_window.logger
+        self.live_timer = QTimer()
+        self.live_timer.timeout.connect(self.auto_refresh)
+        self.live_timer.setInterval(120000)
         self.times = []
         self.values = collections.defaultdict(list)
         self.weeks_use = collections.defaultdict()
@@ -2699,43 +2704,40 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.values['1c'] = []
         self.values['1r'] = []
         self.plot = None
-        self.plot2 = None
-        self.plot_by_strain = None
+        self.plot = MplWidget(self.wg_graph_1, 12, 4.5)
         self.logs = fnmatch.filter(os.listdir(self.logger.log_path), '*.cvs')
         for lg in self.logs:
             self.cb_logs.addItem(lg[0:8], lg)
         self.cb_logs.currentIndexChanged.connect(self.load_log)
-        self.temp_1_1.clicked.connect(self.plot_output)
-        self.temp_1_2.clicked.connect(self.plot_output)
-        self.temp_1_3.clicked.connect(self.plot_output)
+        self.pb_refresh.clicked.connect(self.plot_output)
+        self.ck_live.clicked.connect(self.go_live)
+        # self.temp_1_1.clicked.connect(self.plot_output)
+        # self.temp_1_2.clicked.connect(self.plot_output)
+        # self.temp_1_3.clicked.connect(self.plot_output)
+        # self.temp_2_1.clicked.connect(self.plot_output)
+        # self.temp_2_2.clicked.connect(self.plot_output)
+        # self.temp_2_3.clicked.connect(self.plot_output)
 
-    def plot_internal(self):
-        sql = 'SELECT d.grams, d.strain, d.date FROM dispatch d WHERE DATE >= "{}" AND client = 1 ORDER BY date' \
-            .format(datetime.now() - timedelta(days=7))
-        rows = self.db.execute(sql)
-        for row in rows:
-            if self.weeks_use.get(row[1]) is None:
-                strain = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_STRAINS, row[1]))
-                self.weeks_use[row[1]] = [row[0], strain]
-                self.legend.append(strain)
-            else:
-                self.weeks_use[row[1]][0] += row[0]
-        amounts = []
-        legend = []
-        for item in self.weeks_use:
-            amounts.append(round(self.weeks_use[item][0], 1))
-            legend.append(self.weeks_use[item][1])
+    def go_live(self):
+        if self.ck_live.isChecked():
+            self.live_timer.start()
+            self.cb_logs.setEnabled(False)
+        else:
+            self.live_timer.stop()
+            self.cb_logs.setEnabled(True)
 
-        self.plot_by_strain = MplWidget(self.frame, 3, 5)
-        self.plot_by_strain.canvas.axes.plot(legend, amounts)
-        self.plot_by_strain.canvas.axes.tick_params(
-            axis='x', which='major', labelcolor='Green', rotation=90, labelsize=7)
-        # self.plot_by_strain.auto_label()
-        # self.plot_by_strain.grid(True)
+    def auto_refresh(self):
+        self._load_log(self.logger.data_filename)
+        self.plot_output()
 
     def load_log(self):
         log = self.cb_logs.currentData()
+        self._load_log(log)
+
+    def _load_log(self, log):
         txt = self.logger.get_log(LOG_DATA, log)
+        if len(txt) < 20:
+            return
         values = []
         self.values.clear()
         self.times.clear()
@@ -2753,37 +2755,55 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             self.values['1t'].append(r[1])
             self.values['1c'].append(r[2])
             self.values['1r'].append(r[3])
-            self.values['2h'].append(r[10])
-            self.values['2t'].append(r[11])
-        self.plot_internal()
-        self.plot_output()
-
-    def draw_plot(self):
-        self.plot2 = MplWidget(self.frame, 3.5, 1.5)
-        # plt_dates = m_dates.date2num(list(legend))
-        self.plot2.plot_bar(self.times, self.values['1t'])
-        # self.plot2.canvas.axes.tick_params(
-        #     axis='x', which='major', labelcolor='Green', rotation=90, labelsize=7)
-        # self.plot.canvas.axes.xaxis.set_major_formatter(self.plot_by_out.date_fmt)
+            self.values['2h'].append(r[4])
+            self.values['2t'].append(r[5])
+            self.values['2c'].append(r[6])
+            self.values['2r'].append(r[7])
+            self.values['dh'].append(r[8])
+            self.values['dt'].append(r[9])
+            self.values['ws'].append(r[10])
+            self.values['oh'].append(r[11])
+            self.values['ot'].append(r[12])
 
     def plot_output(self):
-        self.plot = MplWidget(self.wg_graph_1, 10, 3.6)
-        # plt_dates = m_dates.date2num(list(legend))
-        self.plot.canvas.axes.yaxis.set_major_locator(MultipleLocator(10))
-        self.plot.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
+        self.plot.canvas.axes.cla()
         if self.temp_1_1.isChecked():
             self.plot.canvas.axes.plot(self.times, self.values['1t'], color='green', label='Area 1 Temperature')
+            # print("Times")
+            # pprint.pprint(self.times)
+            # print("Values")
+            # pprint.pprint(self.values['1t'])
         if self.temp_1_2.isChecked():
-            self.plot.canvas.axes.plot(self.times, self.values['1c'], color='yellow', label='Area 1 Canopy', linestyle='dotted')
+            self.plot.canvas.axes.plot(self.times, self.values['1c'], color='green', label='Area 1 Canopy', linestyle='dotted')
         if self.temp_1_3.isChecked():
-            self.plot.canvas.axes.plot(self.times, self.values['1r'], color='brown', label='Area 1 Root', linestyle='dashed')
+            self.plot.canvas.axes.plot(self.times, self.values['1r'], color='green', label='Area 1 Root', linestyle='dashed')
+
+        if self.temp_2_1.isChecked():
+            self.plot.canvas.axes.plot(self.times, self.values['2t'], color='blue', label='Area 2 Temperature')
+        if self.temp_2_2.isChecked():
+            self.plot.canvas.axes.plot(self.times, self.values['2c'], color='blue', label='Area 2 Canopy', linestyle='dotted')
+        if self.temp_2_3.isChecked():
+            self.plot.canvas.axes.plot(self.times, self.values['2r'], color='blue', label='Area 2 Root', linestyle='dashed')
+
+        if self.temp_3_1.isChecked():
+            self.plot.canvas.axes.plot(self.times, self.values['dt'], color='olive', label='Drying Temperature')
+
+        if self.temp_4_1.isChecked():
+            self.plot.canvas.axes.plot(self.times, self.values['ws'], color='brown', label='Workshop')
+
+        if self.temp_5_1.isChecked():
+            self.plot.canvas.axes.plot(self.times, self.values['ws'], color='orange', label='Outside Temperature')
+
         # self.plot.canvas.axes.ylable("Temperature")
         self.plot.canvas.axes.legend()
         self.plot.canvas.axes.tick_params(
             axis='x', which='major', labelcolor='Green', rotation=90, labelsize=7)
-        self.plot.canvas.axes.invert_yaxis()
+        # self.plot.canvas.axes.invert_yaxis()
         self.plot.canvas.axes.xaxis.grid(True, which='minor')
         self.plot.grid(True)
+        self.plot.canvas.axes.yaxis.set_major_locator(ticker.MultipleLocator(5))
+        self.plot.canvas.axes.xaxis.set_major_locator(MultipleLocator(15))
+        self.plot.canvas.draw()
         self.plot.show()
 
 

@@ -165,6 +165,10 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         if self.timer_counter % 180 == 0:
             self.loop_15()
 
+        # Every 120
+        if self.timer_counter % 120 == 0:
+            self.loop_6()
+
         # Every 60
         if self.timer_counter % 60 == 0:
             self.loop_5()
@@ -207,9 +211,13 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         # Check for new day
         if datetime.now().day != self.today:
             self.new_day()
-        if self.last_sensor_data is not None:
-            self.main_window.logger.save_log(self.area_controller.get_sensor_log_values())
         self.db.execute("select name from " + DB_NUTRIENTS_NAMES)  # This is only to keep the database connection alive
+        cm = datetime.now().minute
+        if cm % 2 == 0:
+            print("cm " + str(cm))
+
+    def loop_6(self):
+        self.main_window.logger.save_log(self.area_controller.get_sensor_log_values())
 
     def loop_15(self):  # 3 Min
         if self.main_window.access.has_status(ACS_COVER_OPEN) and \
