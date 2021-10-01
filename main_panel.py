@@ -452,7 +452,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                     elif next_stage_days == 0:
                         ctrl_advance.setEnabled(False)
                         ctrl.setEnabled(True)
-                        ctrl_le.setStyleSheet("background-color: light green;  color: black;")
+                        ctrl_le.setStyleSheet("background-color: Green;  color: black;")
                     elif next_stage_days < 0:
                         ctrl.setEnabled(False)
                         ctrl_le.setStyleSheet("background-color: red;  color: white;")
@@ -1101,9 +1101,11 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         elif cmd == NWC_OUTPUT_RANGE:
             self.area_controller.output_controller.reload_range(data[0])
         elif cmd == NWC_FAN_UPDATE:
-            # self.area_controller.fan_controller.update_fans_speed.emit(int(data[0]), int(data[1]))
-            self.update_fans(1, data[0])
-            self.update_fans(2, data[1])
+            if data[0] == data[1] == 100:
+                self.coms_interface.relay_send(NWC_FAN_UPDATE, self.fans[1].speed, self.fans[2].speed)
+            else:
+                self.update_fans(1, data[0])
+                self.update_fans(2, data[1])
         elif cmd == NWC_FAN_MODE:
             self.area_controller.fan_controller.set_mode(data[0], data[1])
         elif cmd == NWC_FAN_SPEED:

@@ -75,8 +75,10 @@ class FansController(QObject):
         self.fans[area].sensor = sensor_id
 
     def set_master_power(self, state):
-        # if state == self.master_power:
-        self.area_controller.main_window.coms_interface.send_switch(SW_FANS_POWER, state)
+        if state == self.master_power:
+            if self.area_controller.master_mode == MASTER:
+                self.area_controller.main_window.coms_interface.send_switch(SW_FANS_POWER, state)
+            self.master_power = state
 
     def set_speed(self, area, speed):
         self.fans[area].speed = speed
@@ -85,7 +87,7 @@ class FansController(QObject):
         if self.area_controller.area_has_process(area):
             self.fans[area].start_auto()
         else:
-            # In manual mode
+            # if in manual mode
             # self.fans[area].start_manual()
             pass
 
@@ -103,14 +105,18 @@ class FansController(QObject):
         if module != MODULE_IO:
             return
         if sw == SW_FANS_POWER:
-            self.master_power = state
-            self.db.set_config_both(CFT_FANS, "master", state)
+            if self.master_power != state:
+                self.master_power = state
+                self.db.set_config_both(CFT_FANS, "master", state)
             if state == OFF:
                 self.fans[1].stop_fan()
                 self.fans[2].stop_fan()
             else:
-                self.start_fan(1)
-                self.start_fan(2)
+                if self.area_controller.master_mode == MASTER:
+                    self.start_fan(1)
+                    self.start_fan(2)
+                else:
+                    self.area_controller.main_window.coms_interface.relay_send(NWC_FAN_UPDATE, 100, 100)
             self.update_fans_mode.emit(self.get_mode(1), self.get_mode(2), self.master_power)
 
     def refresh_info(self, fan):

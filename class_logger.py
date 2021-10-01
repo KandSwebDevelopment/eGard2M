@@ -120,7 +120,7 @@ class Logger(QObject):
         # for d in data:
         #     s += d + ", "
         # s = s[0: len(s) - 2]
-        text = datetime.strftime(datetime.now(), "%H:%M ") + data + self.new_line
+        text = datetime.strftime(datetime.now(), "%H:%M, ") + data + self.new_line
         # print(text)
         f.write(text)
         f.close()

@@ -1,7 +1,5 @@
-#
-#   data jump is when new reading is a large difference from last, so it's incorrect and ignore it
-
 import collections
+from datetime import *
 
 from defines import *
 from functions import string_to_float
@@ -37,6 +35,8 @@ class SensorClass(object):
         self.short_name = ""
         self.display_ctrl = None
         self.process_id = None
+        self.graph_data = []
+        self.graph_times = []
         self._is_fan = False  # True is this sensor is used by fan
         self.handler_info = collections.defaultdict()  # Holds info for display ctrl about sensors handler
         # print("Sensor " + str(self.id) + " maps to " + str(self.display_id))
@@ -216,6 +216,14 @@ class SensorClass(object):
         try:
             new_value = string_to_float(new_value)
             new_value = round(new_value + self.calibration, 2)
+
+            cm = datetime.now().minute
+            if cm % 2 == 0:
+                self.graph_times.append(datetime.now().time())
+                self.graph_data.append(new_value)
+                if len(self.graph_data) > 30:
+                    self.graph_data.pop(0)
+                    self.graph_times.pop(0)
 
             if self.display_ctrl is None:
                 return

@@ -1,6 +1,5 @@
 from PyQt5 import QtWidgets
 import matplotlib
-matplotlib.use('Qt5Agg')
 
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as Canvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
@@ -8,6 +7,7 @@ import numpy as np
 from matplotlib.figure import Figure
 import matplotlib.dates as m_dates
 import matplotlib as plt
+matplotlib.use('Qt5Agg')
 
 
 class MplCanvas(Canvas):  # Matplotlib canvas class to create figure
@@ -15,7 +15,7 @@ class MplCanvas(Canvas):  # Matplotlib canvas class to create figure
 
     def __init__(self, width=3.0, height=2.0, dpi=100):
         self.fig = Figure(figsize=(width, height), dpi=dpi, constrained_layout=True)
-        self.axes = self.fig.add_subplot(111)
+        self.axes = self.fig.add_subplot(111)   # Total number of plots / Column No / Row No
         super(MplCanvas, self).__init__(self.fig)
         # Canvas.__init__(self, self.fig)
         # Canvas.setSizePolicy(self, QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Expanding)
@@ -35,7 +35,7 @@ class MplWidget(QtWidgets.QWidget):  # Matplotlib widget
         self.rect = None
         self.date_fmt = m_dates.DateFormatter("%a %d %b")
         self.week_loc = m_dates.WeekdayLocator()
-        # self.toolbar = NavigationToolbar(self.canvas, self)
+        self.toolbar = NavigationToolbar(self.canvas, self)
 
     def plot_bar(self, legend, data):
         self.rect = self.canvas.axes.bar(legend, data)
@@ -68,3 +68,13 @@ class MplWidget(QtWidgets.QWidget):  # Matplotlib widget
         # Returns a function that maps each index in 0, 1, ..., n-1 to a distinct
         # RGB color; the keyword argument name must be a standard mpl colormap name.
         return plt.cm.get_cmap(name, n)
+
+
+class Workaround(object):
+    def __init__(self, artists):
+        self.artists = artists
+        artists[0].figure.canvas.mpl_connect('button_press_event', self)
+
+    def __call__(self, event):
+        for artist in self.artists:
+            artist.pick(event)

@@ -6,6 +6,7 @@ import socket
 import sys
 from datetime import *
 
+import numpy
 import serial
 import serial.tools.list_ports
 from PyQt5 import QtCore, QtGui
@@ -2704,19 +2705,13 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.values['1c'] = []
         self.values['1r'] = []
         self.plot = None
-        self.plot = MplWidget(self.wg_graph_1, 12, 4.5)
+        self.ax2 = None
         self.logs = fnmatch.filter(os.listdir(self.logger.log_path), '*.cvs')
         for lg in self.logs:
             self.cb_logs.addItem(lg[0:8], lg)
         self.cb_logs.currentIndexChanged.connect(self.load_log)
         self.pb_refresh.clicked.connect(self.plot_output)
         self.ck_live.clicked.connect(self.go_live)
-        # self.temp_1_1.clicked.connect(self.plot_output)
-        # self.temp_1_2.clicked.connect(self.plot_output)
-        # self.temp_1_3.clicked.connect(self.plot_output)
-        # self.temp_2_1.clicked.connect(self.plot_output)
-        # self.temp_2_2.clicked.connect(self.plot_output)
-        # self.temp_2_3.clicked.connect(self.plot_output)
 
     def go_live(self):
         if self.ck_live.isChecked():
@@ -2740,33 +2735,54 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             return
         values = []
         self.values.clear()
-        self.times.clear()
+        self.times = []
         for row in txt:
             if row == "":
                 break
             self.times.append(row[0: 5])
             row = row[6:]
+            if row[0] == ",":
+                row = row[1:]
             v = row.split(",")
             values.append(v)
         for r in values:
             if len(r) < 13:
                 break
-            self.values['1h'].append(r[0])
-            self.values['1t'].append(r[1])
-            self.values['1c'].append(r[2])
-            self.values['1r'].append(r[3])
-            self.values['2h'].append(r[4])
-            self.values['2t'].append(r[5])
-            self.values['2c'].append(r[6])
-            self.values['2r'].append(r[7])
-            self.values['dh'].append(r[8])
-            self.values['dt'].append(r[9])
-            self.values['ws'].append(r[10])
-            self.values['oh'].append(r[11])
-            self.values['ot'].append(r[12])
+            self.values['1h'].append(string_to_float(r[0]))
+            self.values['1t'].append(string_to_float(r[1]))
+            self.values['1c'].append(string_to_float(r[2]))
+            self.values['1r'].append(string_to_float(r[3]))
+            self.values['2h'].append(string_to_float(r[4]))
+            self.values['2t'].append(string_to_float(r[5]))
+            self.values['2c'].append(string_to_float(r[6]))
+            self.values['2r'].append(string_to_float(r[7]))
+            self.values['dh'].append(string_to_float(r[8]))
+            self.values['dt'].append(string_to_float(r[9]))
+            self.values['ws'].append(string_to_float(r[10]))
+            self.values['oh'].append(string_to_float(r[11]))
+            self.values['ot'].append(string_to_float(r[12]))
+        # self.values['1h'] = numpy.array(self.values['1h'])
+        # self.values['1t'] = numpy.array(self.values['1t'])
+        # self.values['1c'] = numpy.array(self.values['1c'])
+        # self.values['1r'] = numpy.array(self.values['1r'])
+        # self.values['2h'] = numpy.array(self.values['2h'])
+        # self.values['2t'] = numpy.array(self.values['2t'])
+        # self.values['2c'] = numpy.array(self.values['2c'])
+        # self.values['2r'] = numpy.array(self.values['2r'])
+        # self.values['dh'] = numpy.array(self.values['dh'])
+        # self.values['dt'] = numpy.array(self.values['dt'])
+        # self.values['ws'] = numpy.array(self.values['ws'])
+        # self.values['oh'] = numpy.array(self.values['oh'])
+        # self.values['ot'] = numpy.array(self.values['ot'])
+        # self.times = numpy.array(self.times)
+        # print(self.times)
 
     def plot_output(self):
+        self.plot = MplWidget(self.wg_graph_1, 12, 4.5)
         self.plot.canvas.axes.cla()
+        if self.ax2 is not None:
+            self.ax2.cla()
+            self.ax2 = None
         if self.temp_1_1.isChecked():
             self.plot.canvas.axes.plot(self.times, self.values['1t'], color='green', label='Area 1 Temperature')
             # print("Times")
@@ -2792,17 +2808,44 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             self.plot.canvas.axes.plot(self.times, self.values['ws'], color='brown', label='Workshop')
 
         if self.temp_5_1.isChecked():
-            self.plot.canvas.axes.plot(self.times, self.values['ws'], color='orange', label='Outside Temperature')
+            self.plot.canvas.axes.plot(self.times, self.values['ot'], color='orange', label='Outside Temperature')
 
-        # self.plot.canvas.axes.ylable("Temperature")
-        self.plot.canvas.axes.legend()
+        if self.ck_hum_1.isChecked():
+            if self.ax2 is None:
+                self.ax2 = self.plot.canvas.axes.twinx()
+            self.ax2.plot(self.times, self.values['1h'], color='pink', label='Area 1 Humidity')
+            self.ax2.yaxis.set_major_locator(MultipleLocator(10))
+
+        if self.ck_hum_2.isChecked():
+            if self.ax2 is None:
+                self.ax2 = self.plot.canvas.axes.twinx()
+            self.ax2.plot(self.times, self.values['2h'], color='purple', label='Area 2 Humidity')
+
+        if self.ck_hum_3.isChecked():
+            if self.ax2 is None:
+                self.ax2 = self.plot.canvas.axes.twinx()
+            self.ax2.plot(self.times, self.values['dh'], color='purple', label='Drying Humidity')
+
+        if self.ck_hum_4.isChecked():
+            if self.ax2 is None:
+                self.ax2 = self.plot.canvas.axes.twinx()
+            self.ax2.plot(self.times, self.values['oh'], color='purple', label='Outside Humidity', linestyle='dotted')
+
+        if self.ax2 is not None:
+            self.ax2.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+            # self.ax2.invert_yaxis()
+            self.ax2.legend(loc='upper left')
+
+        self.plot.canvas.axes.set_ylabel("Temperature")
+        self.plot.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+        self.plot.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
+        leg = self.plot.canvas.axes.legend()
+        leg.set_draggable(state=True)
         self.plot.canvas.axes.tick_params(
-            axis='x', which='major', labelcolor='Green', rotation=90, labelsize=7)
+            axis='x', which='major', labelcolor='Green', rotation=45, labelsize=7)
         # self.plot.canvas.axes.invert_yaxis()
         self.plot.canvas.axes.xaxis.grid(True, which='minor')
         self.plot.grid(True)
-        self.plot.canvas.axes.yaxis.set_major_locator(ticker.MultipleLocator(5))
-        self.plot.canvas.axes.xaxis.set_major_locator(MultipleLocator(15))
         self.plot.canvas.draw()
         self.plot.show()
 
