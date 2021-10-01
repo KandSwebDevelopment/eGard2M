@@ -16,6 +16,7 @@ class Logger(QObject):
         self.db = parent.db
         self.today_name = datetime.strftime(datetime.now(), "%Y%m%d")
         self.data_filename = self.today_name + ".cvs"
+        self.output_filename = self.today_name + ".opd"
         self.new_line = '\n'    # os.linesep
         self.fan_file = ""
         self.available = True       # Set False if unable to connect to file system
@@ -125,6 +126,16 @@ class Logger(QObject):
         f.write(text)
         f.close()
 
+    def save_output_log(self, data):
+        """Log file  contains all output positions for graphs"""
+        if not self.available:
+            return
+        f = open(self.log_path + "\\" + self.output_filename, "a")
+        text = datetime.strftime(datetime.now(), "%H:%M, ") + data + self.new_line
+        # print(text)
+        f.write(text)
+        f.close()
+
     def save_system(self, data):  # Log file  contains all system events
         if not self.available:
             return
@@ -158,6 +169,7 @@ class Logger(QObject):
             return
         self.today_name = datetime.strftime(datetime.now(), "%Y%m%d")
         self.data_filename = self.today_name + ".cvs"
+        self.output_filename = self.today_name + ".opd"
         self.log_file = self.log_path + "\\" + self.data_filename
 
     def save_dispatch_counter(self, client, amount, jar, strain_name, strain_id, weight_r, weight_a):

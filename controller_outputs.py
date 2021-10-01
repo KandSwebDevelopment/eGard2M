@@ -56,6 +56,12 @@ class OutputController(QObject):
         self.outputs[OUT_WATER_HEATER_1].check(0)
         self.outputs[OUT_WATER_HEATER_2].check(0)
 
+    def get_output_log_values(self):
+        r = ""
+        for o in self.outputs:
+            r += str(self.get_actual_position(o)) + ", "
+        return r[0: len(r) - 2]
+
     def get_set_temperatures(self, op_id):
         return self.outputs[op_id].get_set_temperatures()
 

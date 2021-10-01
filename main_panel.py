@@ -216,6 +216,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             cm = datetime.now().minute
             if cm % 2 == 0:
                 self.main_window.logger.save_log(self.area_controller.get_sensor_log_values())
+                self.main_window.logger.save_output_log(self.area_controller.output_controller.get_output_log_values())
 
     def loop_6(self): # 2 mins
         pass
@@ -319,6 +320,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.area_controller.fan_controller.update_fans_mode.connect(self.update_fan_mode)
 
     def test(self):
+        self.main_window.logger.save_output_log(self.area_controller.output_controller.get_output_log_values())
+
         pass
         # s = ["low", "set", "high"]
         # for a in range(1, 3):
