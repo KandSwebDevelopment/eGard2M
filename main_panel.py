@@ -426,10 +426,10 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             # ctrl.setText(text)
 
     def stage_advance(self, area):
-        # Advances the the process to the next stage
+        # Advances the the process to the next stage. For Area 1 only
         if self.area_controller.area_has_process(area):
             self.area_controller.get_area_process(area).advance_stage()
-            # self.area_controller.load_processes()
+            self.area_controller.reload_area(area)
             self.update_duration_texts()
             self.check_stage(area)
             self.coms_interface.relay_send(NWC_RELOAD_PROCESSES)
@@ -462,6 +462,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                         ctrl_advance.setEnabled(False)
                 else:
                     self.frmstagechange_1.setEnabled(False)
+                    self.lestageinfo_1.setStyleSheet("background-color: white;  color: black;")
 
             elif location == 2:
                 p = self.area_controller.get_area_process(location)

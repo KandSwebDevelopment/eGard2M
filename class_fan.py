@@ -179,8 +179,8 @@ class FanClass(QThread):
         self.input = value + self.input_calibration
         # print("Fan input ", value)
         if self._logging:
-            self.fan_controller.area_controller.main_window.logger.save_fan_log\
-                (self.id, "{},{},{}".format(self.input, self._speed, self._set_point))
+            self.fan_controller.area_controller.main_window.logger.save_fan_log(
+                self.id, "{},{},{}".format(self.input, self._speed, self._set_point))
 
     def reset(self):
         self.pid.clear()

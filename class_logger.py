@@ -79,7 +79,7 @@ class Logger(QObject):
             return
         self.fan_file = self.system_path + "\\fan_{}_{}.txt".format(fan, self.today_name)
         f = open(self.fan_file, "a")
-        text = datetime.strftime(datetime.now(), "%d/%m/%y %H:%M:%S ") + "," + data + self.new_line
+        text = datetime.strftime(datetime.now(), "%H:%M, ") + data + self.new_line
         # print(text)
         f.write(text)
         f.close()

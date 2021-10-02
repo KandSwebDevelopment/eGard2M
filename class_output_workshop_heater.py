@@ -33,7 +33,7 @@ class OutputWorkshopHeater(OutputClass):
         OutputClass.switch_update(self, state)
         if state == ON:
             self.remaining = self.duration
-            self.boost_timer.start(1000)
+            self.boost_timer.start(60000)
         else:
             self.boost_timer.stop()
             self.remaining = 0

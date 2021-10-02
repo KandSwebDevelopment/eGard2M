@@ -76,8 +76,8 @@ class FansController(QObject):
 
     def set_master_power(self, state):
         if state == self.master_power:
-            if self.area_controller.master_mode == MASTER:
-                self.area_controller.main_window.coms_interface.send_switch(SW_FANS_POWER, state)
+            # if self.area_controller.master_mode == MASTER:
+            self.area_controller.main_window.coms_interface.send_switch(SW_FANS_POWER, state)
             self.master_power = state
 
     def set_speed(self, area, speed):
@@ -106,8 +106,8 @@ class FansController(QObject):
             return
         if sw == SW_FANS_POWER:
             if self.master_power != state:
-                self.master_power = state
                 self.db.set_config_both(CFT_FANS, "master", state)
+            self.master_power = state
             if state == OFF:
                 self.fans[1].stop_fan()
                 self.fans[2].stop_fan()
