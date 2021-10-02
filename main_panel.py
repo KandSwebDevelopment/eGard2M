@@ -1106,7 +1106,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.area_controller.output_controller.reload_range(data[0])
         elif cmd == NWC_FAN_UPDATE:
             if data[0] == data[1] == 100:
-                self.coms_interface.relay_send(NWC_FAN_UPDATE, self.fans[1].speed, self.fans[2].speed)
+                self.coms_interface.relay_send(NWC_FAN_UPDATE, self.area_controller.fan_controller.get_fan_speed(1),
+                                               self.area_controller.fan_controller.get_fan_speed(2))
             else:
                 self.update_fans(1, data[0])
                 self.update_fans(2, data[1])

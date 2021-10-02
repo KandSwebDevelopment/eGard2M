@@ -37,6 +37,7 @@ class SensorClass(object):
         self.process_id = None
         self.graph_data = []
         self.graph_times = []
+        self.range_inactive = None      # Hold the temperature range for inactive period
         self._is_fan = False  # True is this sensor is used by fan
         self.handler_info = collections.defaultdict()  # Holds info for display ctrl about sensors handler
         # print("Sensor " + str(self.id) + " maps to " + str(self.display_id))
@@ -68,6 +69,7 @@ class SensorClass(object):
                     self.set_range(r)
                     ro = p.temperature_ranges_active_org[self.item]
                     self.set_range_org(ro)
+                    self.range_inactive = p.temperature_ranges_inactive_org[self.item]
                     self.has_process = True
                 else:
                     # @todo Add call to msg sys - No temperature range for process

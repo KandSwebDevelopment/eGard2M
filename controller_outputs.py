@@ -65,6 +65,10 @@ class OutputController(QObject):
     def get_set_temperatures(self, op_id):
         return self.outputs[op_id].get_set_temperatures()
 
+    def get_set_temperatures_inactive(self, s_id):
+        return self.area_controller.sensors[s_id].range_inactive['low'], \
+               self.area_controller.sensors[s_id].range_inactive['set']
+
     def get_actual_position(self, op_id):
         return self.outputs[op_id].relay_position
 
@@ -81,8 +85,8 @@ class OutputController(QObject):
         self.outputs[op_id].set_input_sensor(sid)
         self.main_panel.coms_interface.relay_send(NWC_OUTPUT_SENSOR, op_id, sid)
 
-    def change_range(self, op_id, on, off):
-        self.outputs[op_id].set_range(on, off)
+    def change_range(self, op_id, on, off, tmz):
+        self.outputs[op_id].set_range(on, off, tmz)
         self.main_panel.coms_interface.relay_send(NWC_OUTPUT_RANGE, op_id)
 
     def reload_range(self, op_id):

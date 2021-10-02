@@ -260,9 +260,11 @@ class AreaController(QObject):
         :rtype : ProcessClass
         """
         try:
-            return self.areas_processes[area]
+            if area in self.areas_processes:
+                return self.areas_processes[area]
+            return 0
         except Exception as e:
-            # print("get_area_process", e)
+            print("get_area_process", e)
             return 0
 
     def get_light_status(self, area):

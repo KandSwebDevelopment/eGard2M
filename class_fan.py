@@ -128,10 +128,10 @@ class FanClass(QThread):
             self.startup_counter = self.fan_spin_up
             self.startup_timer.start()
             getattr(self.fan_controller.main_panel, "lefanspeed_{}".format(self.id)).setStyleSheet("background-color: Yellow;")
+        else:
+            getattr(self.fan_controller.main_panel, "lefanspeed_{}".format(self.id)).setText(str(speed))
 
-        # self.update_fan_speed.emit(self.id, speed)
         print("Fan {} switched to speed {} at temperature {}".format(self.id, self._speed, self.input))
-        getattr(self.fan_controller.main_panel, "lefanspeed_{}".format(self.id)).setText(str(speed))
         self.last_speed = self._speed
 
     @property

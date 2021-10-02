@@ -4055,23 +4055,22 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         self.font_n = QtGui.QFont()
         self.font_n.setItalic(False)
 
-        sql = 'SELECT `id`, `name`, `area`, `type`, `input`, `range`, `pin`, `short_name` FROM {} WHERE ' \
-              '`area` = {} AND `item` = {}'. format(DB_OUTPUTS, self.area, self.item)
-        row = self.db.execute_one_row(sql)
-        self.mode = row[3]
-        self.pin_id = row[6]       # Use as index for the Outputs[] dictionary
-        self.sensor = row[4]
-        t = row[5].split(',')
-        self.offset_on = string_to_float(t[0])
-        self.offset_off = string_to_float(t[1])
+        # get day or night
+        self.on_day = self.main_panel.area_controller.get_light_status(self.area)
+        self.day_night = self.on_day    # Holds the day night value. Will be same as on_day unless inverted
+        self.mode = 0
+        self.pin_id = 0      # Use as index for the Outputs[] dictionary
+        self.db_id = 0          # Id in db
+        self.sensor = 0
+        self.offset_on = 0
+        self.offset_off = 0
+        self.inverted = True    # Set true as invert() will change it
+
+        self.load()
+        self.invert()
         self.detection_mode = self.output_controller.outputs[self.pin_id].detection
         self.lbl_detection.setText("<" if self.detection_mode == DET_FALL else ">")
-        if self.area < 4:
-            self.lbl_name.setText("{} in area {}".format(row[1], self.area))
-        elif self.area == 4:
-            self.lbl_name.setText("Workshop Heater")
-        elif self.area == 7:
-            self.lbl_name.setText("Water Heater in tank {}".format(self.area))
+
         self.cb_out_mode_1_1.addItem("Off", 0)
         self.cb_out_mode_1_1.addItem("Manual On", 1)
         self.cb_out_mode_1_1.addItem("Sensor", 2)
@@ -4079,7 +4078,7 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         self.cb_out_mode_1_1.addItem("Both", 4)
         self.cb_out_mode_1_1.addItem("All Day", 5)
         self.cb_out_mode_1_1.addItem("All Night", 6)
-        self.cb_out_mode_1_1.setCurrentIndex(self.cb_out_mode_1_1.findData(row[3]))
+        self.cb_out_mode_1_1.setCurrentIndex(self.cb_out_mode_1_1.findData(self.mode))
         self.mode_change()
         self.cb_out_mode_1_1.currentIndexChanged.connect(self.mode_change)
 
@@ -4087,7 +4086,7 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         rows = self.db.execute(sql)
         for r in rows:
             self.cb_sensor_out_1_1.addItem(r[0], r[1])
-        self.cb_sensor_out_1_1.setCurrentIndex(self.cb_sensor_out_1_1.findData(row[4]))
+        self.cb_sensor_out_1_1.setCurrentIndex(self.cb_sensor_out_1_1.findData(self.sensor))
         self.cb_sensor_out_1_1.currentIndexChanged.connect(self.sensor_change)
         self.le_range_on_1_1.editingFinished.connect(self.range_change)
         self.le_range_off_1_1.editingFinished.connect(self.range_change)
@@ -4095,17 +4094,59 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
 
         self.on, self.off = self.output_controller.get_set_temperatures(self.pin_id)
 
-        self.le_range_on_1_1.setText(str(self.on + self.offset_on))
-        self.le_range_off_1_1.setText(str(self.off + self.offset_off))
-        self.lbl_set_on_1_1.setText(str(self.on))
-        self.lbl_set_off_1_1.setText(str(self.off))
         self.cb_trigger.addItem("Falling", DET_FALL)
         self.cb_trigger.addItem("Rising", DET_RISE)
         self.cb_trigger.setCurrentIndex(self.cb_trigger.findData(self.detection_mode))
         self.cb_trigger.currentIndexChanged.connect(self.change_detection_mode)
         self.ck_lock.setChecked(self.output_controller.outputs[self.pin_id].locked)
         self.ck_lock.clicked.connect(self.change_lock)
+        self.pb_switch.clicked.connect(self.invert)
         self.set_controls()
+
+    def load(self):
+        if self.day_night == DAY:
+            sql = 'SELECT `id`, `name`, `area`, `type`, `input`, `range`, `pin`, `short_name` FROM {} WHERE ' \
+                  '`area` = {} AND `item` = {}'. format(DB_OUTPUTS, self.area, self.item)
+            dnt = "Day"
+        else:
+            sql = 'SELECT `id`, `name`, `area`, `type`, `input`, `range_night`, `pin`, `short_name` FROM {} WHERE ' \
+                  '`area` = {} AND `item` = {}'. format(DB_OUTPUTS, self.area, self.item)
+            dnt = "Night"
+        row = self.db.execute_one_row(sql)
+        self.db_id = row[0]
+        self.mode = row[3]
+        self.pin_id = row[6]       # Use as index for the Outputs[] dictionary
+        self.sensor = row[4]
+        t = row[5].split(',')
+        self.offset_on = string_to_float(t[0])
+        self.offset_off = string_to_float(t[1])
+        if self.area < 4:
+            self.lbl_name.setText("{} in\r\nArea {} ({})".format(row[1], self.area, dnt))
+        elif self.area == 4:
+            self.lbl_name.setText("Workshop Heater")
+        elif self.area == 7:
+            self.lbl_name.setText("Water Heater in tank {}".format(self.area))
+
+    def invert(self):
+        if self.inverted:
+            self.day_night = self.on_day
+            self.inverted = False
+            stylesheet = ""
+            self.pb_switch.setText("Night" if self.on_day else "Day")
+            self.on, self.off = self.output_controller.get_set_temperatures(self.pin_id)
+        else:
+            self.day_night = int(not self.day_night)
+            self.inverted = True
+            self.pb_switch.setText("Day" if self.on_day else "Night")
+            stylesheet = "Color: White; background-color: red"
+            self.on, self.off = self.output_controller.get_set_temperatures_inactive(self.sensor)
+        self.load()
+        self.le_range_on_1_1.setText(str(self.on + self.offset_on))
+        self.le_range_on_1_1.setStyleSheet(stylesheet)
+        self.le_range_off_1_1.setText(str(self.off + self.offset_off))
+        self.le_range_off_1_1.setStyleSheet(stylesheet)
+        self.lbl_set_on_1_1.setText(str(self.on))
+        self.lbl_set_off_1_1.setText(str(self.off))
 
     def change_lock(self):
         lock = self.ck_lock.isChecked()
@@ -4121,6 +4162,7 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
             self.pb_reset.setEnabled(False)
             self.cb_trigger.setEnabled(False)
             self.cb_timer_1_1.setEnabled(False)
+            self.pb_switch.setEnabled(False)
         else:
             self.cb_out_mode_1_1.setEnabled(True)
             self.cb_sensor_out_1_1.setEnabled(True)
@@ -4129,6 +4171,7 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
             self.pb_reset.setEnabled(True)
             self.cb_trigger.setEnabled(True)
             self.cb_timer_1_1.setEnabled(True)
+            self.pb_switch.setEnabled(True)
 
     def change_detection_mode(self):
         self.detection_mode = self.cb_trigger.currentData()
@@ -4170,7 +4213,16 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
                 self.le_range_off_1_1.setText(str(off))
         on = on - self.on
         off = off - self.off
-        self.output_controller.change_range(self.pin_id, on, off)
+        if not self.inverted:
+            self.output_controller.change_range(self.pin_id, on, off, self.day_night)
+        else:
+            r = "{}, {}".format(on, off)
+            if self.day_night == DAY:
+                sql = 'UPDATE {} SET `range` = "{}" WHERE id = {}'.format(DB_OUTPUTS, r, self.db_id)
+            else:
+                sql = 'UPDATE {} SET `range_night` = "{}" WHERE id = {}'.format(DB_OUTPUTS, r, self.db_id)
+            self.db.execute_write(sql)
+
         # self.main_panel.coms_interface.relay_send(NWC_OUTPUT_RANGE, self.pin_id) --- sent by above
 
 

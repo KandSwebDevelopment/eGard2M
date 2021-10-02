@@ -56,8 +56,14 @@ class OutputClass(QObject):
         self.locked = 0
 
     def load_profile(self):
-        row = self.db.execute_one_row('SELECT `name`, `area`, `type`, `input`, `range`, `pin`, `short_name`, `trigger`, locked FROM {}'
-                                      ' WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
+        if self.output_controller.area_controller.get_light_status(self.area):
+            row = self.db.execute_one_row('SELECT `name`, `area`, `type`, `input`, `range`, `pin`, `short_name`, '
+                                          '`trigger`, locked FROM {}'
+                                          ' WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
+        else:
+            row = self.db.execute_one_row('SELECT `name`, `area`, `type`, `input`, `range_night`, `pin`, '
+                                          '`short_name`, `trigger`, locked FROM {}'
+                                          ' WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
         if len(row) == 0:
             return
         self.name = row[0]
@@ -79,7 +85,10 @@ class OutputClass(QObject):
 
     def load_ranges(self):
         s, hi, lo = self.output_controller.area_controller.sensors[self.input_sensor].get_set_temperatures()
-        range_ = self.db.execute_single('SELECT `range` FROM {} WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
+        if self.output_controller.area_controller.get_light_status(self.area):
+            range_ = self.db.execute_single('SELECT `range` FROM {} WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
+        else:
+            range_ = self.db.execute_single('SELECT `range_night` FROM {} WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
         self.temp_on = lo
         self.temp_off = s
         range_ = range_.split(",")
@@ -119,13 +128,16 @@ class OutputClass(QObject):
         self._check()
         self.update_info()
 
-    def set_range(self, on_dif, off_dif):
+    def set_range(self, on_dif, off_dif, tmz):
         """ Set new values for range (Difference between sensor set point and output switching values
             and updates the db and the control """
         self.range[0] = on_dif
         self.range[1] = off_dif
         r = "{}, {}".format(on_dif, off_dif)
-        sql = 'UPDATE {} SET `range` = "{}" WHERE id = {}'.format(DB_OUTPUTS, r, self.ctrl_id)
+        if tmz == DAY:
+            sql = 'UPDATE {} SET `range` = "{}" WHERE id = {}'.format(DB_OUTPUTS, r, self.ctrl_id)
+        else:
+            sql = 'UPDATE {} SET `range_night` = "{}" WHERE id = {}'.format(DB_OUTPUTS, r, self.ctrl_id)
         print(sql)
         self.db.execute_write(sql)
 
@@ -140,25 +152,6 @@ class OutputClass(QObject):
     def set_detection(self, detection):  # See defines DET_ detection types
         self.detection = detection
         self.db.execute_write('UPDATE {} SET `trigger` WHERE id = {} LIMIT 1'. format(DB_OUTPUTS, self.ctrl_id))
-
-    # def set_active(self, active=None):
-    #     # If active is not provided it will just swap states
-    #     if active is None:
-    #         self.is_active = not self.is_active
-    #     else:
-    #         self.is_active = active
-    #     if self.is_active:
-    #         if self.detection & DET_TIMER == DET_TIMER:
-    #             if self.duration > 0:
-    #                 self.off_time = (datetime.now() + timedelta(minutes=self.duration))
-    #             else:
-    #                 self.off_time = None
-    #             self.update_control(active)
-    #         else:
-    #             self.is_active = True
-    #             self.update_control(OFF)
-    #     else:
-    #         self.switch(OFF)
 
     def set_limits(self, on_temp, off_temp):
         """ Set the on and off temperatures for the output and updates all """

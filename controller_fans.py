@@ -22,7 +22,7 @@ class FansController(QObject):
         self.master_mode = self.main_panel.master_mode
         self.fans = collections.defaultdict(FanClass)
 
-        self.master_power = int(self.db.get_config(CFT_FANS, "master", 1))
+        self.master_power = UNSET
         self.fans[1] = FanClass(self, 1)
         self.fans[2] = FanClass(self, 2)
         current = self.db.execute_single('SELECT sensor FROM {} WHERE id = {}'.format(DB_FANS, 1))
@@ -31,7 +31,7 @@ class FansController(QObject):
         self.set_fan_sensor(2, current)
 
         # if self.area_controller.master_mode == MASTER:
-        self.set_master_power(self.master_power)
+        self.set_master_power(int(self.db.get_config(CFT_FANS, "master", 1)))
         self.update_fans_mode.emit(self.get_mode(1), self.get_mode(2), self.master_power)
         self.area_controller.main_window.coms_interface.update_fan_speed.connect(self.speed_update)
         self.area_controller.main_window.coms_interface.update_switch.connect(self.switch_update)
@@ -75,7 +75,7 @@ class FansController(QObject):
         self.fans[area].sensor = sensor_id
 
     def set_master_power(self, state):
-        if state == self.master_power:
+        if state != self.master_power:
             # if self.area_controller.master_mode == MASTER:
             self.area_controller.main_window.coms_interface.send_switch(SW_FANS_POWER, state)
             self.master_power = state
