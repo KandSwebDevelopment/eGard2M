@@ -44,7 +44,8 @@ class FansController(QObject):
         elif fan == 2:
             self.main_panel.lefanspeed_2.setText(str(speed))
         self.fans[fan].update_speed(speed)
-        # self.coms_interface.relay_send(NWC_FAN_SPEED, fan, speed)
+        if self.area_controller.master_mode == MASTER:
+            self.coms_interface.relay_send(NWC_FAN_SPEED, fan, speed)
 
     def get_mode(self, area):
         return self.fans[area].mode
