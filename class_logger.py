@@ -74,10 +74,10 @@ class Logger(QObject):
     def save(self):
         pass
 
-    def save_fan_log(self, fan, data):
+    def save_fan_log(self, data):
         if not self.available:
             return
-        self.fan_file = self.system_path + "\\fan_{}_{}.txt".format(fan, self.today_name)
+        self.fan_file = self.log_path + "\\{}.fan".format(self.today_name)
         f = open(self.fan_file, "a")
         text = datetime.strftime(datetime.now(), "%H:%M, ") + data + self.new_line
         # print(text)

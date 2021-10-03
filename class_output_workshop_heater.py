@@ -34,10 +34,11 @@ class OutputWorkshopHeater(OutputClass):
         if state == ON:
             self.remaining = self.duration
             self.boost_timer.start(60000)
+            getattr(self.output_controller.main_panel, "lbl_output_number_%i" % self.ctrl_id).setText(str(self.remaining))   # This is timer display
         else:
             self.boost_timer.stop()
             self.remaining = 0
-            getattr(self.output_controller.main_panel, "lbl_output_number_%i" % self.ctrl_id).setText("")
+            getattr(self.output_controller.main_panel, "lbl_output_number_%i" % self.ctrl_id).setText("")   # This is timer display
 
     def load_settings(self):
         self.auto_boost = int(self.db.get_config(CFT_WORKSHOP_HEATER, "auto boost", 1))

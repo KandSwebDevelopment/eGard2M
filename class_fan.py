@@ -28,7 +28,7 @@ class FanClass(QThread):
         self._speed = 0
         self.last_speed = -1
         self._set_point = 0
-        self._logging = False    # if True will log sensor temperature and fan speed
+        self._logging = True    # if True will log sensor temperature and fan speed
         self._mode = 0
         self._master_power = 0
         self.fan_spin_up = int(self.db.get_config(CFT_FANS, "spin up", 10))
@@ -180,7 +180,7 @@ class FanClass(QThread):
         # print("Fan input ", value)
         if self._logging:
             self.fan_controller.area_controller.main_window.logger.save_fan_log(
-                self.id, "{},{},{}".format(self.input, self._speed, self._set_point))
+                "{}, {}, {}, {}".format(self.id, self.input, self._speed, self._set_point))
 
     def reset(self):
         self.pid.clear()
