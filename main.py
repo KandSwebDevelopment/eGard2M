@@ -157,6 +157,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def calculate_weekly_average(self):
         lf = get_last_friday()
+        print("Last Friday ", lf)
         ed = lf - timedelta(days=1)
         sd = lf - timedelta(days=28)
         sql = "select ROUND(SUM(d.grams), 2) AS total " \

@@ -82,7 +82,12 @@ class FansController(QObject):
             self.master_power = state
 
     def set_speed(self, area, speed):
+        """ Set the speed manually """
         self.fans[area].speed = speed
+
+    def set_req_temperature(self, area, value):
+        self.fans[area].set_point(value)
+        self.area_controller.main_window.coms_interface.relay_send(NWC_FAN_REQUIRED, value)
 
     def start_fan(self, area):
         if self.area_controller.area_has_process(area):

@@ -271,7 +271,7 @@ class CommunicationInterface(QObject):
             self.relay_command(relay_command)
         elif command == CMD_FAN_SPEED:
             self.update_fan_speed.emit(int(prams[0]), int(prams[1]))
-            self.relay_send(NWC_FAN_UPDATE, prams[0], prams[1])
+            self.relay_send(NWC_FAN_SPEED, prams[0], prams[1])
         elif command == COM_SOIL_READ:
             self.update_soil_reading.emit(prams)
             self.relay_command(relay_command)
@@ -373,6 +373,7 @@ class CommunicationInterface(QObject):
                 command == NWC_FAN_SENSOR or \
                 command == NWC_FAN_SPEED or \
                 command == NWC_FAN_MODE or \
+                command == NWC_FAN_REQUIRED or \
                 command == NWC_FAN_UPDATE:
             self.update_from_relay.emit(command, [int(prams[0]), int(prams[1])])
         # 2 float prams

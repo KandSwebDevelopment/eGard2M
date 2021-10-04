@@ -310,6 +310,7 @@ NWC_DRYING_AREA = "drying_area"             # Reload drying area settings
 NWC_FAN_SENSOR = "fan sensor"               # Fan sensor has changed, fan num, new sensor id
 NWC_FAN_SPEED = "fan speed"                 # Fan speed has been changed Manually, fan num, speed
 NWC_FAN_MODE = "fan mode"                   # Fan mode has changed, fan num, mode
+NWC_FAN_REQUIRED = "fan required"           # Fan required temperature has changed, fan num, value
 NWC_FAN_UPDATE = "fan update"               # Update slaves fan speeds, fan 1 speed, fan 2 speed  100, 100 for speed is a request
 NWC_MESSAGE = "message"                     # Refresh msg sys
 NWC_MODULES_STATUS = "modules_status"       # I/O D/E modules on/off line

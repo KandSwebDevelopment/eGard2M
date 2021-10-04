@@ -163,6 +163,7 @@ class FanClass(QThread):
     def set_point(self, value):
         self._set_point = value
         self.pid.SetPoint = value
+        self.pid.clear()
 
     def set_kp(self, kp):
         self.pid.Kp = kp
@@ -195,6 +196,7 @@ class FanClass(QThread):
     def start_auto(self):
         self.start_manual()
         self.mode = 2
+        self.pid.clear()
         if not self.isRunning():
             self.start()
 

@@ -205,8 +205,6 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.area_controller.output_controller.check_water_heaters()
 
     def loop_5(self):  # 60 secs
-        if self.master_mode == MASTER:
-            self.coms_interface.send_command(NWC_SOIL_READ)
         self.update_next_feeds()
         # Check for new day
         if datetime.now().day != self.today:
@@ -219,8 +217,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 self.main_window.logger.save_output_log(self.area_controller.output_controller.get_output_log_values())
 
     def loop_6(self): # 2 mins
-        pass
-        # self.main_window.logger.save_log(self.area_controller.get_sensor_log_values())
+        if self.master_mode == MASTER:
+            self.coms_interface.send_command(NWC_SOIL_READ)
 
     def loop_15(self):  # 3 Min
         if self.main_window.access.has_status(ACS_COVER_OPEN) and \
@@ -1111,6 +1109,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             else:
                 self.update_fans(1, data[0])
                 self.update_fans(2, data[1])
+        elif cmd == NWC_FAN_REQUIRED:
+            self.area_controller.fan_controller.set_req_temperature(data[0], data[1])
         elif cmd == NWC_FAN_MODE:
             self.area_controller.fan_controller.set_mode(data[0], data[1])
         elif cmd == NWC_FAN_SPEED:

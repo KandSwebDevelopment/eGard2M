@@ -131,8 +131,8 @@ class OutputClass(QObject):
     def set_range(self, on_dif, off_dif, tmz):
         """ Set new values for range (Difference between sensor set point and output switching values
             and updates the db and the control """
-        self.range[0] = on_dif
-        self.range[1] = off_dif
+        self.range[0] = round(on_dif, 1)
+        self.range[1] = round(off_dif, 1)
         r = "{}, {}".format(on_dif, off_dif)
         if tmz == DAY:
             sql = 'UPDATE {} SET `range` = "{}" WHERE id = {}'.format(DB_OUTPUTS, r, self.ctrl_id)
