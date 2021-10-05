@@ -109,7 +109,7 @@ class PID:
         """Determines how aggressively the PID reacts to the current error with setting Integral Gain"""
         self.Ki = integral_gain
 
-    def setKd(self, derivative_gain):
+    def set_kd(self, derivative_gain):
         """Determines how aggressively the PID reacts to the current error with setting Derivative Gain"""
         self.Kd = derivative_gain
 
@@ -146,7 +146,7 @@ class PID:
         self._min_output = min_output
         self._max_output = max_output
 
-    def setWindup(self, windup):
+    def set_wind_up(self, windup):
         """Integral windup, also known as integrator windup or reset windup,
         refers to the situation in a PID feedback controller where
         a large change in setpoint occurs (say a positive change)
@@ -158,7 +158,7 @@ class PID:
         """
         self.windup_guard = windup
 
-    def setSampleTime(self, sample_time):
+    def set_sample_time(self, sample_time):
         """PID that should be updated at a regular interval.
         Based on a pre-determined sampe time, the PID decides if it should compute or return immediately.
         """

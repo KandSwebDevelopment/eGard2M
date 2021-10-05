@@ -351,6 +351,7 @@ class CommunicationInterface(QObject):
             self.update_from_relay.emit(command, [])
         # 1 pram
         elif command == NWC_FEED_DATE or \
+                command == NWC_FAN_PID or \
                 command == NWC_FEED or \
                 command == NWC_PROCESS_MIX_CHANGE or \
                 command == NWC_PROCESS_FEED_MODE or \

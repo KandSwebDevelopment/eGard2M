@@ -1115,6 +1115,9 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.area_controller.fan_controller.set_req_temperature(data[0], data[1])
         elif cmd == NWC_FAN_MODE:
             self.area_controller.fan_controller.set_mode(data[0], data[1])
+        elif cmd == NWC_FAN_PID:
+            self.area_controller.fan_controller.fans[data[0]].load_pid_values()
+            self.area_controller.fan_controller.fans[data[0]].reset()
         elif cmd == NWC_FAN_SPEED:
             self.area_controller.fan_controller.speed_update(data[0], data[1])
         elif cmd == NWC_FAN_SENSOR:

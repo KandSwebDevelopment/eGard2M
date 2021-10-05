@@ -4305,9 +4305,9 @@ class DialogSettings(QDialog, Ui_DialogSettings):
         self.le_kd_2.setText(str(row[4]))
 
         self.pb_save_fans_1.clicked.connect(lambda: self.save_fans(1))
-        self.pb_reset_fan_1.clicked.connect(lambda: self.main_panel.fans[1].reset())
+        self.pb_reset_fan_1.clicked.connect(lambda: self.main_panel.area_controller.fan_controller.fans[1].reset())
         self.pb_save_fans_2.clicked.connect(lambda: self.save_fans(2))
-        self.pb_reset_fan_2.clicked.connect(lambda: self.main_panel.fans[2].reset())
+        self.pb_reset_fan_2.clicked.connect(lambda: self.main_panelarea_controller.fan_controller.fans[2].reset())
         # self.pb_show_log_1.clicked.connect(lambda: self.main_panel.dialog_control("Fan 1 Log", DialogFanLog, 1))
         # self.pb_show_log_2.clicked.connect(lambda: self.main_panel.dialog_control("Fan 2 Log", DialogFanLog, 2))
 
@@ -4427,8 +4427,9 @@ class DialogSettings(QDialog, Ui_DialogSettings):
         kd = string_to_float(getattr(self, "le_kd_{}".format(fan)).text())
         self.db.execute_write("UPDATE {} set Kp = {}, Ki = {}, Kd = {} WHERE id = {} LIMIT 1".
                               format(DB_FANS, kp, ki, kd, fan))
-        self.main_panel.fans[fan].set_pid(kp, ki, kd)
-        self.main_panel.fans[fan].reset()
+        self.main_panel.area_controller.fan_controller.fans[fan].set_pid(kp, ki, kd)
+        self.main_panel.area_controller.fan_controller.fans[fan].reset()
+        self.main_panel.coms_interface.relay_send(NWC_FAN_PID, fan)
 
 
 class DialogProcessPerformance(QDialog, Ui_DialogProcessPreformance):

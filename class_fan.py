@@ -40,12 +40,16 @@ class FanClass(QThread):
         row = self.db.execute_one_row("SELECT sensor, mode, Kp, Ki, Kd FROM {} WHERE id = {}".format(DB_FANS, self.id))
         self._sensor = row[0] if row[0] is not None else 0
         self.mode = row[1] if row[1] is not None else 0     # 0 = Off 1 = On, 2 = Auto
-        self.set_pid(row[2] if row[2] is not None else 0,
-                     row[3] if row[3] is not None else 0,
-                     row[4] if row[4] is not None else 0)
+        self.load_pid_values()
         # self._load_set_point()    # Not needed here as done later
         self._load_sensor_calibration()
         self.update_info()
+
+    def load_pid_values(self):
+        row = self.db.execute_one_row("SELECT Kp, Ki, Kd FROM {} WHERE id = {}".format(DB_FANS, self.id))
+        self.set_pid(row[0] if row[0] is not None else 0,
+                     row[1] if row[1] is not None else 0,
+                     row[2] if row[2] is not None else 0)
 
     def _load_sensor_calibration(self):
         self.input_calibration = self.db.execute_single(
