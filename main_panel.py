@@ -537,14 +537,14 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                         getattr(self, "pb_pm2_%i" % row[0]).setToolTip("{}\r\nDay {} drying".format(name, days))
 
     def check_light(self):
+        """ This checks both area processes to see if light should be on or off. If a change is detected it sends
+            switch to IO.
+            self.update_switch handles the change when it has actually switched """
         if self.area_controller.area_has_process(1):
             status = self.area_controller.get_area_process(1).check_light()
             self.area_controller.get_area_process(1).check_trans()
             if self.area_controller.light_relay_1 != status:
-                # if self.master_mode == MASTER:
                 self.coms_interface.send_switch(SW_LIGHT_1, status)
-                # else:
-                #     self.coms_interface.relay_send(NWC_SWITCH_REQUEST, SW_LIGHT_1)
         else:
             if self.area_controller.light_relay_1 != OFF:
                 self.coms_interface.send_switch(SW_LIGHT_1, OFF)
@@ -914,6 +914,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         if module == MODULE_IO or module == MODULE_SL:
             if sw == OUT_LIGHT_1:
                 self.area_controller.reload_sensor_ranges(1)
+                self.area_controller.fan_controller.load_req_temperature(1)
                 if state == 0:
                     self.lbl_light_status_1.setPixmap(QtGui.QPixmap(":/normal/light_off.png"))
                     self.area_controller.light_relay_1 = state
@@ -924,6 +925,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                     self.db.set_config(CFT_AREA, "mode {}".format(1), state + 1)
             if sw == OUT_LIGHT_2:
                 self.area_controller.reload_sensor_ranges(2)
+                self.area_controller.fan_controller.load_req_temperature(1)
                 if state == 0:
                     self.lbl_light_status_2.setPixmap(QtGui.QPixmap(":/normal/light_off.png"))
                     self.area_controller.light_relay_2 = state

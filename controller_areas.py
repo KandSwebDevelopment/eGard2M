@@ -166,11 +166,14 @@ class AreaController(QObject):
             ctrl.setPixmap(QtGui.QPixmap(":/normal/flowering.png"))
 
     def change_day_night(self):
-        """ This loads the day or night sensor and output settings"""
+        """ This loads the day or night sensor and output settings
+            The process load_active_temperature_ranges has to be called before this"""
         if self.area_has_process(1):
             self.reload_sensor_ranges(1)
+            self.fan_controller.load_req_temperature(1)
         if self.area_has_process(2):
             self.reload_sensor_ranges(2)
+            self.fan_controller.load_req_temperature(2)
 
     def load_sensors(self, area):
         sql = 'SELECT * FROM {} WHERE area = {}'.format(DB_SENSORS_CONFIG, area)

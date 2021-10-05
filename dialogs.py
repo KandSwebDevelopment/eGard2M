@@ -3830,7 +3830,7 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self._check_high(nv)
         # Check low value
         self._check_low(nv)
-        self.main_panel.area_controller.fan_controller.set_req_temperature(self.id, nv)
+        self.main_panel.area_controller.fan_controller.set_req_temperature(self.area, nv)
         if self.process != 0:
             self.process.load_active_temperature_ranges()
             self.main_panel.area_controller.sensors[self.s_id].load_range()
@@ -3899,7 +3899,7 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
             self.db.execute_write('UPDATE {} SET value = {} WHERE area= {} AND day = {} AND item = {} AND setting = '
                                   '"set" LIMIT 1'.format(DB_PROCESS_TEMPERATURE, nv, self.area, self.day_night, self.item))
             self.set = nv - 0.5
-            self.main_panel.area_controller.fan_controller.set_req_temperature(self.id, self.set)
+            self.main_panel.area_controller.fan_controller.set_req_temperature(self.area, self.set)
 
     def _check_set_low(self, nv):
         # checks set value from low
@@ -3908,7 +3908,7 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
             self.db.execute_write('UPDATE {} SET value = {} WHERE area= {} AND day = {} AND item = {} AND setting = '
                                   '"set" LIMIT 1'.format(DB_PROCESS_TEMPERATURE, nv, self.area, self.day_night, self.item))
             self.set = nv + 0.5
-            self.main_panel.area_controller.fan_controller.set_req_temperature(self.id, self.set)
+            self.main_panel.area_controller.fan_controller.set_req_temperature(self.area, self.set)
 
     def set_as_fan(self):
         msg = QMessageBox()

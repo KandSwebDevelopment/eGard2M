@@ -86,8 +86,14 @@ class FansController(QObject):
         self.fans[area].speed = speed
 
     def set_req_temperature(self, area, value):
+        """ For manual changes to set temperature"""
         self.fans[area].set_point(value)
         self.area_controller.main_window.coms_interface.relay_send(NWC_FAN_REQUIRED, value)
+
+    def load_req_temperature(self, area):
+        s = self.fans[area].sensor
+        if s > 0:
+            self.fans[area].set_point(self.area_controller.sensors[s].get_set())
 
     def start_fan(self, area):
         if self.area_controller.area_has_process(area):

@@ -43,7 +43,7 @@ class FanClass(QThread):
         self.set_pid(row[2] if row[2] is not None else 0,
                      row[3] if row[3] is not None else 0,
                      row[4] if row[4] is not None else 0)
-        self._load_set_point()
+        # self._load_set_point()    # Not needed here as done later
         self._load_sensor_calibration()
         self.update_info()
 
@@ -164,6 +164,7 @@ class FanClass(QThread):
         self._set_point = value
         self.pid.SetPoint = value
         self.pid.clear()
+        print("Fan {} set point {}".format(self.id, value))
 
     def set_kp(self, kp):
         self.pid.Kp = kp
