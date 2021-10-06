@@ -49,6 +49,9 @@ OPERATE = 3
 WATER_ONLY = "Water Only"
 WATER_ONLY_IDX = 100
 
+MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+MONTHS_S = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
 # colours
 OK_BG = "springgreen"
 OK_FG = "black"

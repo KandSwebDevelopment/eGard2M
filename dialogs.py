@@ -1,5 +1,6 @@
 import collections
 import fnmatch
+import glob
 import os
 import pprint
 import socket
@@ -2698,6 +2699,7 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.values = collections.defaultdict(list)
         self.weeks_use = collections.defaultdict()
         self.legend = []
+        self.logs = []
         self.values['oh'] = []
         self.values['ot'] = []
         self.values['1h'] = []
@@ -2706,12 +2708,70 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.values['1r'] = []
         self.plot = None
         self.ax2 = None
-        self.logs = fnmatch.filter(os.listdir(self.logger.log_path), '*.cvs')
-        for lg in self.logs:
-            self.cb_logs.addItem(lg[0:8], lg)
-        self.cb_logs.currentIndexChanged.connect(self.load_log)
-        self.pb_refresh.clicked.connect(self.plot_output)
+        self.plot_outputs = None
+
+        for y in range(2021, datetime.now().year + 1):
+            self.cb_year.addItem(str(y), y)
+            self.cb_year_2.addItem(str(y), y)
+            self.cb_year_3.addItem(str(y), y)
+            self.cb_year_4.addItem(str(y), y)
+        self.cb_year.setCurrentIndex(self.cb_year.findData(datetime.now().year))
+        self.cb_year_2.setCurrentIndex(self.cb_year_2.findData(datetime.now().year))
+        self.cb_year_3.setCurrentIndex(self.cb_year_3.findData(datetime.now().year))
+        self.cb_year_4.setCurrentIndex(self.cb_year_4.findData(datetime.now().year))
+        i = 1
+        for m in MONTHS:
+            self.cb_month.addItem(m, i)
+            self.cb_month_2.addItem(m, i)
+            self.cb_month_3.addItem(m, i)
+            self.cb_month_4.addItem(m, i)
+            i += 1
+        self.cb_month.setCurrentIndex(self.cb_month.findData(datetime.now().month))
+        self.cb_month_2.setCurrentIndex(self.cb_month_2.findData(datetime.now().month))
+        self.cb_month_3.setCurrentIndex(self.cb_month_3.findData(datetime.now().month))
+        self.cb_month_4.setCurrentIndex(self.cb_month_4.findData(datetime.now().month))
+        self.cb_month.currentIndexChanged.connect(lambda: self.load_available_logs("cvs"))
+        self.cb_month_2.currentIndexChanged.connect(lambda: self.load_available_logs("opd"))
+        self.cb_month_3.currentIndexChanged.connect(lambda: self.load_available_logs("fan"))
+        self.cb_month_4.currentIndexChanged.connect(lambda: self.load_available_logs("acc"))
+        self.load_available_logs("cvs")
+        self.load_available_logs("opd")
+        self.load_available_logs("fan")
+        self.load_available_logs("acc")
+        # self.cb_logs.currentIndexChanged.connect(self.load_log)
+        self.pb_reload.clicked.connect(self.load_log)
+        self.pb_refresh.clicked.connect(self.plot_sensors)
         self.ck_live.clicked.connect(self.go_live)
+
+    def load_available_logs(self, f_type):
+        pattern = str(self.cb_year.currentData()) + str(self.cb_month.currentData()).zfill(2) + "[0-9][0-9]." + f_type
+        if f_type == "cvs":
+            self.cb_logs.blockSignals(True)
+            self.cb_logs.clear()
+        elif f_type == "opd":
+            self.cb_logs_2.blockSignals(True)
+            self.cb_logs_2.clear()
+        elif f_type == "fan":
+            self.cb_logs_3.blockSignals(True)
+            self.cb_logs_3.clear()
+        # for name in glob.glob(self.logger.log_path + "\\" + pattern):
+        #     self.logs.append(name)
+        self.logs = fnmatch.filter(os.listdir(self.logger.log_path), pattern)
+        self.logs.reverse()
+        for lg in self.logs:
+            s = "{}-{}-{}".format(lg[6:8], lg[4:6], lg[0:4])
+            if f_type == "cvs":
+                self.cb_logs.addItem(s, lg)
+                self.cb_logs.blockSignals(False)
+            elif f_type == "opd":
+                self.cb_logs_2.addItem(s, lg)
+                self.cb_logs_2.blockSignals(False)
+            elif f_type == "fan":
+                self.cb_logs_3.addItem(s, lg)
+                self.cb_logs_3.blockSignals(False)
+            elif f_type == "acc":
+                self.cb_logs_4.addItem(s, lg)
+                self.cb_logs_4.blockSignals(False)
 
     def go_live(self):
         if self.ck_live.isChecked():
@@ -2723,7 +2783,7 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
 
     def auto_refresh(self):
         self._load_log(self.logger.data_filename)
-        self.plot_output()
+        self.plot_sensors()
 
     def load_log(self):
         log = self.cb_logs.currentData()
@@ -2761,23 +2821,8 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             self.values['ws'].append(string_to_float(r[10]))
             self.values['oh'].append(string_to_float(r[11]))
             self.values['ot'].append(string_to_float(r[12]))
-        # self.values['1h'] = numpy.array(self.values['1h'])
-        # self.values['1t'] = numpy.array(self.values['1t'])
-        # self.values['1c'] = numpy.array(self.values['1c'])
-        # self.values['1r'] = numpy.array(self.values['1r'])
-        # self.values['2h'] = numpy.array(self.values['2h'])
-        # self.values['2t'] = numpy.array(self.values['2t'])
-        # self.values['2c'] = numpy.array(self.values['2c'])
-        # self.values['2r'] = numpy.array(self.values['2r'])
-        # self.values['dh'] = numpy.array(self.values['dh'])
-        # self.values['dt'] = numpy.array(self.values['dt'])
-        # self.values['ws'] = numpy.array(self.values['ws'])
-        # self.values['oh'] = numpy.array(self.values['oh'])
-        # self.values['ot'] = numpy.array(self.values['ot'])
-        # self.times = numpy.array(self.times)
-        # print(self.times)
 
-    def plot_output(self):
+    def plot_sensors(self):
         self.plot = MplWidget(self.wg_graph_1, 12, 4.5)
         self.plot.canvas.axes.cla()
         if self.ax2 is not None:
@@ -2785,10 +2830,6 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             self.ax2 = None
         if self.temp_1_1.isChecked():
             self.plot.canvas.axes.plot(self.times, self.values['1t'], color='green', label='Area 1 Temperature')
-            # print("Times")
-            # pprint.pprint(self.times)
-            # print("Values")
-            # pprint.pprint(self.values['1t'])
         if self.temp_1_2.isChecked():
             self.plot.canvas.axes.plot(self.times, self.values['1c'], color='green', label='Area 1 Canopy', linestyle='dotted')
         if self.temp_1_3.isChecked():

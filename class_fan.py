@@ -16,7 +16,7 @@ class FanClass(QThread):
     def __init__(self, parent, _id):
         """ :type parent: MainWindow """
         QThread.__init__(self, parent)
-        self.fan_controller = parent                         # This's parent which is Area Controller
+        self.fan_controller = parent                         # This's parent which is Fan Controller
         self.db = self.fan_controller.db
         self.id = _id                                        # Fan 1 or 2 same as area
         self.pid = PID.PID(0, 0, 0)
@@ -184,9 +184,6 @@ class FanClass(QThread):
             return
         self.input = value + self.input_calibration
         # print("Fan input ", value)
-        if self._logging:
-            self.fan_controller.area_controller.main_window.logger.save_fan_log(
-                "{}, {}, {}, {}".format(self.id, self.input, self._speed, self._set_point))
 
     def reset(self):
         self.pid.clear()
@@ -223,12 +220,15 @@ class FanClass(QThread):
 
     def _switch(self, speed_raw):
         if self._mode == 2:     # Only do switching from PID if in auto mode
-            # print(self.id, " PID ", speed_raw)
+            print(self.id, " PID ", speed_raw)
             s = speed_raw if speed_raw > - 10 else -10
             s = s if s < 10 else 10
             # s = int((20 - (10 - s)) / 5) + 1
             s = int((10 - s) / 5) + 1
             self.switch(s)
+            if self._logging and self.fan_controller.master_mode == MASTER and s != self.last_speed:
+                self.fan_controller.area_controller.main_window.logger.save_fan_log(
+                    "{}, {}, {}, {}".format(self.id, self.input, s, self._set_point))
 
     def spin_up_timeout(self):
         if self.startup_counter <= 0:
