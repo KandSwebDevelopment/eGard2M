@@ -2697,6 +2697,7 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.live_timer.setInterval(120000)
         self.times = []
         self.values = collections.defaultdict(list)
+        self.output_values = collections.defaultdict(list)
         self.weeks_use = collections.defaultdict()
         self.legend = []
         self.logs = []
@@ -2706,10 +2707,25 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.values['1t'] = []
         self.values['1c'] = []
         self.values['1r'] = []
+        self.output_values['1h1'] = []
+        self.output_values['1h2'] = []
+        self.output_values['1a'] = []
+        self.output_values['1s'] = []
+        self.output_values['2h1'] = []
+        self.output_values['2h2'] = []
+        self.output_values['2a'] = []
+        self.output_values['2s'] = []
+        self.output_values['3h'] = []
+        self.output_values['ws'] = []
+        self.output_values['wh1'] = []
+        self.output_values['wh2'] = []
         self.plot = None
         self.ax2 = None
         self.plot_outputs = None
 
+        self.pb_close_2.clicked.connect(lambda: self.sub.close())
+        self.pb_close_3.clicked.connect(lambda: self.sub.close())
+        self.pb_close_4.clicked.connect(lambda: self.sub.close())
         for y in range(2021, datetime.now().year + 1):
             self.cb_year.addItem(str(y), y)
             self.cb_year_2.addItem(str(y), y)
@@ -2739,8 +2755,12 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.load_available_logs("fan")
         self.load_available_logs("acc")
         # self.cb_logs.currentIndexChanged.connect(self.load_log)
-        self.pb_reload.clicked.connect(self.load_log)
+        self.pb_reload.clicked.connect(lambda: self.load_log(1))
+        self.pb_reload_2.clicked.connect(lambda: self.load_log(2))
+        self.pb_reload_3.clicked.connect(lambda: self.load_log(3))
+        self.pb_reload_4.clicked.connect(lambda: self.load_log(4))
         self.pb_refresh.clicked.connect(self.plot_sensors)
+        self.pb_refresh_2.clicked.connect(self.outputs_plot)
         self.ck_live.clicked.connect(self.go_live)
 
     def load_available_logs(self, f_type):
@@ -2748,14 +2768,19 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         if f_type == "cvs":
             self.cb_logs.blockSignals(True)
             self.cb_logs.clear()
+            m = self.cb_month.currentData().zfill(2)
         elif f_type == "opd":
             self.cb_logs_2.blockSignals(True)
             self.cb_logs_2.clear()
+            m = self.cb_month_2.currentData().zfill(2)
         elif f_type == "fan":
             self.cb_logs_3.blockSignals(True)
             self.cb_logs_3.clear()
-        # for name in glob.glob(self.logger.log_path + "\\" + pattern):
-        #     self.logs.append(name)
+            m = self.cb_month_3.currentData().zfill(2)
+        elif f_type == "acc":
+            self.cb_logs_4.blockSignals(True)
+            self.cb_logs_4.clear()
+            m = self.cb_month_4.currentData().zfill(2)
         self.logs = fnmatch.filter(os.listdir(self.logger.log_path), pattern)
         self.logs.reverse()
         for lg in self.logs:
@@ -2782,14 +2807,15 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             self.cb_logs.setEnabled(True)
 
     def auto_refresh(self):
-        self._load_log(self.logger.data_filename)
+        self._load_sensor_log(self.logger.data_filename)
         self.plot_sensors()
 
-    def load_log(self):
-        log = self.cb_logs.currentData()
-        self._load_log(log)
+    def load_log(self, tab):
+        log = self.sender().currentData()
+        if tab == 1:
+            self._load_sensor_log(log)
 
-    def _load_log(self, log):
+    def _load_sensor_log(self, log):
         txt = self.logger.get_log(LOG_DATA, log)
         if len(txt) < 20:
             return
@@ -2821,6 +2847,38 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             self.values['ws'].append(string_to_float(r[10]))
             self.values['oh'].append(string_to_float(r[11]))
             self.values['ot'].append(string_to_float(r[12]))
+
+    def _load_output_log(self, log):
+        txt = self.logger.get_log(LOG_DATA, log)
+        if len(txt) < 20:
+            return
+        values = []
+        self.values.clear()
+        self.times = []
+        for row in txt:
+            if row == "":
+                break
+            self.times.append(row[0: 5])
+            row = row[6:]
+            if row[0] == ",":
+                row = row[1:]
+            v = row.split(",")
+            values.append(v)
+        for r in values:
+            if len(r) < 13:
+                break
+            self.output_values['1h1'].append(string_to_float(r[0]))
+            self.output_values['1h2'].append(string_to_float(r[1]))
+            self.output_values['1a'].append(string_to_float(r[2]))
+            self.output_values['1s'].append(string_to_float(r[3]))
+            self.output_values['2h1'].append(string_to_float(r[4]))
+            self.output_values['2h2'].append(string_to_float(r[5]))
+            self.output_values['2a'].append(string_to_float(r[6]))
+            self.output_values['2s'].append(string_to_float(r[7]))
+            self.output_values['h3'].append(string_to_float(r[11]))
+            self.output_values['ws'].append(string_to_float(r[10]))
+            self.output_values['wh1'].append(string_to_float(r[8]))
+            self.output_values['wh2'].append(string_to_float(r[9]))
 
     def plot_sensors(self):
         self.plot = MplWidget(self.wg_graph_1, 12, 4.5)
@@ -2889,6 +2947,44 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.plot.grid(True)
         self.plot.canvas.draw()
         self.plot.show()
+
+    def outputs_plot(self):
+        self.plot_outputs = MplWidget(self.wg_graph_2, 12, 4.5)
+        self.plot_outputs.canvas.axes.cla()
+        if self.ck_out_1.isChecked():
+            self.plot_outputs.canvas.axes.plot(self.times, self.values['1h1'], color='green', label='Area 1 Heater 1')
+            self.plot_outputs.canvas.axes.plot(self.times, self.values['1h2'], color='green', label='Area 1 Heater 2', linestyle='dotted')
+            self.plot_outputs.canvas.axes.plot(self.times, self.values['1a'], color='green', label='Area 1 Aux', linestyle='dashed')
+            self.plot_outputs.canvas.axes.plot(self.times, self.values['1s'], color='green', label='Area 1 Socket')
+
+        # if self.temp_2_1.isChecked():
+        #     self.plot_outputs.canvas.axes.plot(self.times, self.values['2t'], color='blue', label='Area 2 Temperature')
+        # if self.temp_2_2.isChecked():
+        #     self.plot_outputs.canvas.axes.plot(self.times, self.values['2c'], color='blue', label='Area 2 Canopy', linestyle='dotted')
+        # if self.temp_2_3.isChecked():
+        #     self.plot_outputs.canvas.axes.plot(self.times, self.values['2r'], color='blue', label='Area 2 Root', linestyle='dashed')
+        #
+        # if self.temp_3_1.isChecked():
+        #     self.plot_outputs.canvas.axes.plot(self.times, self.values['dt'], color='olive', label='Drying Temperature')
+        #
+        # if self.temp_4_1.isChecked():
+        #     self.plot_outputs.canvas.axes.plot(self.times, self.values['ws'], color='brown', label='Workshop')
+        #
+        # if self.temp_5_1.isChecked():
+        #     self.plot_outputs.canvas.axes.plot(self.times, self.values['ot'], color='orange', label='Outside Temperature')
+
+        self.plot_outputs.canvas.axes.set_ylabel("Outputs")
+        self.plot_outputs.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+        self.plot_outputs.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
+        leg = self.plot_outputs.canvas.axes.legend()
+        leg.set_draggable(state=True)
+        self.plot_outputs.canvas.axes.tick_params(
+            axis='x', which='major', labelcolor='Green', rotation=45, labelsize=7)
+        # self.plot_outputs.canvas.axes.invert_yaxis()
+        self.plot_outputs.canvas.axes.xaxis.grid(True, which='minor')
+        self.plot_outputs.grid(True)
+        self.plot_outputs.canvas.draw()
+        self.plot_outputs.show()
 
 
 class DialogPatternMaker(QDialog, Ui_DialogPatterns):
