@@ -2794,8 +2794,8 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.plot_sensors()
 
     def load_log(self, tab):
-        log = self.sender().currentData()
         if tab == 1:
+            log = self.cb_logs.currentData()
             self._load_sensor_log(log)
 
     def _load_sensor_log(self, log):

@@ -27,6 +27,7 @@ class FanClass(QThread):
         self.last_input = 0
         self._speed = 0
         self.last_speed = -1
+        self.last_request = UNSET   # Used by logging, same as last speed but updates instantly
         self._set_point = 0
         self._logging = True    # if True will log sensor temperature and fan speed
         self._mode = 0
@@ -220,13 +221,14 @@ class FanClass(QThread):
 
     def _switch(self, speed_raw):
         if self._mode == 2:     # Only do switching from PID if in auto mode
-            print(self.id, " PID ", speed_raw)
             s = speed_raw if speed_raw > - 10 else -10
             s = s if s < 10 else 10
             # s = int((20 - (10 - s)) / 5) + 1
             s = int((10 - s) / 5) + 1
+            print(self.id, " PID ", speed_raw, " Sw ", s)
             self.switch(s)
-            if self._logging and self.fan_controller.master_mode == MASTER and s != self.last_speed:
+            if self._logging and self.fan_controller.master_mode == MASTER and s != self.last_request:
+                self.last_request = s
                 self.fan_controller.area_controller.main_window.logger.save_fan_log(
                     "{}, {}, {}, {}".format(self.id, self.input, s, self._set_point))
 
