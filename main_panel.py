@@ -918,6 +918,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 if state == 0:
                     self.lbl_light_status_1.setPixmap(QtGui.QPixmap(":/normal/light_off.png"))
                     self.area_controller.light_relay_1 = state
+                    self.area_controller.day_night = NIGHT
                 else:
                     self.lbl_light_status_1.setPixmap(QtGui.QPixmap(":/normal/light_on.png"))
                     self.area_controller.light_relay_1 = state

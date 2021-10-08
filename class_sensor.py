@@ -1,6 +1,7 @@
 import collections
 from datetime import *
 
+from class_max_min import MaxMin
 from defines import *
 from functions import string_to_float
 
@@ -42,6 +43,7 @@ class SensorClass(object):
         self.handler_info = collections.defaultdict()  # Holds info for display ctrl about sensors handler
         # print("Sensor " + str(self.id) + " maps to " + str(self.display_id))
         self.load_profile()  # Required here to load defaults for any that have no process
+        self.max_min = MaxMin(self)
 
     def load_profile(self):
         row = self.db.execute_one_row(

@@ -1807,11 +1807,6 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         self.setupUi(self)
         self.main_panel = parent
         self.sub = None
-        # self.sub = self.main_panel.main_panel.mdiArea.addSubWindow(self)
-        # # self.sub.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint)
-        # self.sub.setFixedSize(440, 640)
-        # self.sub.setGeometry(0, 0, 440, 640)
-        # self.show()
         self.db = self.main_panel.db
         self.le_ml_1.setFixedWidth(30)
         self.feed_control = parent.feed_controller
@@ -1821,19 +1816,7 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         self.show_next = False  # True when next recipe is to be displayed
         self.holding = None  # Holds stylesheet for mouse over event
         self.holding_1 = None  # Holds stylesheet for mouse over event
-        # self.lw_recipe_1.doubleClicked.connect(self.load_item)
-        # self.pb_store_n_1.clicked.connect(self.store_nutrient)
-        # self.le_total_1.editingFinished.connect(self.calculate_each)
-        # self.le_each_1.editingFinished.connect(self.calculate_total)
-        # self.pb_store_w_1.clicked.connect(self.store_litres)
-        # self.cb_feeds.currentIndexChanged.connect(self.change_use_for)
-        # self.pb_water_only.clicked.connect(self.water_only)
-        # self.pb_add.clicked.connect(self.add_mix_tab)
         self.pb_close.clicked.connect(self.pre_close)
-        # self.pb_reset_nutrients.clicked.connect(self.reset_nutrients)
-        # self.pb_reset_water.clicked.connect(self.reset_water)
-        # self.pb_delete.clicked.connect(self.delete_mix)
-        # self.tw_mixes.currentChanged.connect(self.change_mix_tab)
         for x in range(1, 9):
             getattr(self, "ck_fed_%i" % (x + 10)).clicked.connect(self.change_qty)
 
@@ -2768,19 +2751,19 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         if f_type == "cvs":
             self.cb_logs.blockSignals(True)
             self.cb_logs.clear()
-            m = self.cb_month.currentData().zfill(2)
+            m = str(self.cb_month.currentData()).zfill(2)
         elif f_type == "opd":
             self.cb_logs_2.blockSignals(True)
             self.cb_logs_2.clear()
-            m = self.cb_month_2.currentData().zfill(2)
+            m = str(self.cb_month_2.currentData()).zfill(2)
         elif f_type == "fan":
             self.cb_logs_3.blockSignals(True)
             self.cb_logs_3.clear()
-            m = self.cb_month_3.currentData().zfill(2)
+            m = str(self.cb_month_3.currentData()).zfill(2)
         elif f_type == "acc":
             self.cb_logs_4.blockSignals(True)
             self.cb_logs_4.clear()
-            m = self.cb_month_4.currentData().zfill(2)
+            m = str(self.cb_month_4.currentData()).zfill(2)
         self.logs = fnmatch.filter(os.listdir(self.logger.log_path), pattern)
         self.logs.reverse()
         for lg in self.logs:
@@ -4444,7 +4427,7 @@ class DialogSettings(QDialog, Ui_DialogSettings):
         self.pb_save_fans_1.clicked.connect(lambda: self.save_fans(1))
         self.pb_reset_fan_1.clicked.connect(lambda: self.main_panel.area_controller.fan_controller.fans[1].reset())
         self.pb_save_fans_2.clicked.connect(lambda: self.save_fans(2))
-        self.pb_reset_fan_2.clicked.connect(lambda: self.main_panelarea_controller.fan_controller.fans[2].reset())
+        self.pb_reset_fan_2.clicked.connect(lambda: self.main_panel.area_controller.fan_controller.fans[2].reset())
         # self.pb_show_log_1.clicked.connect(lambda: self.main_panel.dialog_control("Fan 1 Log", DialogFanLog, 1))
         # self.pb_show_log_2.clicked.connect(lambda: self.main_panel.dialog_control("Fan 2 Log", DialogFanLog, 2))
 

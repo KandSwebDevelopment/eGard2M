@@ -417,15 +417,14 @@ class FeedClass(QObject):
         """
         r = self.area_data['mixes'][mix_num]['recipe']
         #  recipe  nid, ml, L, rid, freq
-        if r == WATER_ONLY_IDX:
-            return
-        for rl in r:
-            if rl[0] == change[0]:
-                rl[1] = change[1]
-                self.save_mix_adjustment(mix_num)
-                return
+        if r != WATER_ONLY_IDX:
+            for rl in r:
+                if rl[0] == change[0]:
+                    rl[1] = change[1]
+                    self.save_mix_adjustment(mix_num)
+                    return
         # If here it is a new item to the recipe
-        r.append([change[0], change[1]])
+        r = [[change[0], change[1]]]
 
     def change_items(self, mix_num, items):
         self.area_data['mixes'][mix_num]['items'] = items

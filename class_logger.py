@@ -2,7 +2,6 @@ import os
 from datetime import datetime
 
 from PyQt5.QtWidgets import QMessageBox
-# from win32com.shell import shell, shellcon
 from PyQt5.QtCore import QObject
 from defines import *
 
