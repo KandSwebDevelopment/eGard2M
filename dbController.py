@@ -31,6 +31,7 @@ class MysqlDB:
         self.database = self.settings.value("Database/database")
         self.con = None
         self.cur = None
+        self.err_count = 0
         self.is_connected = False
 
     def reconnect(self):

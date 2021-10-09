@@ -62,8 +62,9 @@ class OutputWorkshopHeater(OutputClass):
         self.duration = duration
         self.db.set_config_both(CFT_WORKSHOP_HEATER, "duration", duration)
 
-    def switch_manual(self):
-        if self.status == ON:
+    def switch_manual(self, state):
+        if state == ON:
+            # self.status == ON
             self.remaining = 0
             self.switch(OFF)
         else:

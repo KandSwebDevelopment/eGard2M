@@ -2797,6 +2797,9 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         if tab == 1:
             log = self.cb_logs.currentData()
             self._load_sensor_log(log)
+        if tab == 2:
+            log = self.cb_logs_2.currentData()
+            self._load_output_log(log)
 
     def _load_sensor_log(self, log):
         txt = self.logger.get_log(LOG_DATA, log)
@@ -2836,7 +2839,7 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         if len(txt) < 20:
             return
         values = []
-        self.values.clear()
+        self.output_values.clear()
         self.times = []
         for row in txt:
             if row == "":
@@ -2848,20 +2851,20 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             v = row.split(",")
             values.append(v)
         for r in values:
-            if len(r) < 13:
+            if len(r) < 12:
                 break
             self.output_values['1h1'].append(string_to_float(r[0]))
-            self.output_values['1h2'].append(string_to_float(r[1]))
-            self.output_values['1a'].append(string_to_float(r[2]))
-            self.output_values['1s'].append(string_to_float(r[3]))
-            self.output_values['2h1'].append(string_to_float(r[4]))
-            self.output_values['2h2'].append(string_to_float(r[5]))
-            self.output_values['2a'].append(string_to_float(r[6]))
-            self.output_values['2s'].append(string_to_float(r[7]))
-            self.output_values['h3'].append(string_to_float(r[11]))
-            self.output_values['ws'].append(string_to_float(r[10]))
-            self.output_values['wh1'].append(string_to_float(r[8]))
-            self.output_values['wh2'].append(string_to_float(r[9]))
+            self.output_values['1h2'].append(string_to_float(r[1]) + 2)
+            self.output_values['1a'].append(string_to_float(r[2]) + 4)
+            self.output_values['1s'].append(string_to_float(r[3]) + 6)
+            self.output_values['2h1'].append(string_to_float(r[4]) + 8)
+            self.output_values['2h2'].append(string_to_float(r[5]) + 10)
+            self.output_values['2a'].append(string_to_float(r[6]) + 12)
+            self.output_values['2s'].append(string_to_float(r[7]) + 14)
+            self.output_values['h3'].append(string_to_float(r[8]) + 16)
+            self.output_values['ws'].append(string_to_float(r[9]) + 18)
+            self.output_values['wh1'].append(string_to_float(r[10]) + 20)
+            self.output_values['wh2'].append(string_to_float(r[11]) + 22)
 
     def plot_sensors(self):
         self.plot = MplWidget(self.wg_graph_1, 12, 4.5)
@@ -2877,11 +2880,11 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             self.plot.canvas.axes.plot(self.times, self.values['1r'], color='green', label='Area 1 Root', linestyle='dashed')
 
         if self.temp_2_1.isChecked():
-            self.plot.canvas.axes.plot(self.times, self.values['2t'], color='blue', label='Area 2 Temperature')
+            self.plot.canvas.axes.plot(self.times, self.values['2t'], color='orange', label='Area 2 Temperature')
         if self.temp_2_2.isChecked():
-            self.plot.canvas.axes.plot(self.times, self.values['2c'], color='blue', label='Area 2 Canopy', linestyle='dotted')
+            self.plot.canvas.axes.plot(self.times, self.values['2c'], color='orange', label='Area 2 Canopy', linestyle='dotted')
         if self.temp_2_3.isChecked():
-            self.plot.canvas.axes.plot(self.times, self.values['2r'], color='blue', label='Area 2 Root', linestyle='dashed')
+            self.plot.canvas.axes.plot(self.times, self.values['2r'], color='orange', label='Area 2 Root', linestyle='dashed')
 
         if self.temp_3_1.isChecked():
             self.plot.canvas.axes.plot(self.times, self.values['dt'], color='olive', label='Drying Temperature')
@@ -2890,7 +2893,7 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             self.plot.canvas.axes.plot(self.times, self.values['ws'], color='brown', label='Workshop')
 
         if self.temp_5_1.isChecked():
-            self.plot.canvas.axes.plot(self.times, self.values['ot'], color='orange', label='Outside Temperature')
+            self.plot.canvas.axes.plot(self.times, self.values['ot'], color='hotpink', label='Outside Temperature')
 
         if self.ck_hum_1.isChecked():
             if self.ax2 is None:
@@ -2934,36 +2937,35 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
     def outputs_plot(self):
         self.plot_outputs = MplWidget(self.wg_graph_2, 12, 4.5)
         self.plot_outputs.canvas.axes.cla()
-        if self.ck_out_1.isChecked():
-            self.plot_outputs.canvas.axes.plot(self.times, self.values['1h1'], color='green', label='Area 1 Heater 1')
-            self.plot_outputs.canvas.axes.plot(self.times, self.values['1h2'], color='green', label='Area 1 Heater 2', linestyle='dotted')
-            self.plot_outputs.canvas.axes.plot(self.times, self.values['1a'], color='green', label='Area 1 Aux', linestyle='dashed')
-            self.plot_outputs.canvas.axes.plot(self.times, self.values['1s'], color='green', label='Area 1 Socket')
+        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1h1'], color='green', label='Area 1 Heater 1')
+        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1h2'], color='green', label='Area 1 Heater 2', linestyle='dotted')
+        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1a'], color='green', label='Area 1 Aux', linestyle='dashed')
+        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1s'], color='green', label='Area 1 Socket')
 
-        # if self.temp_2_1.isChecked():
-        #     self.plot_outputs.canvas.axes.plot(self.times, self.values['2t'], color='blue', label='Area 2 Temperature')
-        # if self.temp_2_2.isChecked():
-        #     self.plot_outputs.canvas.axes.plot(self.times, self.values['2c'], color='blue', label='Area 2 Canopy', linestyle='dotted')
-        # if self.temp_2_3.isChecked():
-        #     self.plot_outputs.canvas.axes.plot(self.times, self.values['2r'], color='blue', label='Area 2 Root', linestyle='dashed')
-        #
-        # if self.temp_3_1.isChecked():
-        #     self.plot_outputs.canvas.axes.plot(self.times, self.values['dt'], color='olive', label='Drying Temperature')
-        #
-        # if self.temp_4_1.isChecked():
-        #     self.plot_outputs.canvas.axes.plot(self.times, self.values['ws'], color='brown', label='Workshop')
-        #
-        # if self.temp_5_1.isChecked():
-        #     self.plot_outputs.canvas.axes.plot(self.times, self.values['ot'], color='orange', label='Outside Temperature')
+        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2h1'], color='orange', label='Area 2 Heater 1')
+        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2h2'], color='orange', label='Area 2 Heater 2', linestyle='dotted')
+        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2a'], color='orange', label='Area 2 Aux', linestyle='dashed')
+        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2s'], color='orange', label='Area 2 Socket')
 
-        self.plot_outputs.canvas.axes.set_ylabel("Outputs")
-        self.plot_outputs.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['h3'], color='pink', label='Area 3 Heater')
+
+        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['ws'], color='brown', label='Workshop Heater')
+
+        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['wh1'], color='blue', label='Water Heater 1')
+        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['wh2'], color='blue', label='Water Heater 2', linestyle='dashed')
+
+        # self.plot_outputs.canvas.axes.set_ylabel("Outputs")
+        # self.plot_outputs.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+        self.plot_outputs.canvas.axes.set_yticks(
+            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23])
+        self.plot_outputs.canvas.axes.set_yticklabels([
+            'Off', 'H1a On', 'Off', 'H1b On', 'Off', 'A1 On', 'Off', 'S1 On', 'Off', 'H2a On', 'Off', 'H2b On',
+            'Off', 'A2 On', 'Off', 'S2 On', 'Off', 'H3 On', 'Off', 'WS On', 'Off', 'WH1 On', 'Off', 'WH2 On'])
         self.plot_outputs.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
         leg = self.plot_outputs.canvas.axes.legend()
         leg.set_draggable(state=True)
         self.plot_outputs.canvas.axes.tick_params(
             axis='x', which='major', labelcolor='Green', rotation=45, labelsize=7)
-        # self.plot_outputs.canvas.axes.invert_yaxis()
         self.plot_outputs.canvas.axes.xaxis.grid(True, which='minor')
         self.plot_outputs.grid(True)
         self.plot_outputs.canvas.draw()
