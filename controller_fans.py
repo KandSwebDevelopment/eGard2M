@@ -60,6 +60,10 @@ class FansController(QObject):
     def get_fan_sensor(self, area):
         return self.fans[area].sensor
 
+    def get_log_values(self):
+        return str(self.fans[1].input) + ", " + str(self.fans[1].speed) + ", " + str(self.fans[1].get_set_point()) +\
+               str(self.fans[2].input) + ", " + str(self.fans[2].speed) + ", " + str(self.fans[2].get_set_point())
+
     def set_fan_sensor(self, area, sensor_id, is_relay=False):
         current = self.fans[area].sensor
         # Remove old setting

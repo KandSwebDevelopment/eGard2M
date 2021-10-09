@@ -162,7 +162,7 @@ class FanClass(QThread):
     def set_pid(self, kp, ki, kd):
         self.pid.tunings = (kp, ki, kd)
 
-    def get_point(self):
+    def get_set_point(self):
         return self._set_point
 
     def set_point(self, value):

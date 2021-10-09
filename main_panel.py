@@ -215,6 +215,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             if cm % 2 == 0:
                 self.main_window.logger.save_log(self.area_controller.get_sensor_log_values())
                 self.main_window.logger.save_output_log(self.area_controller.output_controller.get_output_log_values())
+                self.main_window.logger.save_fan_log(self.area_controller.fan_controller.get_log_values())
 
     def loop_6(self): # 2 mins
         if self.master_mode == MASTER:

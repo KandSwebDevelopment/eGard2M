@@ -2679,8 +2679,10 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.live_timer.timeout.connect(self.auto_refresh)
         self.live_timer.setInterval(120000)
         self.times = []
+        self.fan_times = []
         self.values = collections.defaultdict(list)
         self.output_values = collections.defaultdict(list)
+        self.fan_values = collections.defaultdict(list)
         self.weeks_use = collections.defaultdict()
         self.legend = []
         self.logs = []
@@ -2702,9 +2704,16 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.output_values['ws'] = []
         self.output_values['wh1'] = []
         self.output_values['wh2'] = []
+        self.fan_values['1in'] = []
+        self.fan_values['1sw'] = []
+        self.fan_values['1rv'] = []
+        self.fan_values['2in'] = []
+        self.fan_values['2sw'] = []
+        self.fan_values['2rv'] = []
         self.plot = None
         self.ax2 = None
         self.plot_outputs = None
+        self.plot_fans = None
 
         self.pb_close_2.clicked.connect(lambda: self.sub.close())
         self.pb_close_3.clicked.connect(lambda: self.sub.close())
@@ -2744,6 +2753,7 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.pb_reload_4.clicked.connect(lambda: self.load_log(4))
         self.pb_refresh.clicked.connect(self.plot_sensors)
         self.pb_refresh_2.clicked.connect(self.outputs_plot)
+        self.pb_refresh_3.clicked.connect(self.fans_plot)
         self.ck_live.clicked.connect(self.go_live)
 
     def load_available_logs(self, f_type):
@@ -2800,6 +2810,9 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         if tab == 2:
             log = self.cb_logs_2.currentData()
             self._load_output_log(log)
+        if tab == 3:
+            log = self.cb_logs_3.currentData()
+            self._load_fan_log(log)
 
     def _load_sensor_log(self, log):
         txt = self.logger.get_log(LOG_DATA, log)
@@ -2865,6 +2878,32 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             self.output_values['ws'].append(string_to_float(r[9]) + 18)
             self.output_values['wh1'].append(string_to_float(r[10]) + 20)
             self.output_values['wh2'].append(string_to_float(r[11]) + 22)
+
+    def _load_fan_log(self, log):
+        txt = self.logger.get_log(LOG_DATA, log)
+        if len(txt) < 20:
+            return
+        values = []
+        self.fan_values.clear()
+        self.fan_times = []
+        for row in txt:
+            if row == "":
+                break
+            # self.times.append(row[0: 5])
+            # row = row[6:]
+            # if row[0] == ",":
+            #     row = row[1:]
+            v = row.split(",")
+            if int(v[1]) == 1:
+                self.fan_values['t1'].append(v[0])
+                self.fan_values['1in'].append(string_to_float(v[2]))
+                self.fan_values['1sw'].append(string_to_float(v[3]))
+                self.fan_values['1rv'].append(string_to_float(v[4]))
+            else:
+                self.fan_values['t2'].append(v[0])
+                self.fan_values['2in'].append(string_to_float(v[2]))
+                self.fan_values['2sw'].append(string_to_float(v[3]))
+                self.fan_values['2rv'].append(string_to_float(v[4]))
 
     def plot_sensors(self):
         self.plot = MplWidget(self.wg_graph_1, 12, 4.5)
@@ -2970,6 +3009,33 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.plot_outputs.grid(True)
         self.plot_outputs.canvas.draw()
         self.plot_outputs.show()
+
+    def fans_plot(self):
+        self.plot_fans = MplWidget(self.wg_graph_3, 12, 4.5)
+        self.plot_fans.canvas.axes.cla()
+        if self.ck_fan_1.isChecked():
+            self.plot_fans.canvas.axes.plot(self.fan_values['t1'], self.fan_values['1in'], color='green', label='Input')
+            self.plot_fans.canvas.axes.plot(self.fan_values['t1'], self.fan_values['1rv'], color='green', label='Set', linestyle='dashed')
+            ax2 = self.plot_fans.canvas.axes.twinx()
+            ax2.plot(self.fan_values['t1'], self.fan_values['1sw'], color='purple', label='Outside Humidity', linestyle='dotted')
+            ax2.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+
+        # self.plot_fans.canvas.axes.set_ylabel("Outputs")
+        self.plot_fans.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+        # self.plot_fans.canvas.axes.set_yticks(
+        #     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23])
+        # self.plot_fans.canvas.axes.set_yticklabels([
+        #     'Off', 'H1a On', 'Off', 'H1b On', 'Off', 'A1 On', 'Off', 'S1 On', 'Off', 'H2a On', 'Off', 'H2b On',
+        #     'Off', 'A2 On', 'Off', 'S2 On', 'Off', 'H3 On', 'Off', 'WS On', 'Off', 'WH1 On', 'Off', 'WH2 On'])
+        self.plot_fans.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
+        leg = self.plot_fans.canvas.axes.legend()
+        leg.set_draggable(state=True)
+        self.plot_fans.canvas.axes.tick_params(
+            axis='x', which='major', labelcolor='Green', rotation=45, labelsize=7)
+        self.plot_fans.canvas.axes.xaxis.grid(True, which='minor')
+        self.plot_fans.grid(True)
+        self.plot_fans.canvas.draw()
+        self.plot_fans.show()
 
 
 class DialogPatternMaker(QDialog, Ui_DialogPatterns):
