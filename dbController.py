@@ -89,7 +89,10 @@ class MysqlDB:
             row = self.execute_one_row(query)
             if row is None:
                 return None
-            return row[0]
+            try:
+                return row[0]
+            except Exception as e:
+                print(e)
 
     def execute_write(self, query):  # Use for edits and new
         if self._execute(query):
@@ -127,6 +130,7 @@ class MysqlDB:
                 return False
         except Exception as e:
             print("Unhandled DB ERROR ", e)
+            self.connect_db()
 
     def load_pattern(self, pid=None, name=None):
         if pid is None:
@@ -137,7 +141,7 @@ class MysqlDB:
             rows = None
         return rows
 
-    def loadstages(self, name):
+    def load_stages(self, name):
         rows = self.execute("SELECT * FROM " + DB_PATTERN_NAMES + " WHERE name = '" + name + "'")
         if not rows:
             return rows

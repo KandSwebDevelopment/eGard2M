@@ -2881,29 +2881,24 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
 
     def _load_fan_log(self, log):
         txt = self.logger.get_log(LOG_DATA, log)
-        if len(txt) < 20:
-            return
-        values = []
+        # if len(txt) < 20:
+        #     return
+        # values = []
         self.fan_values.clear()
-        self.fan_times = []
+        self.times = []
+        # self.fan_times = []
         for row in txt:
             if row == "":
                 break
-            # self.times.append(row[0: 5])
-            # row = row[6:]
-            # if row[0] == ",":
-            #     row = row[1:]
+            self.times.append(row[0: 5])
+            row = row[6:]
             v = row.split(",")
-            if int(v[1]) == 1:
-                self.fan_values['t1'].append(v[0])
-                self.fan_values['1in'].append(string_to_float(v[2]))
-                self.fan_values['1sw'].append(string_to_float(v[3]))
-                self.fan_values['1rv'].append(string_to_float(v[4]))
-            else:
-                self.fan_values['t2'].append(v[0])
-                self.fan_values['2in'].append(string_to_float(v[2]))
-                self.fan_values['2sw'].append(string_to_float(v[3]))
-                self.fan_values['2rv'].append(string_to_float(v[4]))
+            self.fan_values['1in'].append(string_to_float(v[0]))
+            self.fan_values['1sw'].append(string_to_float(v[1]))
+            self.fan_values['1rv'].append(string_to_float(v[2]))
+            self.fan_values['2in'].append(string_to_float(v[3]))
+            self.fan_values['2sw'].append(string_to_float(v[4]))
+            self.fan_values['2rv'].append(string_to_float(v[5]))
 
     def plot_sensors(self):
         self.plot = MplWidget(self.wg_graph_1, 12, 4.5)
@@ -2974,7 +2969,7 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.plot.show()
 
     def outputs_plot(self):
-        self.plot_outputs = MplWidget(self.wg_graph_2, 12, 4.5)
+        self.plot_outputs = MplWidget(self.wg_graph_2, 12, 5.3)
         self.plot_outputs.canvas.axes.cla()
         self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1h1'], color='green', label='Area 1 Heater 1')
         self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1h2'], color='green', label='Area 1 Heater 2', linestyle='dotted')
@@ -3011,22 +3006,19 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.plot_outputs.show()
 
     def fans_plot(self):
-        self.plot_fans = MplWidget(self.wg_graph_3, 12, 4.5)
+        self.plot_fans = MplWidget(self.wg_graph_3, 12, 5.3)
         self.plot_fans.canvas.axes.cla()
-        if self.ck_fan_1.isChecked():
-            self.plot_fans.canvas.axes.plot(self.fan_values['t1'], self.fan_values['1in'], color='green', label='Input')
-            self.plot_fans.canvas.axes.plot(self.fan_values['t1'], self.fan_values['1rv'], color='green', label='Set', linestyle='dashed')
-            ax2 = self.plot_fans.canvas.axes.twinx()
-            ax2.plot(self.fan_values['t1'], self.fan_values['1sw'], color='purple', label='Outside Humidity', linestyle='dotted')
-            ax2.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
-        # self.plot_fans.canvas.axes.set_ylabel("Outputs")
+        self.plot_fans.canvas.axes.plot(self.times, self.fan_values['1in'], color='green', label='Input 1')
+        self.plot_fans.canvas.axes.plot(self.times, self.fan_values['1rv'], color='green', label='Set 1', linestyle='dashed')
+        self.plot_fans.canvas.axes.plot(self.times, self.fan_values['2in'], color='orange', label='Input 2')
+        self.plot_fans.canvas.axes.plot(self.times, self.fan_values['2rv'], color='orange', label='Set 2', linestyle='dashed')
+        ax2 = self.plot_fans.canvas.axes.twinx()
+        ax2.plot(self.times, self.fan_values['1sw'], color='pink', label='Speed 1', linestyle='dotted')
+        ax2.plot(self.times, self.fan_values['2sw'], color='orange', label='Speed 2', linestyle='dotted')
+        ax2.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+
         self.plot_fans.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-        # self.plot_fans.canvas.axes.set_yticks(
-        #     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23])
-        # self.plot_fans.canvas.axes.set_yticklabels([
-        #     'Off', 'H1a On', 'Off', 'H1b On', 'Off', 'A1 On', 'Off', 'S1 On', 'Off', 'H2a On', 'Off', 'H2b On',
-        #     'Off', 'A2 On', 'Off', 'S2 On', 'Off', 'H3 On', 'Off', 'WS On', 'Off', 'WH1 On', 'Off', 'WH2 On'])
         self.plot_fans.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
         leg = self.plot_fans.canvas.axes.legend()
         leg.set_draggable(state=True)

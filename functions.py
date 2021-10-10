@@ -125,9 +125,18 @@ def get_last_friday(current_time=None):
     """
     if current_time is None:
         current_time = datetime.now()
-    return (current_time.date()
-            - timedelta(days=current_time.weekday())
-            + timedelta(days=4, weeks=-1))
+    wd = current_time.weekday()
+    if wd == 4:
+        td = 0
+    elif wd > 4:
+        td = wd - 4
+    else:
+        td = 3 + wd
+
+    return current_time.date() - timedelta(days=td)
+    # return (current_time.date()
+    #         - timedelta(days=current_time.weekday())
+    #         + timedelta(days=4, weeks=-1))
 
 
 def string_to_float(s) -> float:

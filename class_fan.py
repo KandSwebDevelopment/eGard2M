@@ -41,7 +41,10 @@ class FanClass(QThread):
         row = self.db.execute_one_row("SELECT sensor, mode, Kp, Ki, Kd FROM {} WHERE id = {}".format(DB_FANS, self.id))
         self._sensor = row[0] if row[0] is not None else 0
         self.mode = row[1] if row[1] is not None else 0     # 0 = Off 1 = On, 2 = Auto
-        self.load_pid_values()
+        row = self.db.execute_one_row("SELECT Kp, Ki, Kd FROM {} WHERE id = {}".format(DB_FANS, self.id))
+        self.set_pid(row[0] if row[0] is not None else 0,
+                     row[1] if row[1] is not None else 0,
+                     row[2] if row[2] is not None else 0)
         # self._load_set_point()    # Not needed here as done later
         self._load_sensor_calibration()
         self.update_info()
@@ -51,6 +54,7 @@ class FanClass(QThread):
         self.set_pid(row[0] if row[0] is not None else 0,
                      row[1] if row[1] is not None else 0,
                      row[2] if row[2] is not None else 0)
+        self.reset()
 
     def _load_sensor_calibration(self):
         self.input_calibration = self.db.execute_single(
@@ -191,6 +195,7 @@ class FanClass(QThread):
 
     def stop_fan(self):
         self.mode = 0
+        self.spin_up = False
         self.terminate()     # Stop thread
         # self.thread_udp_client.quit()
         # self.thread_udp_client.wait()
@@ -226,11 +231,11 @@ class FanClass(QThread):
             # s = int((20 - (10 - s)) / 5) + 1
             s = int((10 - s) / 5) + 1
             self.switch(s)
-            if self._logging and self.fan_controller.master_mode == MASTER and s != self.last_request:
-                print(self.id, " PID ", speed_raw, " Sw ", s)
-                self.last_request = s
-                self.fan_controller.area_controller.main_window.logger.save_fan_log(
-                    "{}, {}, {}, {}".format(self.id, self.input, s, self._set_point))
+            print(self.id, " PID ", speed_raw, " Sw ", s)
+            # if self._logging and self.fan_controller.master_mode == MASTER and s != self.last_request:
+            #     self.last_request = s
+            #     self.fan_controller.area_controller.main_window.logger.save_fan_log(
+            #         "{}, {}, {}, {}".format(self.id, self.input, s, self._set_point))
 
     def spin_up_timeout(self):
         if self.startup_counter <= 0:
