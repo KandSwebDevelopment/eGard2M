@@ -86,7 +86,7 @@ class Logger(QObject):
     def save_power_log(self, data):
         if not self.available:
             return
-        f = open(self.self.log_path + "\\{}.pwr".format(self.today_name), "a")
+        f = open(self.log_path + "\\{}.pwr".format(self.today_name), "a")
         text = datetime.strftime(datetime.now(), "%H:%M, ") + data + self.new_line
         # print(text)
         f.write(text)
