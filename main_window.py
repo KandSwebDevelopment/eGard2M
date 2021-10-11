@@ -164,6 +164,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
               'FROM dispatch d WHERE d.date >= "{}" ' \
               'AND d.date <= "{}"'.format(sd, ed)
         rows = self.db.execute(sql)
+        print(sql, rows)
         tot = 0
         for row in rows:
             tot += row[0]

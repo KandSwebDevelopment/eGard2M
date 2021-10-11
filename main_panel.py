@@ -216,6 +216,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 self.main_window.logger.save_log(self.area_controller.get_sensor_log_values())
                 self.main_window.logger.save_output_log(self.area_controller.output_controller.get_output_log_values())
                 self.main_window.logger.save_fan_log(self.area_controller.fan_controller.get_log_values())
+                self.main_window.logger.save_power_log(self.le_pwr_current.text() + ", " + self.le_pwr_total_1.text())
 
     def loop_6(self): # 2 mins
         if self.master_mode == MASTER:
@@ -916,24 +917,25 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             if sw == OUT_LIGHT_1:
                 self.area_controller.reload_sensor_ranges(1)
                 self.area_controller.fan_controller.load_req_temperature(1)
+                self.area_controller.light_relay_1 = state
                 if state == 0:
                     self.lbl_light_status_1.setPixmap(QtGui.QPixmap(":/normal/light_off.png"))
-                    self.area_controller.light_relay_1 = state
-                    self.area_controller.day_night = NIGHT
+                    self.area_controller.day_night[1] = NIGHT
                 else:
+                    self.area_controller.day_night[1] = DAY
                     self.lbl_light_status_1.setPixmap(QtGui.QPixmap(":/normal/light_on.png"))
-                    self.area_controller.light_relay_1 = state
                 if self.area_controller.area_is_manual(1):
                     self.db.set_config(CFT_AREA, "mode {}".format(1), state + 1)
             if sw == OUT_LIGHT_2:
                 self.area_controller.reload_sensor_ranges(2)
-                self.area_controller.fan_controller.load_req_temperature(1)
+                self.area_controller.fan_controller.load_req_temperature(2)
+                self.area_controller.light_relay_2 = state
                 if state == 0:
+                    self.area_controller.day_night[2] = NIGHT
                     self.lbl_light_status_2.setPixmap(QtGui.QPixmap(":/normal/light_off.png"))
-                    self.area_controller.light_relay_2 = state
                 else:
+                    self.area_controller.day_night[2] = DAY
                     self.lbl_light_status_2.setPixmap(QtGui.QPixmap(":/normal/light_on.png"))
-                    self.area_controller.light_relay_2 = state
                 if self.area_controller.area_is_manual(2):
                     self.db.set_config(CFT_AREA, "mode {}".format(2), state + 1)
 
@@ -1141,6 +1143,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.area_controller.output_controller.water_heater_update_info()
             self.update_next_feeds()
             self.lbl_water_required.setText(str(self.feed_controller.get_next_water_required()))
+        elif cmd == NWC_STOCK_TOTAL:
+            self.main_window.update_stock()
         elif cmd == NWC_SWITCH_REQUEST:
             self.get_switch_position(data[0])
         elif cmd == NWC_WH_DURATION:

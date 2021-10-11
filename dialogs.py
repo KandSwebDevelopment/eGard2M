@@ -269,6 +269,7 @@ class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
                                           self.strain_id, round(self.weight_required, 1), self.reading)
         self.has_got = 0
         self.main_panel.main_window.update_stock()
+        self.main_panel.coms_interface.relay_send(NWC_STOCK_TOTAL)
 
     def cancel(self):
         self.cb_jar.setEnabled(True)
@@ -767,7 +768,7 @@ class DialogDispatchInternal(QDialog, Ui_DialogDispatchInternal):
         super(DialogDispatchInternal, self).__init__()
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setupUi(self)
-        self.my_parent = parent
+        self.main_panel = parent
         self.sub = None
         self.db = parent.db
         self.reading = self.reading_last = 0
@@ -776,7 +777,7 @@ class DialogDispatchInternal(QDialog, Ui_DialogDispatchInternal):
         self.is_return = False
         self.strain_name = ""
         self.strain_id = 0
-        self.scales = self.my_parent.scales
+        self.scales = self.main_panel.scales
         self.scales.new_reading_p.connect(self.update_reading)
         self.scales.update_status.connect(self.update_status)
         self.scales.new_uid.connect(self.new_uid)
@@ -872,7 +873,7 @@ class DialogDispatchInternal(QDialog, Ui_DialogDispatchInternal):
         sql = 'UPDATE {} SET weight = weight - {} WHERE jar = "{}"'.format(DB_JARS, amount, self.jar)
         print(sql)
         self.db.execute_write(sql)
-        self.my_parent.logger.save_dispatch_counter("INT", "--", self.jar, self.strain_name, self.strain_id,
+        self.main_panel.logger.save_dispatch_counter("INT", "--", self.jar, self.strain_name, self.strain_id,
                                                     self.reading, self.reading)
         self.db.execute_write('INSERT INTO {} (date, type, jar, strain, grams, client) VALUES ("'
                               '{}", "{}", "{}", {}, {}, 1)'.
@@ -881,7 +882,8 @@ class DialogDispatchInternal(QDialog, Ui_DialogDispatchInternal):
         self.le_weight.setText("Remove")
         self.lb_info.setText("")
         self.cb_jar.setCurrentIndex(0)
-        self.my_parent.main_window.update_stock()
+        self.main_panel.main_window.update_stock()
+        self.main_panel.coms_interface.relay_send(NWC_STOCK_TOTAL)
         self.pb_start.setEnabled(False)
 
     def load_jars_list(self):
@@ -1086,6 +1088,7 @@ class DialogDispatchLoadingBay(QDialog, Ui_DialogDispatchLoading):
             # play_sound(SND_OK)
             # self.load_jars_list()
             self.main_panel.main_window.update_stock()
+            self.main_panel.coms_interface.relay_send(NWC_STOCK_TOTAL)
             self.load_strain_list()
 
     def finish(self):  # Done
@@ -1495,6 +1498,7 @@ class DialogDispatchStorage(QDialog, Ui_Form):
         self.clear()
         self.load_jars_list()
         self.main_panel.main_window.update_stock()
+        self.main_panel.coms_interface.relay_send(NWC_STOCK_TOTAL)
 
     def transfer(self):
         msg = QMessageBox()
@@ -1606,7 +1610,7 @@ class DialogDispatchOverview(QDialog, Ui_DialogLogistics):
         self.setupUi(self)
         self.sub = None
         self.pb_close.clicked.connect(lambda: self.sub.close())
-        self.my_parent = parent
+        self.main_panel = parent
         self.db = parent.db
         self.up_coming = []
         self.up_coming_yield = []
@@ -1710,9 +1714,9 @@ class DialogDispatchOverview(QDialog, Ui_DialogLogistics):
         self.te_upcomming.clear()
         self.up_coming.clear()
         for loc in range(3, 0, -1):
-            if self.my_parent.area_controller.area_has_process(loc):
-                d = self.my_parent.area_controller.get_area_process(loc).end
-                q = self.my_parent.area_controller.get_area_process(loc).quantity
+            if self.main_panel.area_controller.area_has_process(loc):
+                d = self.main_panel.area_controller.get_area_process(loc).end
+                q = self.main_panel.area_controller.get_area_process(loc).quantity
                 if d.date() > datetime.now().date():
                     getattr(self, "lbl_upcoming_{}".format(loc)).setText(
                         "{} > {}".format(datetime.strftime(d, "%d/%m/%y"), q))
@@ -3016,9 +3020,11 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         ax2 = self.plot_fans.canvas.axes.twinx()
         ax2.plot(self.times, self.fan_values['1sw'], color='pink', label='Speed 1', linestyle='dotted')
         ax2.plot(self.times, self.fan_values['2sw'], color='orange', label='Speed 2', linestyle='dotted')
-        ax2.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+        # ax2.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
         self.plot_fans.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+        ax2.set_yticks([0, 1, 2, 3, 4, 5])
+        ax2.set_yticklabels(["Off", "1", "2", "3", "4", "5"])
         self.plot_fans.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
         leg = self.plot_fans.canvas.axes.legend()
         leg.set_draggable(state=True)

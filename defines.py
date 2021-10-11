@@ -333,6 +333,7 @@ NWC_RELOAD_PROCESSES = "process reload"     # A change has been made in other un
 NWC_SENSOR_RELOAD = "sensor reload"         # A sensor temperature setting has been changed, send location, sensor id
 NWC_SLAVE_START = "slave start"             # Slave has started, send all prams
 NWC_STAGE_ADJUST = "stage adjust"           # The number of stage days has been changed
+NWC_STOCK_TOTAL = "stock total"             # The stock total has changed
 NWC_SWITCH = "switch"                       # switch number, on or off
 NWC_SWITCH_REQUEST = "request switch"       # Request the actual position of the switch, pin number
 NWC_SOIL_LOAD = "soil_load"                 # Reload soil sensors
