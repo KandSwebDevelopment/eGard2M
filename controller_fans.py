@@ -97,6 +97,11 @@ class FansController(QObject):
     def load_req_temperature(self, area):
         s = self.fans[area].sensor
         if s > 0:
+            # if in cool down transition don't change the set point if fan trans lock is on and trigger trans timer in
+            # fan class. As this is only called once the set set value will have to be held by fan class
+            if self.area_controller.cool_warm[area] == COOL:
+                self.fans[area].trans_start(self.area_controller.sensors[s].get_set())
+                return
             self.fans[area].set_point(self.area_controller.sensors[s].get_set())
 
     def start_fan(self, area):

@@ -601,7 +601,7 @@ class ProcessClass(QObject):
 
     def load_active_temperature_ranges(self):
         """
-        produces two arrays of temperature settings, one for day and one for night based,
+        produces two arrays of temperature settings, one for day and one for night,
         process.active_temperature_ranges for current light state
         process.inactive_temperature_ranges for the alt light state
         These will be altered by load_temperature_adjustments to add any user setting

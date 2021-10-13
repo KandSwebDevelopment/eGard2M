@@ -363,9 +363,6 @@ NWC_SOIL_READ = COM_SOIL_READ
 NWC_US_READ = COM_US_READ
 # NWC_WORKSHOP_HEATER = "workshop heater"     #
 
-# Run data entries
-# RD_LAST_FEED = "last_feed"
-
 # Output Types
 OUT_TYPE = ("None", "Manual", "Sensor", "Timer", "Both", "All Day", "All Night", "Process")
 
@@ -423,28 +420,28 @@ OUT_FEEDER_ACTIVE = 128
 
 # Process Adjustment
 PA_STAGE_DAY_ADJUST = "stage duration"
-PA_TEMPERATURE = "stage temperature"
-PA_FEED = "feed litres"
+# PA_TEMPERATURE = "stage temperature"
+# PA_FEED = "feed litres"
 PA_FEED_DATE = "feed date"
-PA_QUANTITY = "quantity"
+# PA_QUANTITY = "quantity"
 
 # Sensor map   Sensor number: Display position
-sensor_map = {0: 0,
-              1: 1,
-              2: 2,
-              3: 3,
-              4: 6,
-              5: 7,
-              6: 11,
-              7: 12,
-              8: 10,
-              9: 4,
-              10: 5,
-              11: 8,
-              12: 9}
+# sensor_map = {0: 0,
+#               1: 1,
+#               2: 2,
+#               3: 3,
+#               4: 6,
+#               5: 7,
+#               6: 11,
+#               7: 12,
+#               8: 10,
+#               9: 4,
+#               10: 5,
+#               11: 8,
+#               12: 9}
 
-sensor_names = ["H 1", "T 1", "H 2", "T 2", "H 3", "T 3", "H 4", "T 4", "TO 1", "TO 2", "TO 3", "TO 4", "TO 5", "TO 6",
-                "TO 7", "TO 8"]
+# sensor_names = ["H 1", "T 1", "H 2", "T 2", "H 3", "T 3", "H 4", "T 4", "TO 1", "TO 2", "TO 3", "TO 4", "TO 5", "TO 6",
+#                 "TO 7", "TO 8"]
 
 # Status bar panels
 SBP_MODE = 1

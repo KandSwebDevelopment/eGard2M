@@ -245,6 +245,7 @@ class SensorClass(object):
                     return
                 else:
                     self.value = new_value
+                    self.max_min.check(new_value)
 
                 self.error_count = 0
                 self.display_ctrl.setText(str(round(self.value, 1)))

@@ -34,9 +34,13 @@ class FanClass(QThread):
         self._master_power = 0
         self.fan_spin_up = int(self.db.get_config(CFT_FANS, "spin up", 10))
         self.startup_timer = QTimer()
+        self.trans_timer = QTimer()
         self.startup_timer.timeout.connect(self.spin_up_timeout)
+        self.trans_timer.timeout.connect(self.trans_finish)
         self.startup_timer.setInterval(1000)
+        self.load_trans_time()
         self.startup_counter = 0
+        self.trans_end_temp = UNSET
         self.spin_up = False     # True when fan is in spin up mode
         row = self.db.execute_one_row("SELECT sensor, mode, Kp, Ki, Kd FROM {} WHERE id = {}".format(DB_FANS, self.id))
         self._sensor = row[0] if row[0] is not None else 0
@@ -48,6 +52,17 @@ class FanClass(QThread):
         # self._load_set_point()    # Not needed here as done later
         self._load_sensor_calibration()
         self.update_info()
+
+    def trans_finish(self):
+        self.trans_timer.stop()
+        self.set_point(self.trans_end_temp)
+
+    def trans_start(self, end_temp):
+        self.trans_end_temp = end_temp
+        self.trans_timer.start()
+
+    def load_trans_time(self):
+        self.trans_timer.setInterval(1000 * 60 * 60)
 
     def load_pid_values(self):
         row = self.db.execute_one_row("SELECT Kp, Ki, Kd FROM {} WHERE id = {}".format(DB_FANS, self.id))

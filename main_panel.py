@@ -916,7 +916,6 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         if module == MODULE_IO or module == MODULE_SL:
             if sw == OUT_LIGHT_1:
                 self.area_controller.reload_sensor_ranges(1)
-                self.area_controller.fan_controller.load_req_temperature(1)
                 self.area_controller.light_relay_1 = state
                 if state == 0:
                     self.lbl_light_status_1.setPixmap(QtGui.QPixmap(":/normal/light_off.png"))
@@ -924,11 +923,11 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 else:
                     self.area_controller.day_night[1] = DAY
                     self.lbl_light_status_1.setPixmap(QtGui.QPixmap(":/normal/light_on.png"))
+                self.area_controller.fan_controller.load_req_temperature(1)
                 if self.area_controller.area_is_manual(1):
                     self.db.set_config(CFT_AREA, "mode {}".format(1), state + 1)
             if sw == OUT_LIGHT_2:
                 self.area_controller.reload_sensor_ranges(2)
-                self.area_controller.fan_controller.load_req_temperature(2)
                 self.area_controller.light_relay_2 = state
                 if state == 0:
                     self.area_controller.day_night[2] = NIGHT
@@ -936,6 +935,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 else:
                     self.area_controller.day_night[2] = DAY
                     self.lbl_light_status_2.setPixmap(QtGui.QPixmap(":/normal/light_on.png"))
+                self.area_controller.fan_controller.load_req_temperature(2)
                 if self.area_controller.area_is_manual(2):
                     self.db.set_config(CFT_AREA, "mode {}".format(2), state + 1)
 

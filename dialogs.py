@@ -2687,6 +2687,7 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.values = collections.defaultdict(list)
         self.output_values = collections.defaultdict(list)
         self.fan_values = collections.defaultdict(list)
+        self.power_values = collections.defaultdict(list)
         self.weeks_use = collections.defaultdict()
         self.legend = []
         self.logs = []
@@ -2714,10 +2715,12 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.fan_values['2in'] = []
         self.fan_values['2sw'] = []
         self.fan_values['2rv'] = []
+        self.power_values['watts'] = []
         self.plot = None
         self.ax2 = None
         self.plot_outputs = None
         self.plot_fans = None
+        self.plot_power = None
 
         self.pb_close_2.clicked.connect(lambda: self.sub.close())
         self.pb_close_3.clicked.connect(lambda: self.sub.close())
@@ -2745,11 +2748,11 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.cb_month.currentIndexChanged.connect(lambda: self.load_available_logs("cvs"))
         self.cb_month_2.currentIndexChanged.connect(lambda: self.load_available_logs("opd"))
         self.cb_month_3.currentIndexChanged.connect(lambda: self.load_available_logs("fan"))
-        self.cb_month_4.currentIndexChanged.connect(lambda: self.load_available_logs("acc"))
+        self.cb_month_4.currentIndexChanged.connect(lambda: self.load_available_logs("pwr"))
         self.load_available_logs("cvs")
         self.load_available_logs("opd")
         self.load_available_logs("fan")
-        self.load_available_logs("acc")
+        self.load_available_logs("pwr")
         # self.cb_logs.currentIndexChanged.connect(self.load_log)
         self.pb_reload.clicked.connect(lambda: self.load_log(1))
         self.pb_reload_2.clicked.connect(lambda: self.load_log(2))
@@ -2758,6 +2761,7 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.pb_refresh.clicked.connect(self.plot_sensors)
         self.pb_refresh_2.clicked.connect(self.outputs_plot)
         self.pb_refresh_3.clicked.connect(self.fans_plot)
+        self.pb_refresh_4.clicked.connect(self.power_plot)
         self.ck_live.clicked.connect(self.go_live)
 
     def load_available_logs(self, f_type):
@@ -2774,7 +2778,7 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             self.cb_logs_3.blockSignals(True)
             self.cb_logs_3.clear()
             m = str(self.cb_month_3.currentData()).zfill(2)
-        elif f_type == "acc":
+        elif f_type == "pwr":
             self.cb_logs_4.blockSignals(True)
             self.cb_logs_4.clear()
             m = str(self.cb_month_4.currentData()).zfill(2)
@@ -2791,7 +2795,7 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             elif f_type == "fan":
                 self.cb_logs_3.addItem(s, lg)
                 self.cb_logs_3.blockSignals(False)
-            elif f_type == "acc":
+            elif f_type == "pwr":
                 self.cb_logs_4.addItem(s, lg)
                 self.cb_logs_4.blockSignals(False)
 
@@ -2817,6 +2821,9 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         if tab == 3:
             log = self.cb_logs_3.currentData()
             self._load_fan_log(log)
+        if tab == 4:
+            log = self.cb_logs_4.currentData()
+            self._load_power_log(log)
 
     def _load_sensor_log(self, log):
         txt = self.logger.get_log(LOG_DATA, log)
@@ -2882,6 +2889,19 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             self.output_values['ws'].append(string_to_float(r[9]) + 18)
             self.output_values['wh1'].append(string_to_float(r[10]) + 20)
             self.output_values['wh2'].append(string_to_float(r[11]) + 22)
+
+    def _load_power_log(self, log):
+        txt = self.logger.get_log(LOG_DATA, log)
+        values = []
+        self.power_values.clear()
+        self.times = []
+        for row in txt:
+            if row == "":
+                break
+            self.times.append(row[0: 5])
+            row = row[6:]
+            v = row.split(",")
+            self.power_values['watts'].append(string_to_float(v[0]))
 
     def _load_fan_log(self, log):
         txt = self.logger.get_log(LOG_DATA, log)
@@ -3000,8 +3020,8 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             'Off', 'H1a On', 'Off', 'H1b On', 'Off', 'A1 On', 'Off', 'S1 On', 'Off', 'H2a On', 'Off', 'H2b On',
             'Off', 'A2 On', 'Off', 'S2 On', 'Off', 'H3 On', 'Off', 'WS On', 'Off', 'WH1 On', 'Off', 'WH2 On'])
         self.plot_outputs.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
-        leg = self.plot_outputs.canvas.axes.legend()
-        leg.set_draggable(state=True)
+        # leg = self.plot_outputs.canvas.axes.legend()
+        # leg.set_draggable(state=True)
         self.plot_outputs.canvas.axes.tick_params(
             axis='x', which='major', labelcolor='Green', rotation=45, labelsize=7)
         self.plot_outputs.canvas.axes.xaxis.grid(True, which='minor')
@@ -3013,13 +3033,17 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.plot_fans = MplWidget(self.wg_graph_3, 12, 5.3)
         self.plot_fans.canvas.axes.cla()
 
-        self.plot_fans.canvas.axes.plot(self.times, self.fan_values['1in'], color='green', label='Input 1')
-        self.plot_fans.canvas.axes.plot(self.times, self.fan_values['1rv'], color='green', label='Set 1', linestyle='dashed')
-        self.plot_fans.canvas.axes.plot(self.times, self.fan_values['2in'], color='orange', label='Input 2')
-        self.plot_fans.canvas.axes.plot(self.times, self.fan_values['2rv'], color='orange', label='Set 2', linestyle='dashed')
+        if self.ck_fan_1.isChecked():
+            self.plot_fans.canvas.axes.plot(self.times, self.fan_values['1in'], color='green', label='Input 1')
+            self.plot_fans.canvas.axes.plot(self.times, self.fan_values['1rv'], color='red', label='Set 1')
+        if self.ck_fan_1.isChecked():
+            self.plot_fans.canvas.axes.plot(self.times, self.fan_values['2in'], color='orange', label='Input 2')
+            self.plot_fans.canvas.axes.plot(self.times, self.fan_values['2rv'], color='blue', label='Set 2')
         ax2 = self.plot_fans.canvas.axes.twinx()
-        ax2.plot(self.times, self.fan_values['1sw'], color='pink', label='Speed 1', linestyle='dotted')
-        ax2.plot(self.times, self.fan_values['2sw'], color='orange', label='Speed 2', linestyle='dotted')
+        if self.ck_fan_1.isChecked():
+            ax2.plot(self.times, self.fan_values['1sw'], color='brown', label='Speed 1', linestyle='dotted')
+        if self.ck_fan_2.isChecked():
+            ax2.plot(self.times, self.fan_values['2sw'], color='black', label='Speed 2', linestyle='dotted')
         # ax2.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
         self.plot_fans.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
@@ -3034,6 +3058,23 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.plot_fans.grid(True)
         self.plot_fans.canvas.draw()
         self.plot_fans.show()
+
+    def power_plot(self):
+        self.plot_power = MplWidget(self.wg_graph_4, 12, 5.3)
+        self.plot_power.canvas.axes.cla()
+
+        self.plot_power.canvas.axes.plot(self.times, self.power_values['watts'], color='green', label='Watts')
+
+        self.plot_power.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+        self.plot_power.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
+        # leg = self.plot_power.canvas.axes.legend()
+        # leg.set_draggable(state=True)
+        self.plot_power.canvas.axes.tick_params(
+            axis='x', which='major', labelcolor='Green', rotation=45, labelsize=7)
+        self.plot_power.canvas.axes.xaxis.grid(True, which='minor')
+        self.plot_power.grid(True)
+        self.plot_power.canvas.draw()
+        self.plot_power.show()
 
 
 class DialogPatternMaker(QDialog, Ui_DialogPatterns):
