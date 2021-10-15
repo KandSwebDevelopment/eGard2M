@@ -184,7 +184,6 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             return
 
     def loop_1(self):  # 1 sec
-        # print("Current data", self.current_data)
         self.le_Clock.setText(strftime("%H" + ":" + "%M" + ":" + "%S"))
         self.le_date.setText(strftime("%a" + " " + "%d" + " " + "%b"))
 
@@ -541,6 +540,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
     def check_light(self):
         """ This checks both area processes to see if light should be on or off. If a change is detected it sends
             switch to IO.
+            Also checks to see if in transition period
             self.update_switch handles the change when it has actually switched """
         if self.area_controller.area_has_process(1):
             status = self.area_controller.get_area_process(1).check_light()
@@ -1057,7 +1057,6 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.lelightlevel_1.setText(str(round((100 / 1024) * int(data[0]), 1)))
             self.lelightlevel_2.setText(str(round((100 / 1024) * int(data[1]), 1)))
             self.update_float(1, int(data[2]))
-            # self.outputs[OP_W_HEATER_1].float_update(int(data[2]), int(data[3]))
             self.update_float(2, int(data[3]))
         except Exception as e:
             print("UPDATE OTHERS ERROR ", e.args)
@@ -1065,19 +1064,14 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
     def new_day(self):
         print("*********** New day ***********")
         self.today = datetime.now().day
-        # if self.master_mode == MASTER:
         self.logger.new_day()
-        # self.outputs[OP_W_HEATER_1].new_day()
-        # self.outputs[OP_W_HEATER_2].new_day()
         for a in range(1, 3):
             if self.area_controller.area_has_process(a):
                 # Advance day in processes
-                p = self.area_controller.get_area_process(a)
-                p.day_advance()
+                self.area_controller.get_area_process(a).day_advance()
                 self.check_stage(a)
         if self.area_controller.area_has_process(3):
             self.check_stage(3)
-            # self.check_drying()
 
         self.feed_controller.new_day()
         # Update next feed dates
@@ -1086,6 +1080,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.area_controller.output_controller.outputs[OUT_WATER_HEATER_1].new_day()
         self.area_controller.output_controller.outputs[OUT_WATER_HEATER_2].new_day()
         self.check_upcoming_starts()
+        self.area_controller.reset_clock_max_min()      # Reset max min's that are on clock
         # # Reset feeder for new day
         # self.water_control.new_day()
         # self.water_control.start()

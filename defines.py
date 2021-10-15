@@ -283,6 +283,10 @@ MFA_FEED_2 = 4
 MFA_FLUSH_1 = 5
 MFA_FLUSH_2 = 6
 
+# Max Min Types - Reset option
+MMT_CLOCK = 1       # By clock ie midnight and midday
+MMT_PROCESS = 2     # By process ie light switch
+
 # Msg Codes
 MSG_1 = 1
 MSG_DATA_LINK = 2   # Master/Slave Data link lost

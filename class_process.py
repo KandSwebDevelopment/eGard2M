@@ -764,11 +764,7 @@ class ProcessClass(QObject):
                 self.cool_warm = WARM
                 self.area_controller.main_panel.update_trans(self.location, WARM)
                 self.area_controller.cool_warm[self.location] = WARM
-        # elif self.light_off < ct < (self.light_off + timedelta(milliseconds=self.cool_time)):
-        #     if self.cool_warm != COOL:
-        #         self.cool_warm = COOL
-        #         self.area_controller.main_panel.update_trans(self.location, COOL)
-        #         self.area_controller.cool_warm[self.location] = COOL
+                self.area_controller.process_max_min_reset(DAY)
         else:
             if self.cool_warm != NORMAL:
                 self.cool_warm = NORMAL
@@ -810,6 +806,7 @@ class ProcessClass(QObject):
                 self.cool_warm = COOL
                 self.area_controller.main_panel.update_trans(self.location, COOL)
                 self.area_controller.cool_warm[self.location] = COOL
+                self.area_controller.process_max_min_reset(NIGHT)
 
             self.light_status_last = self.light_status
             if self.light_status == 1:

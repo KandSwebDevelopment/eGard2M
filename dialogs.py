@@ -3036,7 +3036,7 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         if self.ck_fan_1.isChecked():
             self.plot_fans.canvas.axes.plot(self.times, self.fan_values['1in'], color='green', label='Input 1')
             self.plot_fans.canvas.axes.plot(self.times, self.fan_values['1rv'], color='red', label='Set 1')
-        if self.ck_fan_1.isChecked():
+        if self.ck_fan_2.isChecked():
             self.plot_fans.canvas.axes.plot(self.times, self.fan_values['2in'], color='orange', label='Input 2')
             self.plot_fans.canvas.axes.plot(self.times, self.fan_values['2rv'], color='blue', label='Set 2')
         ax2 = self.plot_fans.canvas.axes.twinx()
