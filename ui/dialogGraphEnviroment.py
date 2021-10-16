@@ -202,6 +202,13 @@ class Ui_DialogGraphEnv(object):
         self.ck_live_4 = QtWidgets.QCheckBox(self.tab_4)
         self.ck_live_4.setGeometry(QtCore.QRect(500, 13, 70, 17))
         self.ck_live_4.setObjectName("ck_live_4")
+        self.label = QtWidgets.QLabel(self.tab_4)
+        self.label.setGeometry(QtCore.QRect(570, 10, 81, 21))
+        self.label.setObjectName("label")
+        self.le_units_used = QtWidgets.QLineEdit(self.tab_4)
+        self.le_units_used.setGeometry(QtCore.QRect(650, 10, 51, 20))
+        self.le_units_used.setReadOnly(True)
+        self.le_units_used.setObjectName("le_units_used")
         self.tabWidget.addTab(self.tab_4, "")
 
         self.retranslateUi(DialogGraphEnv)
@@ -248,6 +255,7 @@ class Ui_DialogGraphEnv(object):
         self.pb_reload_4.setText(_translate("DialogGraphEnv", "Load File"))
         self.pb_refresh_4.setText(_translate("DialogGraphEnv", "Refresh"))
         self.ck_live_4.setText(_translate("DialogGraphEnv", "Live"))
+        self.label.setText(_translate("DialogGraphEnv", "Units Used"))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_4), _translate("DialogGraphEnv", "Power"))
 
 

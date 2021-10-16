@@ -215,10 +215,10 @@ class AreaController(QObject):
             self.sensors[12].max_min.reset(day_night)
             self.sensors[13].max_min.reset(day_night)
 
-    def reset_clock_max_min(self):
-        self.sensors[1].max_min.reset()
-        self.sensors[2].max_min.reset()
-        self.sensors[9].max_min.reset()
+    def max_min_reset_clock(self):
+        self.sensors[1].max_min.reset(DAY)
+        self.sensors[2].max_min.reset(DAY)
+        self.sensors[9].max_min.reset(DAY)
 
     def load_sensor_ranges(self, area, sid):
         if self.area_has_process(area):

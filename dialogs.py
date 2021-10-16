@@ -2895,13 +2895,17 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         values = []
         self.power_values.clear()
         self.times = []
+        start = 0
         for row in txt:
             if row == "":
                 break
             self.times.append(row[0: 5])
             row = row[6:]
             v = row.split(",")
+            if start == 0:
+                start = string_to_float(v[1])
             self.power_values['watts'].append(string_to_float(v[0]))
+        self.le_units_used.setText(str(round(string_to_float(v[1]) - start, 2)))
 
     def _load_fan_log(self, log):
         txt = self.logger.get_log(LOG_DATA, log)

@@ -699,14 +699,25 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
     def io_reboot(self):
         th = threading.Thread(target=self.io_sync)
         th.start()
+        # self.io_sync()
 
     def io_sync(self):
         # Send all parameters to the IO unit as it has rebooted
+        _time.sleep(1)
         self.coms_interface.send_switch(SW_LIGHT_1, self.area_controller.get_area_process(1).check_light())
         _time.sleep(1)
         self.coms_interface.send_switch(SW_LIGHT_2, self.area_controller.get_area_process(2).check_light())
         _time.sleep(1)
-
+        self.coms_interface.send_switch(SW_LIGHT_1, self.area_controller.get_area_process(1).check_light())
+        _time.sleep(1)
+        self.coms_interface.send_switch(SW_LIGHT_2, self.area_controller.get_area_process(2).check_light())
+        _time.sleep(1)
+        self.area_controller.main_window.coms_interface.send_switch(SW_FANS_POWER, self.area_controller.fan_controller.master_power)
+        _time.sleep(1)
+        self.fan_controller.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, 1, self.area_controller.fan_controller.fans[1].speed)
+        _time.sleep(1)
+        self.fan_controller.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, 2, self.area_controller.fan_controller.fans[2].speed)
+        _time.sleep(1)
         outputs = self.area_controller.output_controller.outputs
         for o in outputs:   # o = index
             self.coms_interface.send_switch(outputs[o].output_pin, outputs[o].relay_position)
@@ -1080,7 +1091,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.area_controller.output_controller.outputs[OUT_WATER_HEATER_1].new_day()
         self.area_controller.output_controller.outputs[OUT_WATER_HEATER_2].new_day()
         self.check_upcoming_starts()
-        self.area_controller.reset_clock_max_min()      # Reset max min's that are on clock
+        self.area_controller.max_min_reset_clock()      # Reset max min's that are on clock
         # # Reset feeder for new day
         # self.water_control.new_day()
         # self.water_control.start()
