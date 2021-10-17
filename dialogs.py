@@ -2763,6 +2763,7 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.pb_refresh_3.clicked.connect(self.fans_plot)
         self.pb_refresh_4.clicked.connect(self.power_plot)
         self.ck_live.clicked.connect(self.go_live)
+        self.ck_tuning.clicked.connect(lambda: self.load_available_logs("pwr"))
 
     def load_available_logs(self, f_type):
         pattern = str(self.cb_year.currentData()) + str(self.cb_month.currentData()).zfill(2) + "[0-9][0-9]." + f_type
@@ -2778,6 +2779,8 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             self.cb_logs_3.blockSignals(True)
             self.cb_logs_3.clear()
             m = str(self.cb_month_3.currentData()).zfill(2)
+            if self.ck_tuning.isChecked():
+                f_type == "ftl"
         elif f_type == "pwr":
             self.cb_logs_4.blockSignals(True)
             self.cb_logs_4.clear()
@@ -2795,7 +2798,7 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             elif f_type == "fan":
                 self.cb_logs_3.addItem(s, lg)
                 self.cb_logs_3.blockSignals(False)
-            elif f_type == "pwr":
+            elif f_type == "pwr" or f_type == "ftl":
                 self.cb_logs_4.addItem(s, lg)
                 self.cb_logs_4.blockSignals(False)
 
@@ -3051,8 +3054,8 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         # ax2.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
         self.plot_fans.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-        ax2.set_yticks([0, 1, 2, 3, 4, 5])
-        ax2.set_yticklabels(["Off", "1", "2", "3", "4", "5"])
+        ax2.set_yticks([0, 1, 2, 3, 4, 5, 6])
+        ax2.set_yticklabels(["Off", "1", "2", "3", "4", "5", "6"])
         self.plot_fans.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
         leg = self.plot_fans.canvas.axes.legend()
         leg.set_draggable(state=True)

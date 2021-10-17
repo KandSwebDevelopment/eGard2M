@@ -8,6 +8,9 @@ from PyQt5.QtGui import QPixmap
 import PID
 from defines import *
 
+""" Remember the IO unit uses speeds 0 to 5 and the class uses 1 to 6. This is adjusted at the switch command to 
+    send the speed to the IO and again by the fan controller when it receives the speed back from the IO"""
+
 
 class FanClass(QThread):
     update_fan_speed = pyqtSignal(int, int)     # Fan id, speed
@@ -29,7 +32,8 @@ class FanClass(QThread):
         self.last_speed = -1
         self.last_request = UNSET   # Used by logging, same as last speed but updates instantly
         self._set_point = 0
-        self._logging = True    # if True will log sensor temperature and fan speed
+        self._logging = True    # if True will log sensor temperature and fan speed at 2 min intervals
+        self._logging_t = True    # if True will log sensor temperature and fan speed on each switch
         self._mode = 0
         self._master_power = 0
         self.fan_spin_up = int(self.db.get_config(CFT_FANS, "spin up", 10))
@@ -252,10 +256,9 @@ class FanClass(QThread):
             s = int((10 - s) / 4) + 1
             self.switch(s)
             print(self.id, " PID ", speed_raw, " Sw ", s)
-            # if self._logging and self.fan_controller.master_mode == MASTER and s != self.last_request:
-            #     self.last_request = s
-            #     self.fan_controller.area_controller.main_window.logger.save_fan_log(
-            #         "{}, {}, {}, {}".format(self.id, self.input, s, self._set_point))
+            if self._logging and self.fan_controller.master_mode == MASTER:
+                self.fan_controller.area_controller.main_window.logger.save_fan_log(
+                    "{}, {}, {}, {}".format(self.id, self.input, s, self._set_point))
 
     def spin_up_timeout(self):
         if self.startup_counter <= 0:
@@ -275,6 +278,9 @@ class FanClass(QThread):
         if speed == self.last_speed:
             return
         if self.spin_up:
+            return
+        if speed == 0:
+            self.fan_controller.coms_interface.send_switch(SW_FAN_1_OFF - 1 + self.id, OFF)
             return
         self.fan_controller.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, self.id, speed - 1)
 

@@ -79,7 +79,14 @@ class Logger(QObject):
         self.fan_file = self.log_path + "\\{}.fan".format(self.today_name)
         f = open(self.fan_file, "a")
         text = datetime.strftime(datetime.now(), "%H:%M, ") + data + self.new_line
-        # print(text)
+        f.write(text)
+        f.close()
+
+    def save_fan_tune_log(self, data):
+        if not self.available:
+            return
+        f = open(self.log_path + "\\{}.ftl".format(self.today_name), "a")
+        text = datetime.strftime(datetime.now(), "%H:%M, ") + data + self.new_line
         f.write(text)
         f.close()
 
@@ -88,7 +95,6 @@ class Logger(QObject):
             return
         f = open(self.log_path + "\\{}.pwr".format(self.today_name), "a")
         text = datetime.strftime(datetime.now(), "%H:%M, ") + data + self.new_line
-        # print(text)
         f.write(text)
         f.close()
 
