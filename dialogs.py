@@ -2763,10 +2763,9 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.pb_refresh_3.clicked.connect(self.fans_plot)
         self.pb_refresh_4.clicked.connect(self.power_plot)
         self.ck_live.clicked.connect(self.go_live)
-        self.ck_tuning.clicked.connect(lambda: self.load_available_logs("pwr"))
+        self.ck_tuning.clicked.connect(lambda: self.load_available_logs("fan"))
 
     def load_available_logs(self, f_type):
-        pattern = str(self.cb_year.currentData()) + str(self.cb_month.currentData()).zfill(2) + "[0-9][0-9]." + f_type
         if f_type == "cvs":
             self.cb_logs.blockSignals(True)
             self.cb_logs.clear()
@@ -2780,11 +2779,12 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             self.cb_logs_3.clear()
             m = str(self.cb_month_3.currentData()).zfill(2)
             if self.ck_tuning.isChecked():
-                f_type == "ftl"
+                f_type = "ftl"
         elif f_type == "pwr":
             self.cb_logs_4.blockSignals(True)
             self.cb_logs_4.clear()
             m = str(self.cb_month_4.currentData()).zfill(2)
+        pattern = str(self.cb_year.currentData()) + m + "[0-9][0-9]." + f_type
         self.logs = fnmatch.filter(os.listdir(self.logger.log_path), pattern)
         self.logs.reverse()
         for lg in self.logs:
@@ -2795,10 +2795,10 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             elif f_type == "opd":
                 self.cb_logs_2.addItem(s, lg)
                 self.cb_logs_2.blockSignals(False)
-            elif f_type == "fan":
+            elif f_type == "fan" or f_type == "ftl":
                 self.cb_logs_3.addItem(s, lg)
                 self.cb_logs_3.blockSignals(False)
-            elif f_type == "pwr" or f_type == "ftl":
+            elif f_type == "pwr":
                 self.cb_logs_4.addItem(s, lg)
                 self.cb_logs_4.blockSignals(False)
 
