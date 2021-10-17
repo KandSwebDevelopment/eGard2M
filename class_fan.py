@@ -215,6 +215,10 @@ class FanClass(QThread):
         # self.thread_udp_client.quit()
         # self.thread_udp_client.wait()
         self.switch(0)
+        self.fan_controller.coms_interface.send_switch(SW_FAN_1_OFF - 1 + self.id, OFF)
+
+    def fan_stopped(self):
+        pass
 
     def start_auto(self):
         self.start_manual()
@@ -226,9 +230,10 @@ class FanClass(QThread):
     def start_manual(self):
         if self.speed > 0:
             return
-        self.switch(5)
+        self.switch(6)
         self.spin_up = True
         self.mode = 1
+        self.fan_controller.coms_interface.send_switch(SW_FAN_1_OFF - 1 + self.id, ON)
 
     def run(self) -> None:
         if self.fan_controller.master_mode == SLAVE:
@@ -244,7 +249,7 @@ class FanClass(QThread):
             s = speed_raw if speed_raw > - 10 else -10
             s = s if s < 10 else 10
             # s = int((20 - (10 - s)) / 5) + 1
-            s = int((10 - s) / 5) + 1
+            s = int((10 - s) / 4) + 1
             self.switch(s)
             print(self.id, " PID ", speed_raw, " Sw ", s)
             # if self._logging and self.fan_controller.master_mode == MASTER and s != self.last_request:
@@ -255,7 +260,7 @@ class FanClass(QThread):
     def spin_up_timeout(self):
         if self.startup_counter <= 0:
             self.spin_up = False
-            self.switch(2)
+            self.switch(3)
             self.startup_timer.stop()
             self.fan_controller.area_controller.main_window.msg_sys.remove(MSG_FAN_START + self.id)
             getattr(self.fan_controller.main_panel, "lefanspeed_{}".format(self.id)).setStyleSheet("")
@@ -271,7 +276,7 @@ class FanClass(QThread):
             return
         if self.spin_up:
             return
-        self.fan_controller.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, self.id, speed)
+        self.fan_controller.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, self.id, speed - 1)
 
     def _load_set_point(self):
         if self._sensor == 0:

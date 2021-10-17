@@ -39,6 +39,7 @@ class FansController(QObject):
     def speed_update(self, fan, speed):
         """ A new fan speed has been received from the IO
             Just update the display and relay the speed"""
+        speed += 1
         if fan == 1:
             self.main_panel.lefanspeed_1.setText(str(speed))
         elif fan == 2:

@@ -712,11 +712,11 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         _time.sleep(1)
         self.coms_interface.send_switch(SW_LIGHT_2, self.area_controller.get_area_process(2).check_light())
         _time.sleep(1)
-        self.area_controller.main_window.coms_interface.send_switch(SW_FANS_POWER, self.area_controller.fan_controller.master_power)
+        self.coms_interface.send_switch(SW_FANS_POWER, self.area_controller.fan_controller.master_power)
         _time.sleep(1)
-        self.area_controller.fan_controller.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, 1, self.area_controller.fan_controller.fans[1].speed)
+        self.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, 1, self.area_controller.fan_controller.fans[1].speed)
         _time.sleep(1)
-        self.area_controller.fan_controller.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, 2, self.area_controller.fan_controller.fans[2].speed)
+        self.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, 2, self.area_controller.fan_controller.fans[2].speed)
         _time.sleep(1)
         outputs = self.area_controller.output_controller.outputs
         for o in outputs:   # o = index
