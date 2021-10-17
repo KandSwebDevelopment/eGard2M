@@ -2924,12 +2924,22 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             self.times.append(row[0: 5])
             row = row[6:]
             v = row.split(",")
-            self.fan_values['1in'].append(string_to_float(v[0]))
-            self.fan_values['1sw'].append(string_to_float(v[1]))
-            self.fan_values['1rv'].append(string_to_float(v[2]))
-            self.fan_values['2in'].append(string_to_float(v[3]))
-            self.fan_values['2sw'].append(string_to_float(v[4]))
-            self.fan_values['2rv'].append(string_to_float(v[5]))
+            if self.ck_tuning.isChecked():
+                if v[0] == "1":
+                    self.fan_values['1in'].append(string_to_float(v[1]))
+                    self.fan_values['1sw'].append(string_to_float(v[2]))
+                    self.fan_values['1rv'].append(string_to_float(v[3]))
+                else:
+                    self.fan_values['2in'].append(string_to_float(v[1]))
+                    self.fan_values['2sw'].append(string_to_float(v[2]))
+                    self.fan_values['2rv'].append(string_to_float(v[3]))
+            else:
+                self.fan_values['1in'].append(string_to_float(v[0]))
+                self.fan_values['1sw'].append(string_to_float(v[1]))
+                self.fan_values['1rv'].append(string_to_float(v[2]))
+                self.fan_values['2in'].append(string_to_float(v[3]))
+                self.fan_values['2sw'].append(string_to_float(v[4]))
+                self.fan_values['2rv'].append(string_to_float(v[5]))
 
     def plot_sensors(self):
         self.plot = MplWidget(self.wg_graph_1, 12, 4.5)

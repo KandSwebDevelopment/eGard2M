@@ -33,7 +33,6 @@ class FanClass(QThread):
         self.last_request = UNSET   # Used by logging, same as last speed but updates instantly
         self._set_point = 0
         self._logging = True    # if True will log sensor temperature and fan speed at 2 min intervals
-        self._logging_t = True    # if True will log sensor temperature and fan speed on each switch
         self._mode = 0
         self._master_power = 0
         self.fan_spin_up = int(self.db.get_config(CFT_FANS, "spin up", 10))
@@ -255,10 +254,10 @@ class FanClass(QThread):
             # s = int((20 - (10 - s)) / 5) + 1
             s = int((10 - s) / 4) + 1
             self.switch(s)
-            print(self.id, " PID ", speed_raw, " Sw ", s)
-            if self._logging and self.fan_controller.master_mode == MASTER:
-                self.fan_controller.area_controller.main_window.logger.save_fan_log(
-                    "{}, {}, {}, {}".format(self.id, self.input, s, self._set_point))
+            # print(self.id, " PID ", speed_raw, " Sw ", s)
+            # if self._logging_t and self.fan_controller.master_mode == MASTER:
+            #     self.fan_controller.area_controller.main_window.logger.save_fan_log(
+            #         "{}, {}, {}, {}".format(self.id, self.input, s, self._set_point))
 
     def spin_up_timeout(self):
         if self.startup_counter <= 0:

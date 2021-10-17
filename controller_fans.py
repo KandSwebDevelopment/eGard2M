@@ -21,6 +21,7 @@ class FansController(QObject):
         self.db = self.main_panel.db
         self.master_mode = self.main_panel.master_mode
         self.fans = collections.defaultdict(FanClass)
+        self._logging_t = True    # if True will log sensor temperature and fan speed on each switch
 
         self.master_power = UNSET
         self.fans[1] = FanClass(self, 1)
@@ -121,6 +122,8 @@ class FansController(QObject):
 
     def update_temperature(self, area, value):
         self.fans[area].update_input_value(value)
+        if self._logging_t and self.fan_controller.master_mode == MASTER:
+            self.area_controller.main_window.logger.save_fan_tune_log(self.area_controller.fan_controller.get_log_values())
 
     @pyqtSlot(int, int, int, name="updateSwitch")
     def switch_update(self, sw, state, module):
