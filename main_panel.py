@@ -63,7 +63,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.area_controller = None
         self.feed_controller = None
         self.coms_interface = None
-        self.fan_controller = None
+        # self.fan_controller = None
         self.access = None
         self.logger = None
         self.soil_sensors = None
@@ -714,9 +714,9 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         _time.sleep(1)
         self.area_controller.main_window.coms_interface.send_switch(SW_FANS_POWER, self.area_controller.fan_controller.master_power)
         _time.sleep(1)
-        self.fan_controller.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, 1, self.area_controller.fan_controller.fans[1].speed)
+        self.area_controller.fan_controller.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, 1, self.area_controller.fan_controller.fans[1].speed)
         _time.sleep(1)
-        self.fan_controller.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, 2, self.area_controller.fan_controller.fans[2].speed)
+        self.area_controller.fan_controller.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, 2, self.area_controller.fan_controller.fans[2].speed)
         _time.sleep(1)
         outputs = self.area_controller.output_controller.outputs
         for o in outputs:   # o = index
