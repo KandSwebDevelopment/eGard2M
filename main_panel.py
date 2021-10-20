@@ -271,6 +271,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.pb_output_mode_2.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 2)))
         self.pb_output_mode_3.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 3)))
         self.pb_output_mode_9.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 4)))
+        self.pb_mm_reset_3.clicked.connect(lambda: self.area_controller.sensors[3].max_min.reset(0))
         # Area 2
         self.pb_man_feed_2.clicked.connect(lambda: self.feed_manual(2))
         self.pb_feed_mix_2.clicked.connect(lambda: self.wc.show(DialogFeedMix(self, 2)))
@@ -1119,8 +1120,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 self.coms_interface.relay_send(NWC_FAN_UPDATE, self.area_controller.fan_controller.get_speed(1),
                                                self.area_controller.fan_controller.get_speed(2))
             else:
-                self.update_fans(1, data[0])
-                self.update_fans(2, data[1])
+                self.update_fans(1, data[0] - 1)    # The -1 is because the master has added 1 for IO
+                self.update_fans(2, data[1] - 1)
         elif cmd == NWC_FAN_REQUIRED:
             self.area_controller.fan_controller.set_req_temperature(data[0], data[1])
         elif cmd == NWC_FAN_MODE:

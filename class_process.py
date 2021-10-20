@@ -111,6 +111,8 @@ class ProcessClass(QObject):
         self.feed_frequency_next = 0
         self.feeds_till_end = []
         self.last_feed_date = None      # Datetime of last feed
+        self.cool_time = 0
+        self.warm_time = 0
 
         self.settings = None
         # self.feed_pack = FeedClass(self)
@@ -179,8 +181,8 @@ class ProcessClass(QObject):
             self.strain_shortest = row
 
         # Get transition times from db. Has to be here as it need location
-        self.cool_time = int(self.db.get_config(CFT_AREA, "trans cool {}".format(self.location), 60)) * 60000
-        self.warm_time = int(self.db.get_config(CFT_AREA, "trans warm {}".format(self.location), 60)) * 60000
+        self.cool_time = int(self.db.get_config(CFT_AREA, "trans cool {}".format(self.location), 60)) * 60
+        self.warm_time = int(self.db.get_config(CFT_AREA, "trans warm {}".format(self.location), 60)) * 60
         self.process_load_stage_info()
 
         self.load_lighting_schedule()
@@ -759,12 +761,18 @@ class ProcessClass(QObject):
     def check_trans(self):
         """ This only check for warm up and normal. Cool is detected by check_light as it changes the switching times"""
         ct = datetime.now()
-        if self.light_on < ct < (self.light_on + timedelta(milliseconds=self.warm_time)):
+        if self.light_on < ct < (self.light_on + timedelta(seconds=self.warm_time)):
             if self.cool_warm != WARM:
                 self.cool_warm = WARM
                 self.area_controller.main_panel.update_trans(self.location, WARM)
                 self.area_controller.cool_warm[self.location] = WARM
                 self.area_controller.max_min_reset_process(DAY)
+        elif self.light_off < ct < (self.light_off + timedelta(seconds=self.cool_time)):
+            if self.cool_warm != COOL:
+                self.cool_warm = COOL
+                self.area_controller.main_panel.update_trans(self.location, COOL)
+                self.area_controller.cool_warm[self.location] = COOL
+                self.area_controller.max_min_reset_process(NIGHT)
         else:
             if self.cool_warm != NORMAL:
                 self.cool_warm = NORMAL
@@ -803,10 +811,10 @@ class ProcessClass(QObject):
                 self.light_on = self.light_on + timedelta(days=1)
                 self.light_off = self.light_off + timedelta(days=1)
                 print("to new times on at {} off at {}".format(self.light_on, self.light_off))
-                self.cool_warm = COOL
-                self.area_controller.main_panel.update_trans(self.location, COOL)
-                self.area_controller.cool_warm[self.location] = COOL
-                self.area_controller.max_min_reset_process(NIGHT)
+                # self.cool_warm = COOL
+                # self.area_controller.main_panel.update_trans(self.location, COOL)
+                # self.area_controller.cool_warm[self.location] = COOL
+                # self.area_controller.max_min_reset_process(NIGHT)
 
             self.light_status_last = self.light_status
             if self.light_status == 1:

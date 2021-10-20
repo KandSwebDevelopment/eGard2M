@@ -2741,6 +2741,23 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             self.cb_month_3.addItem(m, i)
             self.cb_month_4.addItem(m, i)
             i += 1
+        for c in range(1, 5):
+            ctrl = getattr(self, "cb_limit_{}".format(c))
+            ctrl.addItem("All", 0)
+            ctrl.addItem("30", -15)
+            ctrl.addItem("60", -30)
+            ctrl.addItem("2hrs", -60)
+            ctrl.addItem("4hrs", -120)
+            ctrl.addItem("6hrs", -180)
+            ctrl.addItem("8hrs", -240)
+        ctrl = self.cb_limit_3
+        ctrl.addItem("All", 0)
+        ctrl.addItem("1", -250)
+        ctrl.addItem("2", -500)
+        ctrl.addItem("3", -750)
+        ctrl.addItem("4", -1000)
+        ctrl.addItem("5", -1500)
+        ctrl.addItem("6", -2000)
         self.cb_month.setCurrentIndex(self.cb_month.findData(datetime.now().month))
         self.cb_month_2.setCurrentIndex(self.cb_month_2.findData(datetime.now().month))
         self.cb_month_3.setCurrentIndex(self.cb_month_3.findData(datetime.now().month))
@@ -2924,22 +2941,17 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             self.times.append(row[0: 5])
             row = row[6:]
             v = row.split(",")
-            if self.ck_tuning.isChecked():
-                if v[0] == "1":
-                    self.fan_values['1in'].append(string_to_float(v[1]))
-                    self.fan_values['1sw'].append(string_to_float(v[2]))
-                    self.fan_values['1rv'].append(string_to_float(v[3]))
-                else:
-                    self.fan_values['2in'].append(string_to_float(v[1]))
-                    self.fan_values['2sw'].append(string_to_float(v[2]))
-                    self.fan_values['2rv'].append(string_to_float(v[3]))
-            else:
-                self.fan_values['1in'].append(string_to_float(v[0]))
-                self.fan_values['1sw'].append(string_to_float(v[1]))
-                self.fan_values['1rv'].append(string_to_float(v[2]))
-                self.fan_values['2in'].append(string_to_float(v[3]))
-                self.fan_values['2sw'].append(string_to_float(v[4]))
-                self.fan_values['2rv'].append(string_to_float(v[5]))
+            self.fan_values['1in'].append(string_to_float(v[0]))
+            self.fan_values['1sw'].append(string_to_float(v[1]))
+            self.fan_values['1rv'].append(string_to_float(v[2]))
+            self.fan_values['2in'].append(string_to_float(v[3]))
+            self.fan_values['2sw'].append(string_to_float(v[4]))
+            self.fan_values['2rv'].append(string_to_float(v[5]))
+
+    def get_limit(self, values, limit):
+        if limit == 0:
+            return values
+        return values[limit:]
 
     def plot_sensors(self):
         self.plot = MplWidget(self.wg_graph_1, 12, 4.5)
@@ -2947,28 +2959,31 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         if self.ax2 is not None:
             self.ax2.cla()
             self.ax2 = None
+        limit = self.cb_limit_1.currentData()
+        times = self.get_limit(self.times, limit)
+
         if self.temp_1_1.isChecked():
-            self.plot.canvas.axes.plot(self.times, self.values['1t'], color='green', label='Area 1 Temperature')
+            self.plot.canvas.axes.plot(times, self.get_limit(self.values['1t'], limit), color='green', label='Area 1 Temperature')
         if self.temp_1_2.isChecked():
-            self.plot.canvas.axes.plot(self.times, self.values['1c'], color='green', label='Area 1 Canopy', linestyle='dotted')
+            self.plot.canvas.axes.plot(times, self.get_limit(self.values['1c'], limit), color='green', label='Area 1 Canopy', linestyle='dotted')
         if self.temp_1_3.isChecked():
-            self.plot.canvas.axes.plot(self.times, self.values['1r'], color='green', label='Area 1 Root', linestyle='dashed')
+            self.plot.canvas.axes.plot(times, self.get_limit(self.values['1r'], limit), color='green', label='Area 1 Root', linestyle='dashed')
 
         if self.temp_2_1.isChecked():
-            self.plot.canvas.axes.plot(self.times, self.values['2t'], color='orange', label='Area 2 Temperature')
+            self.plot.canvas.axes.plot(times, self.get_limit(self.values['2t'], limit), color='orange', label='Area 2 Temperature')
         if self.temp_2_2.isChecked():
-            self.plot.canvas.axes.plot(self.times, self.values['2c'], color='orange', label='Area 2 Canopy', linestyle='dotted')
+            self.plot.canvas.axes.plot(times, self.get_limit(self.values['2c'], limit), color='orange', label='Area 2 Canopy', linestyle='dotted')
         if self.temp_2_3.isChecked():
-            self.plot.canvas.axes.plot(self.times, self.values['2r'], color='orange', label='Area 2 Root', linestyle='dashed')
+            self.plot.canvas.axes.plot(times, self.get_limit(self.values['2r'], limit), color='orange', label='Area 2 Root', linestyle='dashed')
 
         if self.temp_3_1.isChecked():
-            self.plot.canvas.axes.plot(self.times, self.values['dt'], color='olive', label='Drying Temperature')
+            self.plot.canvas.axes.plot(times, self.get_limit(self.values['dt'], limit), color='olive', label='Drying Temperature')
 
         if self.temp_4_1.isChecked():
-            self.plot.canvas.axes.plot(self.times, self.values['ws'], color='brown', label='Workshop')
+            self.plot.canvas.axes.plot(times, self.get_limit(self.values['ws'], limit), color='brown', label='Workshop')
 
         if self.temp_5_1.isChecked():
-            self.plot.canvas.axes.plot(self.times, self.values['ot'], color='hotpink', label='Outside Temperature')
+            self.plot.canvas.axes.plot(times, self.get_limit(self.values['ot'], limit), color='hotpink', label='Outside Temperature')
 
         if self.ck_hum_1.isChecked():
             if self.ax2 is None:
@@ -3049,18 +3064,19 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
     def fans_plot(self):
         self.plot_fans = MplWidget(self.wg_graph_3, 12, 5.3)
         self.plot_fans.canvas.axes.cla()
-
+        limit = self.cb_limit_3.currentData()
+        times = self.get_limit(self.times, limit)
         if self.ck_fan_1.isChecked():
-            self.plot_fans.canvas.axes.plot(self.times, self.fan_values['1in'], color='green', label='Input 1')
-            self.plot_fans.canvas.axes.plot(self.times, self.fan_values['1rv'], color='red', label='Set 1')
+            self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['1in'], limit), color='green', label='Input 1')
+            self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['1rv'], limit), color='red', label='Set 1')
         if self.ck_fan_2.isChecked():
-            self.plot_fans.canvas.axes.plot(self.times, self.fan_values['2in'], color='orange', label='Input 2')
-            self.plot_fans.canvas.axes.plot(self.times, self.fan_values['2rv'], color='blue', label='Set 2')
+            self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['2in'], limit), color='orange', label='Input 2')
+            self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['2rv'], limit), color='blue', label='Set 2')
         ax2 = self.plot_fans.canvas.axes.twinx()
         if self.ck_fan_1.isChecked():
-            ax2.plot(self.times, self.fan_values['1sw'], color='brown', label='Speed 1', linestyle='dotted')
+            ax2.plot(times, self.get_limit(self.fan_values['1sw'], limit), color='brown', label='Speed 1', linestyle='dotted')
         if self.ck_fan_2.isChecked():
-            ax2.plot(self.times, self.fan_values['2sw'], color='black', label='Speed 2', linestyle='dotted')
+            ax2.plot(times, self.get_limit(self.fan_values['2sw'], limit), color='black', label='Speed 2', linestyle='dotted')
         # ax2.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
         self.plot_fans.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
@@ -3079,8 +3095,10 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
     def power_plot(self):
         self.plot_power = MplWidget(self.wg_graph_4, 12, 5.3)
         self.plot_power.canvas.axes.cla()
+        limit = self.cb_limit_4.currentData()
+        times = self.get_limit(self.times, limit)
 
-        self.plot_power.canvas.axes.plot(self.times, self.power_values['watts'], color='green', label='Watts')
+        self.plot_power.canvas.axes.plot(times, self.get_limit(self.power_values['watts'], limit), color='green', label='Watts')
 
         self.plot_power.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
         self.plot_power.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
@@ -3622,6 +3640,16 @@ class DialogFan(QDialog, Ui_DialogFan):
             self.lbl_master.setText("Off")
             self.lbl_master.setStyleSheet("background-color: red; color: yellow")
         self.check_mode()
+        self.ck_log_tuning.setChecked(int(self.db.get_config(CFT_FANS, "log tuning", 1)))
+        self.ck_log_tuning.clicked.connect(self.change_tuning_log)
+
+    def change_tuning_log(self):
+        if self.ck_log_tuning.isChecked():
+            self.fan_controller._logging_t = 1
+            self.db.set_config_both(CFT_FANS, "log tuning", 1)
+        else:
+            self.fan_controller._logging_t = 0
+            self.db.set_config_both(CFT_FANS, "log tuning", 0)
 
     def change_sensor(self):
         new_sensor = self.cb_sensor.currentData()

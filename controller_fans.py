@@ -21,7 +21,7 @@ class FansController(QObject):
         self.db = self.main_panel.db
         self.master_mode = self.main_panel.master_mode
         self.fans = collections.defaultdict(FanClass)
-        self._logging_t = True    # if True will log sensor temperature and fan speed on each switch
+        self._logging_t = int(self.db.get_config(CFT_FANS, "log tuning", 1))    # if True will log sensor temperature and fan speed on each switch
 
         self.master_power = UNSET
         self.fans[1] = FanClass(self, 1)
@@ -42,9 +42,15 @@ class FansController(QObject):
             Just update the display and relay the speed"""
         speed += 1
         if fan == 1:
-            self.main_panel.lefanspeed_1.setText(str(speed))
+            if self.fans[1].spin_up and speed == 6:     # Just switched to speed 6 for start up
+                self.area_controller.main_window.coms_interface.send_switch(SW_FAN_1_OFF, ON)
+            else:
+                self.main_panel.lefanspeed_1.setText(str(speed))
         elif fan == 2:
-            self.main_panel.lefanspeed_2.setText(str(speed))
+            if self.fans[2].spin_up and speed == 6:     # Just switched to speed 6 for start up
+                self.area_controller.main_window.coms_interface.send_switch(SW_FAN_2_OFF, ON)
+            else:
+                self.main_panel.lefanspeed_2.setText(str(speed))
         self.fans[fan].update_speed(speed)
         if self.area_controller.master_mode == MASTER:
             self.coms_interface.relay_send(NWC_FAN_SPEED, fan, speed)
@@ -122,8 +128,8 @@ class FansController(QObject):
 
     def update_temperature(self, area, value):
         self.fans[area].update_input_value(value)
-        if self._logging_t and self.fan_controller.master_mode == MASTER:
-            self.area_controller.main_window.logger.save_fan_tune_log(self.area_controller.fan_controller.get_log_values())
+        if self._logging_t and self.master_mode == MASTER:
+            self.area_controller.main_window.logger.save_fan_tune_log(self.get_log_values())
 
     @pyqtSlot(int, int, int, name="updateSwitch")
     def switch_update(self, sw, state, module):

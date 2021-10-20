@@ -42,7 +42,7 @@ class MaxMin(QObject):
             # self.save()
 
     def update_display(self):
-        txt = "> {}  < {}".format(self.max, self.min)
+        txt = "> {}  < {}".format(self.max if self.max > -999 else "----", self.min if self.min < 999 else "----")
         self.display_ctrl.setText(txt)
         self.display_ctrl.setToolTip(
             "> {} < {}".format(self.max_time.strftime("%a %H:%M"), self.min_time.strftime("%a %H:%M")))
@@ -52,6 +52,7 @@ class MaxMin(QObject):
         self.min = 999
         self.max_time = datetime.now()
         self.min_time = datetime.now()
+        self.update_display()
 
     def save(self):
         f = open(self.log_path + datetime.strftime(datetime.now(), "%Y%m") + ".mmd", "w")

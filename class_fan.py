@@ -9,7 +9,8 @@ import PID
 from defines import *
 
 """ Remember the IO unit uses speeds 0 to 5 and the class uses 1 to 6. This is adjusted at the switch command to 
-    send the speed to the IO and again by the fan controller when it receives the speed back from the IO"""
+    send the speed to the IO and again by the fan controller when it receives the speed back from the IO 
+    The Slave also has to adjust it on receiving the relay command"""
 
 
 class FanClass(QThread):
@@ -65,7 +66,7 @@ class FanClass(QThread):
         self.trans_timer.start()
 
     def load_trans_time(self):
-        self.trans_timer.setInterval(1000 * 60 * 60)
+        self.trans_timer.setInterval(60000 * 60)
 
     def load_pid_values(self):
         row = self.db.execute_one_row("SELECT Kp, Ki, Kd FROM {} WHERE id = {}".format(DB_FANS, self.id))

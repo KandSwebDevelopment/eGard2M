@@ -1,5 +1,5 @@
 import sys
-from datetime import timedelta
+from datetime import *
 
 from PyQt5.QtCore import QSettings, pyqtSlot
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox
@@ -58,6 +58,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.update_status_bar(SBP_MODE, "Master", OK)
         else:
             self.update_status_bar(SBP_MODE, "Slave", OK)
+
+        self.update_status_bar(SBP_BOOT_TIME, datetime.now().strftime("%a %d  %H:%M"), OK, datetime.now().strftime("%b %Y"))
+
         self.logger = Logger(self)
         self.msg_sys = MessageSystem(self, self.main_panel.listWidget)
         self.coms_interface = CommunicationInterface(self)
@@ -170,7 +173,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             tot += row[0]
         return round(tot / 4, 1)
 
-    def update_status_bar(self, panel, text, level=None):
+    def update_status_bar(self, panel, text, level=None, tooltip=None):
         css = ""
         if level is not None:
             css = get_css_colours(level)
@@ -178,7 +181,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         ctrl.setText(text)
         ctrl.setStyleSheet(css)
-        ctrl.setToolTip("Hello")
+        if tooltip is not None:
+            ctrl.setToolTip(tooltip)
 
     @pyqtSlot(str, name='updateStatus')
     def update_scales_status(self, status):
