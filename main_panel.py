@@ -719,6 +719,10 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         _time.sleep(1)
         self.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, 2, self.area_controller.fan_controller.fans[2].speed)
         _time.sleep(1)
+        self.coms_interface.send_switch(SW_FAN_1_OFF, ON)
+        _time.sleep(1)
+        self.coms_interface.send_switch(SW_FAN_2_OFF, ON)
+        _time.sleep(1)
         outputs = self.area_controller.output_controller.outputs
         for o in outputs:   # o = index
             self.coms_interface.send_switch(outputs[o].output_pin, outputs[o].relay_position)

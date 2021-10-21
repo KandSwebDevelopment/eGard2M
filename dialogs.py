@@ -3493,10 +3493,10 @@ class DialogProcessInfo(QDialog, Ui_DialogProcessInfo):
                         temps[4]['set']) + "&deg;</b>  &gt;  " + str(temps[4]['high']) + "&deg;<br>")
 
         # Feed
-        # if p_class.location != 3:
-        #     feed = self.main_panel.area_controller.main_window.feed_controller.feeds[p_class.location]
-        #     sql = "SELECT name FROM {} WHERE id = {}".format(DB_FEED_SCHEDULE_NAMES, feed.feed_schedule)
-        #     fs_name = self.db.execute_single(sql)
+        if p_class.location != 3:
+            feed = self.main_panel.area_controller.main_window.feed_controller.feeds[p_class.location]
+            text = "<table><tr><td>Schedule</td><td>" + feed.pattern_name + "</td><td>" + feed.pattern_id + "</td></tr>"
+            text += "<tr><td>Recipe</td><td>" + feed.recipe_name + "</td><td>" + feed.recipe_id + "</td></tr>"
         #     if fs_name is not None:
         #         if feed.recipe_id == WATER_ONLY_IDX:
         #             r_name = WATER_ONLY
@@ -3566,7 +3566,7 @@ class DialogProcessInfo(QDialog, Ui_DialogProcessInfo):
         #     else:
         #         table = "<table cellpadding='3' border='1'><tr><td>Current Feed Schedule</td><td><b>Missing</b> </td></tr>"
         #         table += "</table><br><br>"
-        #         self.tefeed.textCursor().insertHtml(table)
+            self.tefeed.textCursor().insertHtml(text)
 
         # Water supply
         table = "<table cellpadding='3' border='1'><tr><td colspan='2'><b>Total</b> Water<br>Requirement </td></tr>"

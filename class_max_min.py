@@ -20,6 +20,10 @@ class MaxMin(QObject):
         self.log_data = [0, 999, 0, -999, 0, 999, 0, -999]      # Day min time, day min, day max time, day max .. then night
         self.log_path = self.sensor.area_controller.main_window.logger.log_path + "\\"
         self.display_ctrl = getattr(self.sensor.area_controller.main_panel, "te_max_min_%i" % self.sensor.display_id)
+        if self.sensor.id in [1, 2, 9]:
+            self.type = 2   # Clock cycle
+        else:
+            self.type = 1   # Process cycle
 
     def check(self, value):
         if value < self.min:
@@ -52,9 +56,10 @@ class MaxMin(QObject):
         self.min = 999
         self.max_time = datetime.now()
         self.min_time = datetime.now()
+        self.day_night = day_night
         self.update_display()
 
-    def save(self):
+    def save_to_file(self):
         f = open(self.log_path + datetime.strftime(datetime.now(), "%Y%m") + ".mmd", "w")
         text = datetime.strftime(datetime.now(), "%d, ") + str(self.sensor.area) + ", " + dict2str(self.log_data) + self.new_line
         f.write(text)

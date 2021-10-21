@@ -104,12 +104,14 @@ class FeedClass(QObject):
         """
         self.area = area
         self.pattern_id = pattern_id
+        self.pattern_name = self.db.execute_single(
+            'SELECT name FROM {} WHERE id = {}'.format(DB_PATTERN_NAMES, self.pattern_id))
         self.stage = stage
         self.stages_max = max_stages
         self.stage_days_elapsed = current_day
         self.items = items
-        sql = "SELECT s.stage, f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = s.feeding " \
-              "AND s.pid = {} ORDER BY s.stage, f.start". \
+        sql = "SELECT s.stage, f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = " \
+              "s.feeding AND s.pid = {} ORDER BY s.stage, f.start". \
             format(DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id)
         rows_s = self.db.execute(sql)
         self.feed_schedules_all = rows_s.copy()
