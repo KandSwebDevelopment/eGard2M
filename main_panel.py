@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import QWidget, QMdiSubWindow, QMessageBox
 from defines import *
 from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan, DialogOutputSettings, \
     DialogSensorSettings, DialogProcessAdjustments, DialogWaterHeaterSettings, DialogWorkshopSettings, DialogElectMeter, \
-    DialogJournal, DialogSoilSensors
+    DialogJournal, DialogSoilSensors, DialogGraphEnv, DialogFanDry
 from functions import play_sound, sound_access_warn
 from scales_com import ScalesComs
 from ui.mainPanel import Ui_MainPanel
@@ -40,6 +40,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.lbl_access_2.installEventFilter(self)
         self.lbl_fan_1.installEventFilter(self)
         self.lbl_fan_2.installEventFilter(self)
+        self.lbl_fan_3.installEventFilter(self)
         self.lbl_access.installEventFilter(self)
         self.lbl_soil_1.installEventFilter(self)
         self.lbl_soil_2.installEventFilter(self)
@@ -150,6 +151,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 self.wc.show(DialogSensorSettings(self, 3, 7))
             elif source is self.tesstatus_12.viewport():
                 self.wc.show(DialogSensorSettings(self, 3, 8))
+            elif source is self.lbl_fan_3:
+                self.wc.show(DialogFanDry(self))
             # Area 4, workshop
             elif source is self.tesstatus_10.viewport():
                 self.wc.show(DialogSensorSettings(self, 4, 9))
@@ -253,6 +256,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
     def connect_signals(self):
         self.pb_cover.clicked.connect(lambda: self.access.open())
         self.pb_cover_close.clicked.connect(lambda: self.access.close_cover())
+        self.pb_graphs.clicked.connect(lambda: self.wc.show(DialogGraphEnv(self)))
         self.b1.clicked.connect(self.test)
 
         # Area 1
@@ -628,7 +632,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         sql = "DELETE FROM {} WHERE item = {} LIMIT 1".format(DB_FLUSHING, item)
         self.db.execute_write(sql)
         # Add to drying table
-        sql = "INSERT INTO {} (item, started) VALUES ({}, {})".format(DB_AREAS, item, datetime.now().date())
+        sql = "INSERT INTO {} (item, started) VALUES ({}, {})".format(DB_PROCESS_DRYING, item, datetime.now().date())
         self.db.execute_write(sql)
 
         getattr(self, "pb_pm2_%i" % item).setEnabled(True)
@@ -954,6 +958,11 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 self.area_controller.fan_controller.load_req_temperature(2)
                 if self.area_controller.area_is_manual(2):
                     self.db.set_config(CFT_AREA, "mode {}".format(2), state + 1)
+            elif sw == SW_DRY_FAN:
+                if state == ON:
+                    self.lefanspeed_3.setText("5")
+                else:
+                    self.lefanspeed_3.setText("0")
 
     def update_trans(self, area, state):
         if area == 1:

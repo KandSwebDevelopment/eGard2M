@@ -99,6 +99,8 @@ class FansController(QObject):
 
     def set_req_temperature(self, area, value):
         """ For manual changes to set temperature"""
+        if area > 2:
+            return
         self.fans[area].set_point(value)
         self.area_controller.main_window.coms_interface.relay_send(NWC_FAN_REQUIRED, value)
 

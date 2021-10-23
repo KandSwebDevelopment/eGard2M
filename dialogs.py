@@ -58,6 +58,7 @@ from ui.dialogStrains import Ui_DialogStrains
 from ui.dialogWaterHeaterSettings import Ui_DialogWaterHeatertSetting
 from ui.dialogWorkshopSettings import Ui_DialogWorkshopSetting
 from ui.dialogsysInfo import Ui_DialogSysInfo
+from ui.dialogFanDry import Ui_DialogFanDry
 
 
 class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
@@ -3495,33 +3496,11 @@ class DialogProcessInfo(QDialog, Ui_DialogProcessInfo):
         # Feed
         if p_class.location != 3:
             feed = self.main_panel.area_controller.main_window.feed_controller.feeds[p_class.location]
-            text = "<table><tr><td>Schedule</td><td>" + feed.pattern_name + "</td><td>" + feed.pattern_id + "</td></tr>"
-            text += "<tr><td>Recipe</td><td>" + feed.recipe_name + "</td><td>" + feed.recipe_id + "</td></tr>"
-        #     if fs_name is not None:
-        #         if feed.recipe_id == WATER_ONLY_IDX:
-        #             r_name = WATER_ONLY
-        #         else:
-        #             sql = "SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, feed.recipe_id)
-        #             r_name = self.db.execute_single(sql)
-        #             if r_name is None:
-        #                 r_name = "Error None"
-        #         if feed.feed_schedule == 0:
-        #             txt = "Error None"
-        #         else:
-        #             txt = str(feed.feed_schedule)
-        #         table = "<table cellpadding='3' border='1'><tr><td>Current Feed Schedule</td><td><b>" + fs_name + \
-        #                 "</b> [" + txt + "]</td></tr>"
-        #         table += "<tr><td>Current Recipe</td><td><b>" + r_name + "</b> [" + str(
-        #             feed.recipe_id) + "]</td></tr>"
-        #         table += "<tr><td>Recipe changes on day</td><td><b>" + str(
-        #             p_class.recipe_expires_day) + "</b></td></tr>"
-        #         if p_class.recipe_next_id == WATER_ONLY_IDX:
-        #             r_name = WATER_ONLY
-        #         elif p_class.recipe_next_id is None:
-        #             r_name = "None"
-        #         else:
-        #             sql = "SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, p_class.recipe_next_id)
-        #             r_name = self.db.execute_single(sql)
+            text = "<table><tr><td>Schedule</td><td>" + feed.pattern_name + "</td><td>" + str(feed.pattern_id) + "</td></tr>"
+            text += "<tr><td>Recipe</td><td>" + feed.recipe_name + "</td><td>" + str(feed.recipe_id) + "</td></tr>"
+
+            text += "<tr><td>Changes in</td><td><b>" + str(feed.new_recipe_due) + " day" + \
+                    "s" if feed.new_recipe_due > 1 else "" + "</b></td><td> </td></tr>"
         #         table += "<tr><td>Next Recipe</td><td><b>" + r_name + "</b> [" + str(
         #             p_class.recipe_next_id) + "]</td></tr>"
         #         table += "<tr><td>Starts in</td><td><b>" + str(
@@ -3728,6 +3707,23 @@ class DialogFan(QDialog, Ui_DialogFan):
             else:
                 self.lbl_master.setText("Off")
                 self.lbl_master.setStyleSheet("background-color: red; color: yellow")
+
+
+class DialogFanDry(QDialog, Ui_DialogFanDry):
+    def __init__(self, parent):
+        super(DialogFanDry, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint)
+        self.setupUi(self)
+        self.sub = None
+        self.setFixedSize(self.width(), self.height())
+        self.setWindowTitle("Fan 3 Settings")
+        self.main_panel = parent
+        self.db = self.main_panel.db
+        self.id = 3        # Also is area
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.pb_on.clicked.connect(lambda: self.main_panel.coms_interface.send_switch(SW_DRY_FAN, ON))
+        self.pb_off.clicked.connect(lambda: self.main_panel.coms_interface.send_switch(SW_DRY_FAN, OFF))
 
 
 class DialogWorkshopSettings(QWidget, Ui_DialogWorkshopSetting):
@@ -4014,7 +4010,7 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         """ From process loads the active and inactive temperature ranges used by the sensor
             inverted= True will reverse active and inactive,
                 used when switched to day or night on currently active"""
-        if self.process != 0:
+        if self.process != 0 and self.area < 3:
             if inverted:
                 self.temperatures_active = self.process.temperature_ranges_inactive[self.item]
                 self.temperatures_inactive = self.process.temperature_ranges_active[self.item]
@@ -4056,15 +4052,17 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
             txt = "Outside"
         if self.inverted:
             txt += " ({})".format("Night" if self.on_day else "Day")
-            self.lbl_area.setText(txt)
             self.pb_switch.setText("Day" if self.on_day else "Night")
             stylesheet = "Color: White; background-color: red"
         else:
             if self.process != 0:
                 txt += " ({})".format("Day" if self.on_day else "Night")
-            self.lbl_area.setText(txt)
             self.pb_switch.setText("Night" if self.on_day else "Day")
             stylesheet = ""
+        if self.area == 3:
+            txt = "Area {}".format(self.area)
+            self.pb_switch.setEnabled(False)
+        self.lbl_area.setText(txt)
         self.le_set.setStyleSheet(stylesheet)
         self.le_high.setStyleSheet(stylesheet)
         self.le_low.setStyleSheet(stylesheet)
@@ -4103,7 +4101,7 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         # Check low value
         self._check_low(nv)
         self.main_panel.area_controller.fan_controller.set_req_temperature(self.area, nv)
-        if self.process != 0:
+        if self.process != 0 and self.area < 3:
             self.process.load_active_temperature_ranges()
             self.main_panel.area_controller.sensors[self.s_id].load_range()
         else:
@@ -4122,7 +4120,7 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self.high = nv
         self._check_set_high(nv)
         self._check_low(self.set)
-        if self.process != 0:
+        if self.process != 0 and self.area < 3:
             self.process.load_active_temperature_ranges()
             self.main_panel.area_controller.sensors[self.s_id].load_range()
         else:
@@ -4141,7 +4139,7 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self.low = nv
         self._check_set_low(nv)
         self._check_high(self.set)
-        if self.process != 0:
+        if self.process != 0 and self.area < 3:
             self.process.load_active_temperature_ranges()
             self.main_panel.area_controller.sensors[self.s_id].load_range()
         else:
@@ -4379,7 +4377,7 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         self.set_controls()
 
     def load(self):
-        if self.day_night == DAY:
+        if self.day_night == DAY or self.day_night == MANUAL:
             sql = 'SELECT `id`, `name`, `area`, `type`, `input`, `range`, `pin`, `short_name` FROM {} WHERE ' \
                   '`area` = {} AND `item` = {}'. format(DB_OUTPUTS, self.area, self.item)
             dnt = "Day"
@@ -4492,7 +4490,7 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
             self.output_controller.change_range(self.pin_id, on, off, self.day_night)
         else:
             r = "{}, {}".format(on, off)
-            if self.day_night == DAY:
+            if self.day_night == DAY or self.day_night == MANUAL:
                 sql = 'UPDATE {} SET `range` = "{}" WHERE id = {}'.format(DB_OUTPUTS, r, self.db_id)
             else:
                 sql = 'UPDATE {} SET `range_night` = "{}" WHERE id = {}'.format(DB_OUTPUTS, r, self.db_id)

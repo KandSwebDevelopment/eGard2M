@@ -44,6 +44,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         multi_status_bar(self)
 
         self.wc = WindowsController(self)
+
         self.settings = QSettings(FN_SETTINGS, QSettings.IniFormat)
         self.master_mode = int(self.settings.value("mode"))  # 1=Master, arduino and server  2=Slave, client only
         f_ip = self.db.get_config(CFT_SYSTEM, "factory ip")
@@ -86,6 +87,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.update_stock()
         self.main_panel.check_light()
+        self.coms_interface.send_switch(SW_DRY_FAN, self.area_controller.drying_fan, MODULE_IO)
 
     def connect_signals(self):
         # System

@@ -85,7 +85,8 @@ class OutputClass(QObject):
 
     def load_ranges(self):
         s, hi, lo = self.output_controller.area_controller.sensors[self.input_sensor].get_set_temperatures()
-        if self.output_controller.area_controller.get_light_status(self.area):
+        dn = self.output_controller.area_controller.get_light_status(self.area)
+        if dn == DAY or dn == MANUAL:
             range_ = self.db.execute_single('SELECT `range` FROM {} WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
         else:
             range_ = self.db.execute_single('SELECT `range_night` FROM {} WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
@@ -134,7 +135,7 @@ class OutputClass(QObject):
         self.range[0] = round(on_dif, 1)
         self.range[1] = round(off_dif, 1)
         r = "{}, {}".format(on_dif, off_dif)
-        if tmz == DAY:
+        if tmz == DAY or tmz == MANUAL:
             sql = 'UPDATE {} SET `range` = "{}" WHERE id = {}'.format(DB_OUTPUTS, r, self.ctrl_id)
         else:
             sql = 'UPDATE {} SET `range_night` = "{}" WHERE id = {}'.format(DB_OUTPUTS, r, self.ctrl_id)

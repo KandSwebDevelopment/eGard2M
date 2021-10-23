@@ -39,6 +39,8 @@ class AreaController(QObject):
         self.cool_warm[1] = UNSET
         self.cool_warm[2] = UNSET
 
+        self.drying_fan = int(self.db.get_config(CFT_DRYING, "fan", 0))
+
         self.day_night = collections.defaultdict(int)
 
         self.main_panel.timer.start()
@@ -298,6 +300,8 @@ class AreaController(QObject):
             return 0
 
     def get_light_status(self, area):
+        if area == 3:
+            return -1    # Area 3 will always be in manual
         if self.area_has_process(area):
             return self.get_area_process(area).get_light_status()
         return -1

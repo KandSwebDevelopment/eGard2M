@@ -36,7 +36,7 @@ class ProcessClass(QObject):
         self.process_offset_total = 0  # The total number of days the process stages are adjusted to current stage
         self.days_total = 0  # Total days in this process
         self.due_date = None  # Date due to finish with no adjustments
-        self.cool_warm = 0        # Area is is cool = 1, warm = 2, normal = 0
+        self.cool_warm = UNSET        # Area is is cool = 1, warm = 2, normal = 0
         self.current_stage = 0  # The current stage running
         self.stage_required = 0  # The stage that should be running
         # self.stage_adjustments = []  # Holds the number of days a stage is delayed (+) or advanced (-)

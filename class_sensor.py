@@ -60,7 +60,7 @@ class SensorClass(object):
         self.short_name = row[5]
 
     def load_range(self):
-        if self.area_controller.area_has_process(self.area):
+        if self.area_controller.area_has_process(self.area) and self.area < 3:
             # Load process range values
             p = self.area_controller.get_area_process(self.area)
             if p != 0:
@@ -79,7 +79,7 @@ class SensorClass(object):
                     self.area_controller.sensor_load_manual_ranges(self.area, self.item)
         else:
             self.has_process = False
-            if self.area_controller.area_is_manual(self.area) or self.area > 3:
+            if self.area_controller.area_is_manual(self.area) or self.area > 2:
                 self.area_controller.sensor_load_manual_ranges(self.area, self.item)
 
     @property
