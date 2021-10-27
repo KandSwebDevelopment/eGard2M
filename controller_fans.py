@@ -39,7 +39,8 @@ class FansController(QObject):
 
     def speed_update(self, fan, speed):
         """ A new fan speed has been received from the IO
-            Just update the display and relay the speed"""
+            Just update the display
+            The master relays this to the slave via the coms interface """
         speed += 1
         if fan == 1:
             if self.fans[1].spin_up and speed == 6:     # Just switched to speed 6 for start up
@@ -52,8 +53,8 @@ class FansController(QObject):
             else:
                 self.main_panel.lefanspeed_2.setText(str(speed))
         self.fans[fan].update_speed(speed)
-        if self.area_controller.master_mode == MASTER:
-            self.coms_interface.relay_send(NWC_FAN_SPEED, fan, speed)
+        # if self.area_controller.master_mode == MASTER:
+        #     self.coms_interface.relay_send(NWC_FAN_SPEED, fan, speed)
 
     def get_mode(self, area):
         return self.fans[area].mode

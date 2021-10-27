@@ -42,6 +42,7 @@ from ui.dialogGraphEnviroment import Ui_DialogGraphEnv
 from ui.dialogIOVC import Ui_Dialog_IO_VC
 from ui.dialogJournal import Ui_DialogJournal
 from ui.dialogJournelViewer import Ui_DialogJournalViewer
+from ui.dialogLogViewer import Ui_DialogLogViewer
 from ui.dialogOutputSettings import Ui_DialogOutputSetting
 from ui.dialogPatterns import Ui_DialogPatterns
 from ui.dialogProcessAdjustments import Ui_DialogProcessAdjust
@@ -1847,6 +1848,11 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         self.pb_copy.clicked.connect(self.add_mix_tab)
         self.pb_delete.clicked.connect(self.delete_mix)
         self.tw_mixes.currentChanged.connect(self.change_mix_tab)
+        self.cb_mute.addItem("Off", 0)
+        self.cb_mute.addItem("30 Minutes", 30)
+        self.cb_mute.addItem("1 Hour", 60)
+        self.cb_mute.addItem("1.5 Hours", 90)
+        self.cb_mute.currentIndexChanged.connect(self.change_mute)
 
     def eventFilter(self, source, event):
         print("Event ", event.type())
@@ -1871,6 +1877,13 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
             self.show_next = False
             self._load()
         return QWidget.eventFilter(self, source, event)
+
+    def change_mute(self):
+        d = self.cb_mute.currentData()
+        if d == 0:
+            self.main_panel.main_window.feed_controller.mute_timeout()
+        else:
+            self.main_panel.main_window.feed_controller.mute_start(d)
 
     def change_mix_tab(self):
         m = self.tw_mixes.currentIndex()
@@ -3762,6 +3775,13 @@ class DialogWorkshopSettings(QWidget, Ui_DialogWorkshopSetting):
         m = self.output.duration % 60
         self.tm_duration.setTime(QTime(h, m))
         self.tm_duration.timeChanged.connect(self.change_duration)
+        self.ck_lock.setChecked(self.output.locked)
+        self.ck_lock.clicked.connect(self.change_lock)
+
+    def change_lock(self):
+        lock = self.ck_lock.isChecked()
+        self.main_panel.area_controller.output_controller.change_lock(OUT_HEATER_ROOM, lock)
+        self.set_controls()
 
     def change_max(self):
         m = string_to_float(self.le_max.text())
@@ -3837,6 +3857,30 @@ class DialogWorkshopSettings(QWidget, Ui_DialogWorkshopSetting):
         duration = ((d.hour() * 60) + d.minute())
         self.output.set_duration(duration)
         self.main_panel.coms_interface.relay_send(NWC_WORKSHOP_DURATION)
+
+    def set_controls(self):
+        if self.ck_lock.isChecked():
+            self.cb_mode.setEnabled(False)
+            self.cb_sensor_.setEnabled(False)
+            self.le_min.setEnabled(False)
+            self.le_max.setEnabled(False)
+            self.ck_auto_boost.setEnabled(False)
+            self.ck_frost.setEnabled(False)
+            self.pb_reset.setEnabled(False)
+            self.tm_duration.setEnabled(False)
+            self.le_min_frost.setEnabled(False)
+            self.le_max_frost.setEnabled(False)
+        else:
+            self.cb_mode.setEnabled(True)
+            self.cb_sensor_.setEnabled(True)
+            self.le_max.setEnabled(True)
+            self.le_min.setEnabled(True)
+            self.ck_auto_boost.setEnabled(True)
+            self.ck_frost.setEnabled(True)
+            self.pb_reset.setEnabled(True)
+            self.tm_duration.setEnabled(True)
+            self.le_max_frost.setEnabled(True)
+            self.le_min_frost.setEnabled(True)
 
 
 class DialogWaterHeaterSettings(QWidget, Ui_DialogWaterHeatertSetting):
@@ -4309,6 +4353,42 @@ class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
         self.main_panel.main_window.wc.show(DialogRemoveItem(self.main_panel, self.process))
 
 
+class DialogLogViewer(QDialog, Ui_DialogLogViewer):
+    def __init__(self, parent):
+        super(DialogLogViewer, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.my_parent = parent
+        self.logger = parent.logger
+        self.sub = None
+        self.db = parent.db
+        self.cb_log_type.addItem("Select", 0)
+        self.cb_log_type.addItem("Access", LOG_ACCESS)
+        self.cb_log_type.addItem("Data", LOG_DATA)
+        self.cb_log_type.addItem("Dispatch", LOG_DISPATCH)
+        self.cb_log_type.addItem("Events", LOG_EVENTS)
+        self.cb_log_type.addItem("Feeding", LOG_FEED)
+        self.cb_log_type.addItem("Journals", LOG_JOURNAL)
+        self.cb_log_type.addItem("System", LOG_SYSTEM)
+        self.cb_log_type.currentIndexChanged.connect(self.new_type)
+        self.cb_log.currentIndexChanged.connect(self.new_log)
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+
+    def new_type(self):
+        type_ = self.cb_log_type.currentData()
+        files = self.logger.get_log_list(type_)
+        self.cb_log.clear()
+        self.cb_log.blockSignals(True)
+        self.cb_log.addItem("Select", 0)
+        for f in files:
+            self.cb_log.addItem(f[0:-4], f)
+        self.cb_log.blockSignals(False)
+
+    def new_log(self):
+        log = self.cb_log.currentData()
+        self.te_log.setHtml(self.logger.get_log_contents(self.cb_log_type.currentData(), log))
+
+
 class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
     def __init__(self, parent, area, item):
         """ :type parent: MainWindow """
@@ -4352,7 +4432,12 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         self.cb_out_mode_1_1.addItem("All Day", 5)
         self.cb_out_mode_1_1.addItem("All Night", 6)
         self.cb_out_mode_1_1.setCurrentIndex(self.cb_out_mode_1_1.findData(self.mode))
-        self.mode_change()
+        self.frm_sensor.setEnabled(False)
+        self.frm_timer.setEnabled(False)
+        if self.mode == 2 or self.mode == 4:  # Sensor or both
+            self.frm_sensor.setEnabled(True)
+        if self.mode == 3 or self.mode == 4:  # Timer or both
+            self.frm_timer.setEnabled(True)
         self.cb_out_mode_1_1.currentIndexChanged.connect(self.mode_change)
 
         sql = 'SELECT name, id FROM {} WHERE area = {}'.format(DB_SENSORS_CONFIG, self.area)
@@ -5012,7 +5097,7 @@ class DialogSoilSensors(QDialog, Ui_DialogSoilSensors):
                 getattr(self, "cb_plant_{}".format(x)).addItem(str(i), i)
         ss = self.main_panel.area_controller.soil_sensors.get_sensor_status(self.area)
         for x in range(1, 5):
-            getattr(self, "cb_plant_{}".format(x)).setCurrentIndex(ss[x - 1])
+            getattr(self, "cb_plant_{}".format(x)).setCurrentIndex(getattr(self, "cb_plant_{}".format(x)).findData(ss[x - 1]))
         self.cb_plant_1.currentIndexChanged.connect(lambda: self.change_item(1))
         self.cb_plant_2.currentIndexChanged.connect(lambda: self.change_item(2))
         self.cb_plant_3.currentIndexChanged.connect(lambda: self.change_item(3))
@@ -5021,7 +5106,7 @@ class DialogSoilSensors(QDialog, Ui_DialogSoilSensors):
         self.pb_read.clicked.connect(lambda: self.main_panel.coms_interface.send_data(COM_SOIL_READ, True, MODULE_IO))
         # self.cb_plant_1.currentIndexChanged.connect(self.change_item)
         # self.ck_active_all.setChecked(self.all_active)
-        # self.ck_active_all.clicked.connect(self.change_all_active)
+        # self.ck_active_all.clicked.connect(self.change_all_active) occupied
 
     def change_item(self, sensor):
         item = self.sender().currentData()

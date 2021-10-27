@@ -96,7 +96,10 @@ class SensorClass(object):
             return
         self.display_id = did
         self.display_ctrl = getattr(self.area_controller.main_panel, "lereading_%i" % self.display_id)
-        self.status_ctrl = getattr(self.area_controller.main_panel, "tesstatus_%i" % self.display_id)
+        if did < 2:     # No status ctrl for outside
+            self.status_ctrl = None
+        else:
+            self.status_ctrl = getattr(self.area_controller.main_panel, "tesstatus_%i" % self.display_id)
         self.trend_ctrl = getattr(self.area_controller.main_panel, "lbltrend_%i" % self.display_id)
 
     def set_display_ctrl_name(self, name):
@@ -156,14 +159,6 @@ class SensorClass(object):
     def update_status_ctrl(self):
         if self.status_ctrl is None:
             return
-        # if self.display_id in [5, 9]:
-        #     font_size = 8
-        #     padding_size = 4
-        # else:
-        #     padding_size = 0
-        #     font_size = 10
-        padding_size = 0
-        font_size = 12
         t = '<table cellspacing = "0" width="100%" border= "1px">'
         #  Low value
         if self.low_org != 999 and self.low != self.low_org:

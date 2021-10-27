@@ -89,7 +89,7 @@ class OutputWorkshopHeater(OutputClass):
             self.boost_timer.stop()
             return
         self.remaining -= 1
-        getattr(self.output_controller.main_panel, "lbl_output_number_%i" % self.ctrl_id).setText(str(self.remaining))
+        getattr(self.output_controller.main_panel, "label").setText(str(self.remaining))
 
     def boost_start(self):
         self.remaining = self.duration
@@ -117,7 +117,12 @@ class OutputWorkshopHeater(OutputClass):
 
     def update_info(self):
         OutputClass.update_info(self)
-        getattr(self.output_controller.main_panel, "lbl_output_number_%i" % self.ctrl_id).setText(str(0))
+        if self.locked:
+            getattr(self.output_controller.main_panel, "lbl_output_number_%i" % self.ctrl_id).setText("L")
+        else:
+            getattr(self.output_controller.main_panel, "lbl_output_number_%i" % self.ctrl_id).setText("")
+
+        # getattr(self.output_controller.main_panel, "label").setText(str(0))
 
         getattr(self.output_controller.main_panel, "lbl_output_set_off_%i" % self.ctrl_id).setText(str(self.max))
         getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.ctrl_id).setText(str(self.min))

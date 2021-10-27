@@ -126,7 +126,7 @@ class Ui_DialogFeedMix(object):
         self.ck_fed_15.setChecked(True)
         self.ck_fed_15.setObjectName("ck_fed_15")
         self.label_4 = QtWidgets.QLabel(self.fr_feed)
-        self.label_4.setGeometry(QtCore.QRect(10, 390, 141, 18))
+        self.label_4.setGeometry(QtCore.QRect(10, 390, 81, 18))
         self.label_4.setObjectName("label_4")
         self.cb_feeds = QtWidgets.QComboBox(self.fr_feed)
         self.cb_feeds.setGeometry(QtCore.QRect(90, 390, 69, 22))
@@ -206,6 +206,12 @@ class Ui_DialogFeedMix(object):
         font.setWeight(75)
         self.pb_copy.setFont(font)
         self.pb_copy.setObjectName("pb_copy")
+        self.label_8 = QtWidgets.QLabel(DialogFeedMix)
+        self.label_8.setGeometry(QtCore.QRect(20, 500, 81, 18))
+        self.label_8.setObjectName("label_8")
+        self.cb_mute = QtWidgets.QComboBox(DialogFeedMix)
+        self.cb_mute.setGeometry(QtCore.QRect(100, 500, 69, 22))
+        self.cb_mute.setObjectName("cb_mute")
 
         self.retranslateUi(DialogFeedMix)
         self.tw_mixes.setCurrentIndex(0)
@@ -249,6 +255,7 @@ class Ui_DialogFeedMix(object):
         self.pb_close.setText(_translate("DialogFeedMix", "Close"))
         self.lbl_next.setText(_translate("DialogFeedMix", "Next"))
         self.pb_copy.setText(_translate("DialogFeedMix", "C"))
+        self.label_8.setText(_translate("DialogFeedMix", "Mute Alert"))
 
 
 if __name__ == "__main__":

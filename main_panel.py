@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import QWidget, QMdiSubWindow, QMessageBox
 from defines import *
 from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan, DialogOutputSettings, \
     DialogSensorSettings, DialogProcessAdjustments, DialogWaterHeaterSettings, DialogWorkshopSettings, DialogElectMeter, \
-    DialogJournal, DialogSoilSensors, DialogGraphEnv, DialogFanDry
+    DialogJournal, DialogSoilSensors, DialogGraphEnv, DialogFanDry, DialogLogViewer
 from functions import play_sound, sound_access_warn
 from scales_com import ScalesComs
 from ui.mainPanel import Ui_MainPanel
@@ -56,7 +56,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.tesstatus_10.viewport().installEventFilter(self)
         self.tesstatus_11.viewport().installEventFilter(self)
         self.tesstatus_12.viewport().installEventFilter(self)
-        for x in range(0, 13):
+        for x in range(2, 13):
             getattr(self, "tesstatus_%i" % x).viewport().setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
 
         self.today = datetime.now().day  # Holds today's date. Used to detect when day changes
@@ -230,8 +230,10 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 self.main_window.factory == False:
             sound_access_warn()
         else:
-            if self.feed_controller.feed_due_today():
-                if datetime.now().time() > (
+            if self.feed_controller.feed_due_today() and \
+                    self.main_window.feed_controller.mute == False and \
+                    self.main_window.factory == False:
+                if datetime.now().time() > (    # feed_time is a string not a datetime object
                         datetime.strptime(self.feed_controller.feed_time, "%H:%M") - timedelta(hours=2)).time():
                     play_sound(SND_ATTENTION)
         self.loop_15_flag = not self.loop_15_flag
@@ -257,6 +259,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.pb_cover.clicked.connect(lambda: self.access.open())
         self.pb_cover_close.clicked.connect(lambda: self.access.close_cover())
         self.pb_graphs.clicked.connect(lambda: self.wc.show(DialogGraphEnv(self)))
+        self.pb_logs.clicked.connect(lambda: self.wc.show(DialogLogViewer(self)))
         self.b1.clicked.connect(self.test)
 
         # Area 1
@@ -632,7 +635,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         sql = "DELETE FROM {} WHERE item = {} LIMIT 1".format(DB_FLUSHING, item)
         self.db.execute_write(sql)
         # Add to drying table
-        sql = "INSERT INTO {} (item, started) VALUES ({}, {})".format(DB_PROCESS_DRYING, item, datetime.now().date())
+        sql = "INSERT INTO {} (item, started) VALUES ({}, '{}')".format(DB_PROCESS_DRYING, item, datetime.now().date())
         self.db.execute_write(sql)
 
         getattr(self, "pb_pm2_%i" % item).setEnabled(True)
@@ -947,17 +950,18 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 if self.area_controller.area_is_manual(1):
                     self.db.set_config(CFT_AREA, "mode {}".format(1), state + 1)
             if sw == OUT_LIGHT_2:
-                self.area_controller.reload_sensor_ranges(2)
-                self.area_controller.light_relay_2 = state
-                if state == 0:
-                    self.area_controller.day_night[2] = NIGHT
-                    self.lbl_light_status_2.setPixmap(QtGui.QPixmap(":/normal/light_off.png"))
-                else:
-                    self.area_controller.day_night[2] = DAY
-                    self.lbl_light_status_2.setPixmap(QtGui.QPixmap(":/normal/light_on.png"))
-                self.area_controller.fan_controller.load_req_temperature(2)
-                if self.area_controller.area_is_manual(2):
-                    self.db.set_config(CFT_AREA, "mode {}".format(2), state + 1)
+                if self.area_controller.light_relay_2 != state:
+                    self.area_controller.reload_sensor_ranges(2)
+                    self.area_controller.light_relay_2 = state
+                    if state == 0:
+                        self.area_controller.day_night[2] = NIGHT
+                        self.lbl_light_status_2.setPixmap(QtGui.QPixmap(":/normal/light_off.png"))
+                    else:
+                        self.area_controller.day_night[2] = DAY
+                        self.lbl_light_status_2.setPixmap(QtGui.QPixmap(":/normal/light_on.png"))
+                    self.area_controller.fan_controller.load_req_temperature(2)
+                    if self.area_controller.area_is_manual(2):
+                        self.db.set_config(CFT_AREA, "mode {}".format(2), state + 1)
             elif sw == SW_DRY_FAN:
                 if state == ON:
                     self.lefanspeed_3.setText("5")
@@ -1151,6 +1155,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         elif cmd == NWC_MOVE_TO_FINISHING:
             self.area_controller.reload_area(2)
             self.area_controller.reload_area(3)
+            self.check_stage(3)
         elif cmd == NWC_RELOAD_PROCESSES:
             self.area_controller.load_processes()
             self.update_duration_texts()

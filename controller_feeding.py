@@ -1,7 +1,7 @@
 import collections
 from datetime import datetime, timedelta
 
-from PyQt5.QtCore import QThread, pyqtSignal
+from PyQt5.QtCore import QThread, pyqtSignal, QTimer
 from PyQt5.QtWidgets import QMessageBox
 
 from class_feed import FeedClass
@@ -32,6 +32,10 @@ class FeedControl(QThread):
         self.feed_time = self.db.get_config(CFT_FEEDER, "feed time", "21:00")
         self.feed_time_tolerance = int(self.db.get_config(CFT_PROCESS, "feed time tolerance", 4))
         self.log_txt = ""
+        self.mute = False
+
+        self.timer_mute = QTimer(self)
+        self.timer_mute.timeout.connect(self.mute_timeout)
 
         rows = self.db.execute("SELECT id, name FROM " + DB_NUTRIENTS_NAMES)
         for row in rows:
@@ -48,6 +52,14 @@ class FeedControl(QThread):
                                       self.main_window.area_controller.get_area_items(area))
                 self.feeds[area].qty_org = p.quantity_org
                 self.feeds[area].load_mixes()
+
+    def mute_timeout(self):
+        self.mute = False
+        self.timer_mute.stop()
+
+    def mute_start(self, minutes):
+        self.mute = True
+        self.timer_mute.start(minutes * 60000)
 
     def set_feed_time(self, feed_time):
         """
