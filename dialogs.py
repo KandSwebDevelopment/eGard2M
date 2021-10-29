@@ -2782,12 +2782,12 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             ctrl.addItem("8hrs", -240)
         ctrl = self.cb_limit_3
         ctrl.addItem("All", 0)
-        ctrl.addItem("1", -250)
-        ctrl.addItem("2", -500)
-        ctrl.addItem("3", -750)
-        ctrl.addItem("4", -1000)
-        ctrl.addItem("5", -1500)
-        ctrl.addItem("6", -2000)
+        ctrl.addItem("1", -2500)
+        ctrl.addItem("2", -5000)
+        ctrl.addItem("3", -7500)
+        ctrl.addItem("4", -10000)
+        ctrl.addItem("5", -15000)
+        ctrl.addItem("6", -20000)
         self.cb_month.setCurrentIndex(self.cb_month.findData(datetime.now().month))
         self.cb_month_2.setCurrentIndex(self.cb_month_2.findData(datetime.now().month))
         self.cb_month_3.setCurrentIndex(self.cb_month_3.findData(datetime.now().month))
@@ -2873,7 +2873,7 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         if tab == 3:
             log = self.cb_logs_3.currentData()
             self._load_fan_log(log)
-            self.
+            self.fans_plot()
         if tab == 4:
             log = self.cb_logs_4.currentData()
             self._load_power_log(log)
@@ -3098,35 +3098,38 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         self.plot_outputs.show()
 
     def fans_plot(self):
-        self.plot_fans = MplWidget(self.wg_graph_3, 12, 5.3)
-        self.plot_fans.canvas.axes.cla()
-        limit = self.cb_limit_3.currentData()
-        times = self.get_limit(self.times, limit)
-        if self.ck_fan_1.isChecked():
-            self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['1in'], limit), color='green', label='Input 1')
-            self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['1rv'], limit), color='red', label='Set 1')
-        if self.ck_fan_2.isChecked():
-            self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['2in'], limit), color='orange', label='Input 2')
-            self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['2rv'], limit), color='blue', label='Set 2')
-        ax2 = self.plot_fans.canvas.axes.twinx()
-        if self.ck_fan_1.isChecked():
-            ax2.plot(times, self.get_limit(self.fan_values['1sw'], limit), color='brown', label='Speed 1', linestyle='dotted')
-        if self.ck_fan_2.isChecked():
-            ax2.plot(times, self.get_limit(self.fan_values['2sw'], limit), color='black', label='Speed 2', linestyle='dotted')
-        # ax2.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+        try:
+            self.plot_fans = MplWidget(self.wg_graph_3, 12, 5.3)
+            self.plot_fans.canvas.axes.cla()
+            limit = self.cb_limit_3.currentData()
+            times = self.get_limit(self.times, limit)
+            if self.ck_fan_1.isChecked():
+                self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['1in'], limit), color='green', label='Input 1')
+                self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['1rv'], limit), color='red', label='Set 1')
+            if self.ck_fan_2.isChecked():
+                self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['2in'], limit), color='orange', label='Input 2')
+                self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['2rv'], limit), color='blue', label='Set 2')
+            ax2 = self.plot_fans.canvas.axes.twinx()
+            if self.ck_fan_1.isChecked():
+                ax2.plot(times, self.get_limit(self.fan_values['1sw'], limit), color='brown', label='Speed 1', linestyle='dotted')
+            if self.ck_fan_2.isChecked():
+                ax2.plot(times, self.get_limit(self.fan_values['2sw'], limit), color='black', label='Speed 2', linestyle='dotted')
+            # ax2.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
-        self.plot_fans.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-        ax2.set_yticks([0, 1, 2, 3, 4, 5, 6])
-        ax2.set_yticklabels(["Off", "1", "2", "3", "4", "5", "6"])
-        self.plot_fans.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
-        leg = self.plot_fans.canvas.axes.legend()
-        leg.set_draggable(state=True)
-        self.plot_fans.canvas.axes.tick_params(
-            axis='x', which='major', labelcolor='Green', rotation=45, labelsize=7)
-        self.plot_fans.canvas.axes.xaxis.grid(True, which='minor')
-        self.plot_fans.grid(True)
-        self.plot_fans.canvas.draw()
-        self.plot_fans.show()
+            self.plot_fans.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+            ax2.set_yticks([0, 1, 2, 3, 4, 5, 6])
+            ax2.set_yticklabels(["Off", "1", "2", "3", "4", "5", "6"])
+            self.plot_fans.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
+            leg = self.plot_fans.canvas.axes.legend()
+            leg.set_draggable(state=True)
+            self.plot_fans.canvas.axes.tick_params(
+                axis='x', which='major', labelcolor='Green', rotation=45, labelsize=7)
+            self.plot_fans.canvas.axes.xaxis.grid(True, which='minor')
+            self.plot_fans.grid(True)
+            self.plot_fans.canvas.draw()
+            self.plot_fans.show()
+        except Exception as e:
+            pass
 
     def power_plot(self):
         self.plot_power = MplWidget(self.wg_graph_4, 12, 5.3)

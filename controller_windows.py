@@ -15,7 +15,7 @@ class WindowsController(QObject):
     def show(self, dialog_, **kwargs):
         s = self.mdiArea.addSubWindow(dialog_)
         s.setGeometry(50, 50, dialog_.frameGeometry().width() + 15, dialog_.frameGeometry().height() + 30)
-        s.setFixedSize(dialog_.frameGeometry().width() + 15, dialog_.frameGeometry().height() + 30)
+        # s.setFixedSize(dialog_.frameGeometry().width() + 15, dialog_.frameGeometry().height() + 30)
         s.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint)
         dialog_.sub = s
         dialog_.show()
