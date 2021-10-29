@@ -60,6 +60,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             getattr(self, "tesstatus_%i" % x).viewport().setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
 
         self.today = datetime.now().day  # Holds today's date. Used to detect when day changes
+        self.mid_day = False             # False till mid day then true till new day
 
         self.area_controller = None
         self.feed_controller = None
@@ -211,6 +212,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         # Check for new day
         if datetime.now().day != self.today:
             self.new_day()
+        if not self.mid_day and datetime.now().hour > 12:
+            self.new_mid_day()
         self.db.execute("select name from " + DB_NUTRIENTS_NAMES)  # This is only to keep the database connection alive
         if self.master_mode == MASTER:
             cm = datetime.now().minute
@@ -278,7 +281,10 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.pb_output_mode_2.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 2)))
         self.pb_output_mode_3.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 3)))
         self.pb_output_mode_9.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 4)))
-        self.pb_mm_reset_3.clicked.connect(lambda: self.area_controller.sensors[3].max_min.reset(0))
+        self.pb_mm_reset_2.clicked.connect(lambda: self.area_controller.sensors[3].max_min.reset(0))
+        self.pb_mm_reset_3.clicked.connect(lambda: self.area_controller.sensors[4].max_min.reset(0))
+        self.pb_mm_reset_4.clicked.connect(lambda: self.area_controller.sensors[10].max_min.reset(0))
+        self.pb_mm_reset_5.clicked.connect(lambda: self.area_controller.sensors[11].max_min.reset(0))
         # Area 2
         self.pb_man_feed_2.clicked.connect(lambda: self.feed_manual(2))
         self.pb_feed_mix_2.clicked.connect(lambda: self.wc.show(DialogFeedMix(self, 2)))
@@ -300,18 +306,28 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.pb_pm_6.clicked.connect(lambda: self.change_to_flushing(6))
         self.pb_pm_7.clicked.connect(lambda: self.change_to_flushing(7))
         self.pb_pm_8.clicked.connect(lambda: self.change_to_flushing(8))
+        self.pb_mm_reset_6.clicked.connect(lambda: self.area_controller.sensors[5].max_min.reset(0))
+        self.pb_mm_reset_7.clicked.connect(lambda: self.area_controller.sensors[6].max_min.reset(0))
+        self.pb_mm_reset_8.clicked.connect(lambda: self.area_controller.sensors[12].max_min.reset(0))
+        self.pb_mm_reset_9.clicked.connect(lambda: self.area_controller.sensors[13].max_min.reset(0))
         # Area 3
         self.pb_pid_3.clicked.connect(lambda: self.wc.show_process_info(3))
         self.pb_output_status_7.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_31))
         self.pb_output_mode_7.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 3, 1)))
+        self.pb_mm_reset_11.clicked.connect(lambda: self.area_controller.sensors[7].max_min.reset(0))
+        self.pb_mm_reset_12.clicked.connect(lambda: self.area_controller.sensors[8].max_min.reset(0))
         # Workshop
         self.pb_output_status_8.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_ROOM))
         self.pb_output_mode_8.clicked.connect(lambda: self.wc.show(DialogWorkshopSettings(self)))
+        self.pb_mm_reset_10.clicked.connect(lambda: self.area_controller.sensors[9].max_min.reset(0))
         # Water
         self.pb_output_status_11.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_WATER_HEATER_1))
         self.pb_output_status_12.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_WATER_HEATER_2))
         self.pb_output_mode_11.clicked.connect(lambda: self.wc.show(DialogWaterHeaterSettings(self, 1)))
         self.pb_output_mode_12.clicked.connect(lambda: self.wc.show(DialogWaterHeaterSettings(self, 2)))
+        # Outside
+        self.pb_mm_reset_0.clicked.connect(lambda: self.area_controller.sensors[1].max_min.reset(0))
+        self.pb_mm_reset_1.clicked.connect(lambda: self.area_controller.sensors[2].max_min.reset(0))
 
         self.coms_interface.update_sensors.connect(self.update_sensors)
         self.coms_interface.update_switch.connect(self.update_switch)
@@ -946,6 +962,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 else:
                     self.area_controller.day_night[1] = DAY
                     self.lbl_light_status_1.setPixmap(QtGui.QPixmap(":/normal/light_on.png"))
+                self.area_controller.get_area_process(1).check_trans()
                 self.area_controller.fan_controller.load_req_temperature(1)
                 if self.area_controller.area_is_manual(1):
                     self.db.set_config(CFT_AREA, "mode {}".format(1), state + 1)
@@ -959,6 +976,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                     else:
                         self.area_controller.day_night[2] = DAY
                         self.lbl_light_status_2.setPixmap(QtGui.QPixmap(":/normal/light_on.png"))
+                    self.area_controller.get_area_process(2).check_trans()
                     self.area_controller.fan_controller.load_req_temperature(2)
                     if self.area_controller.area_is_manual(2):
                         self.db.set_config(CFT_AREA, "mode {}".format(2), state + 1)
@@ -1093,6 +1111,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
     def new_day(self):
         print("*********** New day ***********")
         self.today = datetime.now().day
+        self.mid_day = False
         self.logger.new_day()
         for a in range(1, 3):
             if self.area_controller.area_has_process(a):
@@ -1113,6 +1132,10 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         # # Reset feeder for new day
         # self.water_control.new_day()
         # self.water_control.start()
+
+    def new_mid_day(self):
+        print("*********** Mid day ***********")
+        self.mid_day = True
 
     @pyqtSlot(str, list, name="updateForHelper")
     def process_relay_command(self, cmd, data):

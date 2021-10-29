@@ -1568,7 +1568,8 @@ class DialogDispatchStorage(QDialog, Ui_Form):
         self.main_panel.db.execute_write(sql)
         self.load_jars_list()
         self.cb_jar.setCurrentIndex(self.cb_jar.findData(self.jar[0]))
-        # self.select_jar()
+        self.main_panel.main_window.update_stock()
+        self.main_panel.coms_interface.relay_send(NWC_STOCK_TOTAL)
 
     def clear(self):
         self.le_name.setText("")
@@ -2343,6 +2344,21 @@ class DialogJournal(QDialog, Ui_DialogJournal):
         self.stage = self.process.current_stage
         self.days = self.process.stage_days_elapsed
         self.dateTimeEdit.setDateTime(datetime.now())
+        self.pb_1.clicked.connect(lambda: self.add_num(1))
+        self.pb_2.clicked.connect(lambda: self.add_num(2))
+        self.pb_3.clicked.connect(lambda: self.add_num(3))
+        self.pb_4.clicked.connect(lambda: self.add_num(4))
+        self.pb_5.clicked.connect(lambda: self.add_num(5))
+        self.pb_6.clicked.connect(lambda: self.add_num(6))
+        self.pb_7.clicked.connect(lambda: self.add_num(7))
+        self.pb_8.clicked.connect(lambda: self.add_num(8))
+
+    def add_num(self, num):
+        self.tenew.setText("Number {}. ".format(num))
+        cur = self.tenew.textCursor()
+        cur.movePosition(QTextCursor.End)
+        self.tenew.setTextCursor(cur)
+        self.tenew.setFocus()
 
     def add(self):
         entry = self.tenew.toPlainText()
@@ -2849,12 +2865,15 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         if tab == 1:
             log = self.cb_logs.currentData()
             self._load_sensor_log(log)
+            self.plot_sensors()
         if tab == 2:
             log = self.cb_logs_2.currentData()
             self._load_output_log(log)
+            self.outputs_plot()
         if tab == 3:
             log = self.cb_logs_3.currentData()
             self._load_fan_log(log)
+            self.
         if tab == 4:
             log = self.cb_logs_4.currentData()
             self._load_power_log(log)
@@ -2968,75 +2987,78 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         return values[limit:]
 
     def plot_sensors(self):
-        self.plot = MplWidget(self.wg_graph_1, 12, 4.5)
-        self.plot.canvas.axes.cla()
-        if self.ax2 is not None:
-            self.ax2.cla()
-            self.ax2 = None
-        limit = self.cb_limit_1.currentData()
-        times = self.get_limit(self.times, limit)
+        try:
+            self.plot = MplWidget(self.wg_graph_1, 12, 4.5)
+            self.plot.canvas.axes.cla()
+            if self.ax2 is not None:
+                self.ax2.cla()
+                self.ax2 = None
+            limit = self.cb_limit_1.currentData()
+            times = self.get_limit(self.times, limit)
 
-        if self.temp_1_1.isChecked():
-            self.plot.canvas.axes.plot(times, self.get_limit(self.values['1t'], limit), color='green', label='Area 1 Temperature')
-        if self.temp_1_2.isChecked():
-            self.plot.canvas.axes.plot(times, self.get_limit(self.values['1c'], limit), color='green', label='Area 1 Canopy', linestyle='dotted')
-        if self.temp_1_3.isChecked():
-            self.plot.canvas.axes.plot(times, self.get_limit(self.values['1r'], limit), color='green', label='Area 1 Root', linestyle='dashed')
+            if self.temp_1_1.isChecked():
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['1t'], limit), color='green', label='Area 1 Temperature')
+            if self.temp_1_2.isChecked():
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['1c'], limit), color='green', label='Area 1 Canopy', linestyle='dotted')
+            if self.temp_1_3.isChecked():
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['1r'], limit), color='green', label='Area 1 Root', linestyle='dashed')
 
-        if self.temp_2_1.isChecked():
-            self.plot.canvas.axes.plot(times, self.get_limit(self.values['2t'], limit), color='orange', label='Area 2 Temperature')
-        if self.temp_2_2.isChecked():
-            self.plot.canvas.axes.plot(times, self.get_limit(self.values['2c'], limit), color='orange', label='Area 2 Canopy', linestyle='dotted')
-        if self.temp_2_3.isChecked():
-            self.plot.canvas.axes.plot(times, self.get_limit(self.values['2r'], limit), color='orange', label='Area 2 Root', linestyle='dashed')
+            if self.temp_2_1.isChecked():
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['2t'], limit), color='orange', label='Area 2 Temperature')
+            if self.temp_2_2.isChecked():
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['2c'], limit), color='orange', label='Area 2 Canopy', linestyle='dotted')
+            if self.temp_2_3.isChecked():
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['2r'], limit), color='orange', label='Area 2 Root', linestyle='dashed')
 
-        if self.temp_3_1.isChecked():
-            self.plot.canvas.axes.plot(times, self.get_limit(self.values['dt'], limit), color='olive', label='Drying Temperature')
+            if self.temp_3_1.isChecked():
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['dt'], limit), color='olive', label='Drying Temperature')
 
-        if self.temp_4_1.isChecked():
-            self.plot.canvas.axes.plot(times, self.get_limit(self.values['ws'], limit), color='brown', label='Workshop')
+            if self.temp_4_1.isChecked():
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['ws'], limit), color='brown', label='Workshop')
 
-        if self.temp_5_1.isChecked():
-            self.plot.canvas.axes.plot(times, self.get_limit(self.values['ot'], limit), color='hotpink', label='Outside Temperature')
+            if self.temp_5_1.isChecked():
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['ot'], limit), color='hotpink', label='Outside Temperature')
 
-        if self.ck_hum_1.isChecked():
-            if self.ax2 is None:
-                self.ax2 = self.plot.canvas.axes.twinx()
-            self.ax2.plot(self.times, self.values['1h'], color='pink', label='Area 1 Humidity')
-            self.ax2.yaxis.set_major_locator(MultipleLocator(10))
+            if self.ck_hum_1.isChecked():
+                if self.ax2 is None:
+                    self.ax2 = self.plot.canvas.axes.twinx()
+                self.ax2.plot(self.times, self.values['1h'], color='pink', label='Area 1 Humidity')
+                self.ax2.yaxis.set_major_locator(MultipleLocator(10))
 
-        if self.ck_hum_2.isChecked():
-            if self.ax2 is None:
-                self.ax2 = self.plot.canvas.axes.twinx()
-            self.ax2.plot(self.times, self.values['2h'], color='purple', label='Area 2 Humidity')
+            if self.ck_hum_2.isChecked():
+                if self.ax2 is None:
+                    self.ax2 = self.plot.canvas.axes.twinx()
+                self.ax2.plot(self.times, self.values['2h'], color='purple', label='Area 2 Humidity')
 
-        if self.ck_hum_3.isChecked():
-            if self.ax2 is None:
-                self.ax2 = self.plot.canvas.axes.twinx()
-            self.ax2.plot(self.times, self.values['dh'], color='purple', label='Drying Humidity')
+            if self.ck_hum_3.isChecked():
+                if self.ax2 is None:
+                    self.ax2 = self.plot.canvas.axes.twinx()
+                self.ax2.plot(self.times, self.values['dh'], color='purple', label='Drying Humidity')
 
-        if self.ck_hum_4.isChecked():
-            if self.ax2 is None:
-                self.ax2 = self.plot.canvas.axes.twinx()
-            self.ax2.plot(self.times, self.values['oh'], color='purple', label='Outside Humidity', linestyle='dotted')
+            if self.ck_hum_4.isChecked():
+                if self.ax2 is None:
+                    self.ax2 = self.plot.canvas.axes.twinx()
+                self.ax2.plot(self.times, self.values['oh'], color='purple', label='Outside Humidity', linestyle='dotted')
 
-        if self.ax2 is not None:
-            self.ax2.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-            # self.ax2.invert_yaxis()
-            self.ax2.legend(loc='upper left')
+            if self.ax2 is not None:
+                self.ax2.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+                # self.ax2.invert_yaxis()
+                self.ax2.legend(loc='upper left')
 
-        self.plot.canvas.axes.set_ylabel("Temperature")
-        self.plot.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-        self.plot.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
-        leg = self.plot.canvas.axes.legend()
-        leg.set_draggable(state=True)
-        self.plot.canvas.axes.tick_params(
-            axis='x', which='major', labelcolor='Green', rotation=45, labelsize=7)
-        # self.plot.canvas.axes.invert_yaxis()
-        self.plot.canvas.axes.xaxis.grid(True, which='minor')
-        self.plot.grid(True)
-        self.plot.canvas.draw()
-        self.plot.show()
+            self.plot.canvas.axes.set_ylabel("Temperature")
+            self.plot.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+            self.plot.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
+            leg = self.plot.canvas.axes.legend()
+            leg.set_draggable(state=True)
+            self.plot.canvas.axes.tick_params(
+                axis='x', which='major', labelcolor='Green', rotation=45, labelsize=7)
+            # self.plot.canvas.axes.invert_yaxis()
+            self.plot.canvas.axes.xaxis.grid(True, which='minor')
+            self.plot.grid(True)
+            self.plot.canvas.draw()
+            self.plot.show()
+        except Exception as e:
+            pass
 
     def outputs_plot(self):
         self.plot_outputs = MplWidget(self.wg_graph_2, 12, 5.3)
