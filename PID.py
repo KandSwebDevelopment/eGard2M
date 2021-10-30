@@ -26,7 +26,7 @@ class PID:
         self.Ki = i
         self.Kd = d
 
-        self.sample_time = 1.50
+        self.sample_time = 1.00
         self.current_time = time.time()
         self.last_time = self.current_time
 
@@ -57,6 +57,8 @@ class PID:
         # self.windup_guard = 10.0
 
         self.output = 0.0
+        self.current_time = time.time()
+        self.last_time = self.current_time
 
     def update(self, feedback_value):
         """Calculates PID value for given reference feedback

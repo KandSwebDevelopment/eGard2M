@@ -2877,6 +2877,7 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         if tab == 4:
             log = self.cb_logs_4.currentData()
             self._load_power_log(log)
+            self.power_plot()
 
     def _load_sensor_log(self, log):
         txt = self.logger.get_log(LOG_DATA, log)
@@ -2981,7 +2982,8 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             self.fan_values['2sw'].append(string_to_float(v[4]))
             self.fan_values['2rv'].append(string_to_float(v[5]))
 
-    def get_limit(self, values, limit):
+    @staticmethod
+    def get_limit(values, limit):
         if limit == 0:
             return values
         return values[limit:]
@@ -3061,41 +3063,44 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             pass
 
     def outputs_plot(self):
-        self.plot_outputs = MplWidget(self.wg_graph_2, 12, 5.3)
-        self.plot_outputs.canvas.axes.cla()
-        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1h1'], color='green', label='Area 1 Heater 1')
-        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1h2'], color='green', label='Area 1 Heater 2', linestyle='dotted')
-        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1a'], color='green', label='Area 1 Aux', linestyle='dashed')
-        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1s'], color='green', label='Area 1 Socket')
+        try:
+            self.plot_outputs = MplWidget(self.wg_graph_2, 12, 5.3)
+            self.plot_outputs.canvas.axes.cla()
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1h1'], color='green', label='Area 1 Heater 1')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1h2'], color='green', label='Area 1 Heater 2', linestyle='dotted')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1a'], color='green', label='Area 1 Aux', linestyle='dashed')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1s'], color='green', label='Area 1 Socket')
 
-        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2h1'], color='orange', label='Area 2 Heater 1')
-        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2h2'], color='orange', label='Area 2 Heater 2', linestyle='dotted')
-        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2a'], color='orange', label='Area 2 Aux', linestyle='dashed')
-        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2s'], color='orange', label='Area 2 Socket')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2h1'], color='orange', label='Area 2 Heater 1')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2h2'], color='orange', label='Area 2 Heater 2', linestyle='dotted')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2a'], color='orange', label='Area 2 Aux', linestyle='dashed')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2s'], color='orange', label='Area 2 Socket')
 
-        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['h3'], color='pink', label='Area 3 Heater')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['h3'], color='pink', label='Area 3 Heater')
 
-        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['ws'], color='brown', label='Workshop Heater')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['ws'], color='brown', label='Workshop Heater')
 
-        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['wh1'], color='blue', label='Water Heater 1')
-        self.plot_outputs.canvas.axes.plot(self.times, self.output_values['wh2'], color='blue', label='Water Heater 2', linestyle='dashed')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['wh1'], color='blue', label='Water Heater 1')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['wh2'], color='blue', label='Water Heater 2', linestyle='dashed')
 
-        # self.plot_outputs.canvas.axes.set_ylabel("Outputs")
-        # self.plot_outputs.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
-        self.plot_outputs.canvas.axes.set_yticks(
-            [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23])
-        self.plot_outputs.canvas.axes.set_yticklabels([
-            'Off', 'H1a On', 'Off', 'H1b On', 'Off', 'A1 On', 'Off', 'S1 On', 'Off', 'H2a On', 'Off', 'H2b On',
-            'Off', 'A2 On', 'Off', 'S2 On', 'Off', 'H3 On', 'Off', 'WS On', 'Off', 'WH1 On', 'Off', 'WH2 On'])
-        self.plot_outputs.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
-        # leg = self.plot_outputs.canvas.axes.legend()
-        # leg.set_draggable(state=True)
-        self.plot_outputs.canvas.axes.tick_params(
-            axis='x', which='major', labelcolor='Green', rotation=45, labelsize=7)
-        self.plot_outputs.canvas.axes.xaxis.grid(True, which='minor')
-        self.plot_outputs.grid(True)
-        self.plot_outputs.canvas.draw()
-        self.plot_outputs.show()
+            # self.plot_outputs.canvas.axes.set_ylabel("Outputs")
+            # self.plot_outputs.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+            self.plot_outputs.canvas.axes.set_yticks(
+                [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23])
+            self.plot_outputs.canvas.axes.set_yticklabels([
+                'Off', 'H1a On', 'Off', 'H1b On', 'Off', 'A1 On', 'Off', 'S1 On', 'Off', 'H2a On', 'Off', 'H2b On',
+                'Off', 'A2 On', 'Off', 'S2 On', 'Off', 'H3 On', 'Off', 'WS On', 'Off', 'WH1 On', 'Off', 'WH2 On'])
+            self.plot_outputs.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
+            # leg = self.plot_outputs.canvas.axes.legend()
+            # leg.set_draggable(state=True)
+            self.plot_outputs.canvas.axes.tick_params(
+                axis='x', which='major', labelcolor='Green', rotation=45, labelsize=7)
+            self.plot_outputs.canvas.axes.xaxis.grid(True, which='minor')
+            self.plot_outputs.grid(True)
+            self.plot_outputs.canvas.draw()
+            self.plot_outputs.show()
+        except Exception as e:
+            pass
 
     def fans_plot(self):
         try:

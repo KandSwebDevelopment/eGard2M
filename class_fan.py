@@ -245,6 +245,7 @@ class FanClass(QThread):
         while self.mode == 2:
             self.pid.update(self.input)
             _speed = int(self.pid.output)
+            # print("PID Raw ", _speed)
             self._switch(_speed)
             time.sleep(1)
 
@@ -255,7 +256,7 @@ class FanClass(QThread):
             # s = int((20 - (10 - s)) / 5) + 1
             s = int((10 - s) / 4) + 1
             self.switch(s)
-            # print(self.id, " PID ", speed_raw, " Sw ", s)
+            print(self.id, " PID ", speed_raw, " Sw ", s)
             # if self._logging_t and self.fan_controller.master_mode == MASTER:
             #     self.fan_controller.area_controller.main_window.logger.save_fan_log(
             #         "{}, {}, {}, {}".format(self.id, self.input, s, self._set_point))
