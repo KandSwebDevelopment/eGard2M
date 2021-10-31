@@ -1177,6 +1177,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         elif cmd == NWC_MOVE_TO_FINISHING:
             self.area_controller.reload_area(2)
             self.area_controller.reload_area(3)
+            self.check_stage(2)
             self.check_stage(3)
         elif cmd == NWC_RELOAD_PROCESSES:
             self.area_controller.load_processes()

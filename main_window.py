@@ -13,7 +13,7 @@ from dbController import MysqlDB
 from dialogs import DialogEngineerCommandSender, DialogEngineerIo, DialogDispatchInternal, DialogDispatchCounter, \
     DialogDispatchReports, DialogStrainFinder, DialogDispatchStorage, DialogDispatchOverview, DialogSysInfo, \
     DialogSettings, DialogProcessPerformance, DialogDispatchLoadingBay, DialogProcessManager, DialogStrains, \
-    DialogSeedPicker, DialogProcessLogs, DialogPatternMaker, DialogIOVC, DialogGraphEnv
+    DialogSeedPicker, DialogProcessLogs, DialogPatternMaker, DialogIOVC, DialogGraphEnv, DialogStrainPerformance
 from functions import multi_status_bar, get_last_friday
 from functions_colors import get_css_colours
 from status_codes import *
@@ -119,6 +119,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionSeeds.triggered.connect(lambda: self.wc.show(DialogStrains(self)))
         self.actionFinder.triggered.connect(lambda: self.wc.show(DialogStrainFinder(self.main_panel)))
         self.actionPicker.triggered.connect(lambda: self.wc.show(DialogSeedPicker(self)))
+        self.actionPreformance.triggered.connect(lambda: self.wc.show(DialogStrainPerformance(self)))
 
         self.coms_interface.update_que_status.connect(self.update_que)
 

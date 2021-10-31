@@ -60,6 +60,7 @@ from ui.dialogWaterHeaterSettings import Ui_DialogWaterHeatertSetting
 from ui.dialogWorkshopSettings import Ui_DialogWorkshopSetting
 from ui.dialogsysInfo import Ui_DialogSysInfo
 from ui.dialogFanDry import Ui_DialogFanDry
+from ui.dialogStrainPerformance2 import Ui_DialogStrainPreformance
 
 
 class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
@@ -1075,9 +1076,13 @@ class DialogDispatchLoadingBay(QDialog, Ui_DialogDispatchLoading):
             self.db.execute_write(sql)
             # Add entry in journal
             dt = datetime.strftime(datetime.now(), '%d/%m/%y %H:%M')
+            # Calculate days drying
+            s = self.db.execute_single('SELECT started FROM {} WHERE item = {}'.format(DB_PROCESS_DRYING, self.cb_strain.currentData()))
+            d = (datetime.now() - s).days
+            # Add journal entry
             self.main_panel.area_controller.get_area_process(3).journal_write(
-                "{} Number {} finished drying and {} grams stored in {}".
-                format(dt, self.cb_strain.currentData(), self.strain_total, self.jar_id))
+                "{} Number {} finished {} days drying and {} grams stored in {}".
+                format(dt, self.cb_strain.currentData(), d, self.strain_total, self.jar_id))
             # Call the finish item
             self.main_panel.finish_item(self.cb_strain.currentData(), self.strain_total, False)
             self.te_jar_info.setText("Remove Jar")
@@ -3419,6 +3424,60 @@ class DialogStrainFinder(QWidget, Ui_DialogStrainFinder):
             self.cb_name.addItem("{} ({})".format(row[1], row[2]), row[0])
 
         self.cb_name.currentIndexChanged.connect(lambda: self.le_id.setText(str(self.cb_name.currentData())))
+
+
+class DialogStrainPerformance(QDialog, Ui_DialogStrainPreformance):
+    def __init__(self, parent, process=None):
+        super(DialogStrainPerformance, self).__init__()
+        self.sub = None
+        self.main_panel = parent
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.db = self.main_panel.db
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+
+        self.tw_all.setColumnCount(6)
+        # self.tw_all.resizeRowsToContents()
+        self.tw_all.setHorizontalHeaderLabels(["ID", "Strain", "Breeder", "Average", "Quantity", "Total"])
+        self.tw_item.setColumnCount(4)
+        self.tw_item.setHorizontalHeaderLabels(["Process", "Ending", "Days", "Yield"])
+
+        sql = 'SELECT strain_id, ROUND(SUM(yield),2), COUNT(strain_id), ' \
+              '(ROUND(SUM(yield)/ COUNT(strain_id),2)) AS AVG ' \
+              'FROM process_strains GROUP BY strain_id  ORDER BY AVG DESC'
+        rows = self.db.execute(sql)
+        self.tw_all.setRowCount(len(rows))
+
+        r = 0
+        for row in rows:
+            nb = self.db.execute_one_row('SELECT name, breeder FROM {} WHERE id = {}'.format(DB_STRAINS, row[0]))
+            data = [str(row[0]), nb[0], nb[1], str(row[3]), str(row[2]), str(row[1])]
+            for c in range(0, 6):
+                self.tw_all.setItem(r, c, QTableWidgetItem(data[c]))
+            r += 1
+
+        self.tw_all.resizeColumnsToContents()
+
+        self.tw_all.activated.connect(self.more_info)
+        self.tw_all.clicked.connect(self.more_info)
+        # for row in rows:
+        #     nb = self.db.execute_one_row('SELECT name, breeder FROM {} WHERE id = {}'.format(DB_STRAINS, row[0]))
+
+    def more_info(self, index):
+        sid = int(self.tw_all.item(self.tw_all.currentRow(), 0).text())
+        print(sid)
+        rows = self.db.execute('SELECT process_id, total_days, yield FROM {} WHERE strain_id = {}'.format(DB_PROCESS_STRAINS, sid))
+        txt = "<table>"
+        r = 0
+        self.tw_item.setRowCount(len(rows))
+        for row in rows:
+            ed = str(self.db.execute_single('SELECT end FROM {} WHERE id = {}'.format(DB_PROCESS, row[0])))
+            data = [str(row[0]), ed, str(row[1]), str(row[2])]
+            for c in range(0, 4):
+                self.tw_item.setItem(r, c, QTableWidgetItem(data[c]))
+            r += 1
+
+        self.tw_item.resizeColumnsToContents()
 
 
 class DialogProcessInfo(QDialog, Ui_DialogProcessInfo):
