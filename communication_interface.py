@@ -189,7 +189,7 @@ class CommunicationInterface(QObject):
         self.update_received.emit(received, sender)
         # print("sender ", sender)
         if sender[0] == self.slave_ip:
-            if self.main_window.main_panel.slave_counter > 0:   # Will only remove if its there, and will only be here when received
+            if self.main_window.main_panel.slave_counter > 6:   # Will only remove if its there, and will only be here when received
                 self.main_window.msg_sys.remove(MSG_DATA_LINK)
             self.main_window.main_panel.slave_counter = 0
         if source == "UPD_server":

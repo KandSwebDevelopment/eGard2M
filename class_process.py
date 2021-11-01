@@ -452,6 +452,10 @@ class ProcessClass(QObject):
             print(sql)
             self.db.execute_write(sql)
 
+            # Remove any feed mixes
+            self.db.execute_write('DELETE FROM {} WHERE area = 2'.format(DB_PROCESS_FEED_ADJUSTMENTS))
+            self.db.execute_write('DELETE FROM {} WHERE area = 2'.format(DB_PROCESS_MIXES))
+
             # Feed liters
             # if self.location < 3:
             #     sql = "UPDATE {} SET itemid = 0, offset = 0 WHERE item = {} id = {} LIMIT 1".format(

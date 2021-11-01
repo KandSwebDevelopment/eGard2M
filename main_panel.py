@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import QWidget, QMdiSubWindow, QMessageBox
 from defines import *
 from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan, DialogOutputSettings, \
     DialogSensorSettings, DialogProcessAdjustments, DialogWaterHeaterSettings, DialogWorkshopSettings, DialogElectMeter, \
-    DialogJournal, DialogSoilSensors, DialogGraphEnv, DialogFanDry, DialogLogViewer
+    DialogJournal, DialogSoilSensors, DialogGraphEnv, DialogFanDry, DialogLogViewer, DialogDispatchLoadingBay
 from functions import play_sound, sound_access_warn
 from scales_com import ScalesComs
 from ui.mainPanel import Ui_MainPanel
@@ -315,6 +315,14 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.pb_output_mode_7.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 3, 1)))
         self.pb_mm_reset_11.clicked.connect(lambda: self.area_controller.sensors[7].max_min.reset(0))
         self.pb_mm_reset_12.clicked.connect(lambda: self.area_controller.sensors[8].max_min.reset(0))
+        self.pb_pm2_1.clicked.connect(lambda: self.wc.show(DialogDispatchLoadingBay(self, 1)))
+        self.pb_pm2_2.clicked.connect(lambda: self.wc.show(DialogDispatchLoadingBay(self, 2)))
+        self.pb_pm2_3.clicked.connect(lambda: self.wc.show(DialogDispatchLoadingBay(self, 3)))
+        self.pb_pm2_4.clicked.connect(lambda: self.wc.show(DialogDispatchLoadingBay(self, 4)))
+        self.pb_pm2_5.clicked.connect(lambda: self.wc.show(DialogDispatchLoadingBay(self, 5)))
+        self.pb_pm2_6.clicked.connect(lambda: self.wc.show(DialogDispatchLoadingBay(self, 6)))
+        self.pb_pm2_7.clicked.connect(lambda: self.wc.show(DialogDispatchLoadingBay(self, 7)))
+        self.pb_pm2_8.clicked.connect(lambda: self.wc.show(DialogDispatchLoadingBay(self, 8)))
         # Workshop
         self.pb_output_status_8.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_ROOM))
         self.pb_output_mode_8.clicked.connect(lambda: self.wc.show(DialogWorkshopSettings(self)))
@@ -535,10 +543,13 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                             ctrl.setToolTip("Day {} flushing\n\r{}".format(df, name))
 
                         x += 1
-                    for x in range(len(p.strain_window) + 1, 9):
+                    for x in range(1, 9):
+                        if x in p.strain_window:
+                            return
                         ctrl = getattr(self, "pb_pm_%i" % x)
                         ctrl.setEnabled(False)
                         ctrl.setText("")
+                        ctrl.setStyleSheet("")
                 else:
                     self.frmstagechange_2.setEnabled(False)
                     return None
@@ -652,8 +663,9 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         # Add to drying table
         sql = "INSERT INTO {} (item, started) VALUES ({}, '{}')".format(DB_PROCESS_DRYING, item, datetime.now().date())
         self.db.execute_write(sql)
-
+        # Enable button in area 3
         getattr(self, "pb_pm2_%i" % item).setEnabled(True)
+
         dt = datetime.strftime(datetime.now(), '%d/%m/%y %H:%M')
         # p.journal_write(dt + "    Number " + str(item) + " Cut and moved to drying. Days flowering "
         #                 + str(p.stage_days_elapsed) + "  ^")
@@ -1195,6 +1207,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.main_window.update_stock()
         elif cmd == NWC_SWITCH_REQUEST:
             self.get_switch_position(data[0])
+        elif cmd == NWC_MESSAGE:
+            self.main_window.msg_sys.load()
         elif cmd == NWC_WH_DURATION:
             self.area_controller.output_controller.outputs[data[0]].set_duration(data[1])
         elif cmd == NWC_WH_FREQUENCY:

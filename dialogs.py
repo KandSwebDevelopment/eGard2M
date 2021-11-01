@@ -905,7 +905,7 @@ class DialogDispatchInternal(QDialog, Ui_DialogDispatchInternal):
 
 
 class DialogDispatchLoadingBay(QDialog, Ui_DialogDispatchLoading):
-    def __init__(self, parent):
+    def __init__(self, parent, item=None):
         """
 
         :type parent: MainWindow
@@ -948,6 +948,8 @@ class DialogDispatchLoadingBay(QDialog, Ui_DialogDispatchLoading):
             return
         self.te_jar_info.setText("Step 1: Select Item")
         self.scales.tare()
+        if item is not None:
+            self.cb_strain.setCurrentIndex(self.cb_strain.findData(item))
 
     @pyqtSlot(str, name='newUID')
     def new_uid(self, uid):

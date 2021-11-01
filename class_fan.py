@@ -251,14 +251,26 @@ class FanClass(QThread):
 
     def _switch(self, speed_raw):
         if self._mode == 2:     # Only do switching from PID if in auto mode
-            if speed_raw >= 0:
-                self.switch(1)
-                return
+            # if speed_raw >= 0:  # Set 1
+            #     self.switch(1)
+            #     return
             s = speed_raw if speed_raw > - 10 else -10
+            if speed_raw == 0:
+                self.switch(3)
+            elif speed_raw > 5:
+                self.switch(1)
+            elif speed_raw > 0:
+                self.switch(2)
+            elif speed_raw < -8:
+                self.switch(6)
+            elif speed_raw < -4:
+                self.switch(5)
+            elif speed_raw < 0:
+                self.switch(4)
             # s = s if s < 10 else 10
             # # s = int((20 - (10 - s)) / 5) + 1  # 5 Speed
             # s = int((10 - s) / 4) + 1   # 6 Speed
-            s = int((10 - s) / 2) - 4
+            # s = int((10 - s) / 2) - 4   # set 1
             self.switch(s)
             print(self.id, " PID ", speed_raw, " Sw ", s)
             # if self._logging_t and self.fan_controller.master_mode == MASTER:
