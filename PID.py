@@ -36,7 +36,7 @@ class PID:
         self.DTerm = 0.0
         self.last_error = 0.0
         self.int_error = 0.0
-        self.windup_guard = 10.0
+        self.windup_guard = 5.0
         self.output = 0
         self._min_output = 1
         self._max_output = 5
