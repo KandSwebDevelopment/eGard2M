@@ -1080,7 +1080,7 @@ class DialogDispatchLoadingBay(QDialog, Ui_DialogDispatchLoading):
             dt = datetime.strftime(datetime.now(), '%d/%m/%y %H:%M')
             # Calculate days drying
             s = self.db.execute_single('SELECT started FROM {} WHERE item = {}'.format(DB_PROCESS_DRYING, self.cb_strain.currentData()))
-            d = (datetime.now() - s).days
+            d = (datetime.now().date() - s).days
             # Add journal entry
             self.main_panel.area_controller.get_area_process(3).journal_write(
                 "{} Number {} finished {} days drying and {} grams stored in {}".

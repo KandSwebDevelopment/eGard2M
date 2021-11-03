@@ -110,8 +110,11 @@ class FeedControl(QThread):
         return self.feeds[area].get_feeds_remaining()
 
     def get_days_till_feed(self):
-        a = self.feeds[1].get_days_till_feed()
-        b = self.feeds[2].get_days_till_feed()
+        a = b = 99
+        if self.main_window.area_controller.area_has_process(1):
+            a = self.feeds[1].get_days_till_feed()
+        if self.main_window.area_controller.area_has_process(2):
+            b = self.feeds[2].get_days_till_feed()
         return min(a, b)
 
     def get_feed_frequency(self, area):

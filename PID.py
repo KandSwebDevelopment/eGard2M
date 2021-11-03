@@ -64,7 +64,7 @@ class PID:
         """Calculates PID value for given reference feedback
 
         .. math::
-            u(t) = K_p e(t) + K_i \int_{0}^{t} e(t)dt + K_d {de}/{dt}
+            u(t) = K_p e(t) + K_i \\ int_{0}^{t} e(t)dt + K_d {de}/{dt}
 
         .. figure:: images/pid_1.png
            :align:   center

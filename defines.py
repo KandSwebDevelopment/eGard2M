@@ -321,6 +321,7 @@ NWC_FAN_MODE = "fan mode"                   # Fan mode has changed, fan num, mod
 NWC_FAN_PID = "fan pid"                     # Fan PID values has changed, fan num
 NWC_FAN_REQUIRED = "fan required"           # Fan required temperature has changed, fan num, value
 NWC_FAN_UPDATE = "fan update"               # Update slaves fan speeds, fan 1 speed, fan 2 speed  100, 100 for speed is a request
+NWC_FINISH_ITEM = "finish item"             # An item has finished (drying), item num
 NWC_MESSAGE = "message"                     # Refresh msg sys
 NWC_MODULES_STATUS = "modules_status"       # I/O D/E modules on/off line
 NWC_MOVE_TO_FINISHING = "move_finishing"    # Plant has moved to finishing

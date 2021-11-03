@@ -725,6 +725,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         else:
             self.area_controller.load_areas()
             self.check_stage(3)
+            self.coms_interface.relay_send(NWC_FINISH_ITEM, item)
 
     def feed_manual(self, loc):
         self.feed_controller.feed(loc)
@@ -973,7 +974,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 else:
                     self.area_controller.day_night[1] = DAY
                     self.lbl_light_status_1.setPixmap(QtGui.QPixmap(":/normal/light_on.png"))
-                self.area_controller.get_area_process(1).check_trans()
+                # self.area_controller.get_area_process(1).check_trans()
                 self.area_controller.fan_controller.load_req_temperature(1)
                 if self.area_controller.area_is_manual(1):
                     self.db.set_config(CFT_AREA, "mode {}".format(1), state + 1)
