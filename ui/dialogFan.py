@@ -86,7 +86,7 @@ class Ui_DialogFan(object):
         self.lbl_master.setText("")
         self.lbl_master.setObjectName("lbl_master")
         self.lbl_name = QtWidgets.QLabel(DialogFan)
-        self.lbl_name.setGeometry(QtCore.QRect(10, 0, 151, 31))
+        self.lbl_name.setGeometry(QtCore.QRect(10, 0, 71, 31))
         font = QtGui.QFont()
         font.setPointSize(14)
         font.setBold(True)
@@ -106,6 +106,9 @@ class Ui_DialogFan(object):
         self.line_2.setFrameShape(QtWidgets.QFrame.HLine)
         self.line_2.setFrameShadow(QtWidgets.QFrame.Sunken)
         self.line_2.setObjectName("line_2")
+        self.le_set = QtWidgets.QLineEdit(DialogFan)
+        self.le_set.setGeometry(QtCore.QRect(120, 10, 41, 21))
+        self.le_set.setObjectName("le_set")
 
         self.retranslateUi(DialogFan)
         QtCore.QMetaObject.connectSlotsByName(DialogFan)

@@ -78,7 +78,7 @@ def sound_error():
         path += parts[i]
         if i > 0:
             path += "\\"
-    print(path)
+    # print(path)
     path += "wave_files\\error.wav"
     winsound.PlaySound(path, winsound.SND_FILENAME)
 

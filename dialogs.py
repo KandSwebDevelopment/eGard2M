@@ -3725,6 +3725,22 @@ class DialogFan(QDialog, Ui_DialogFan):
         self.check_mode()
         self.ck_log_tuning.setChecked(int(self.db.get_config(CFT_FANS, "log tuning", 1)))
         self.ck_log_tuning.clicked.connect(self.change_tuning_log)
+        self.set_temp = self.main_panel.area_controller.fan_controller.fans[self.id].get_set_point()
+        self.le_set.setText(str(self.set_temp))
+        self.le_set.editingFinished.connect(self.change_set)
+
+    def change_set(self):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Question)
+        msg.setText("Confirm you wish to change the set point")
+        msg.setWindowTitle("Confirm Change")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        msg.setDefaultButton(QMessageBox.Cancel)
+        if msg.exec_() == QMessageBox.Cancel:
+            self.le_set.setText(str(self.set_temp))
+            return
+        self.main_panel.area_controller.fan_controller.fans[self.id].set_point(string_to_float(self.le_set.text()))
+        self.set_temp = string_to_float(self.le_set.text())
 
     def change_tuning_log(self):
         if self.ck_log_tuning.isChecked():

@@ -6,6 +6,8 @@ from UPD_client import UdpClient
 from UPD_server import UdpServer
 from functions import string_to_float
 from status_codes import *
+from distutils.util import strtobool
+
 # R@m5!tt8?E5eDHG@
 MyIp = (([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")] or [
     [(s.connect(("8.8.8.8", 53)), s.getsockname()[0], s.close()) for s in
@@ -335,7 +337,23 @@ class CommunicationInterface(QObject):
             self.update_network_status.emit(int(prams[0]), int(prams[1]))
         elif command == NWC_QUE_STATUS:
             self.update_que_status.emit(int(prams[0]), int(prams[1]), int(prams[2]), int(prams[3]))
+
+            # Floats
+        elif command == NWC_WATER_LEVELS:
+            self.update_from_relay.emit(command, [float(prams[0]), float(prams[1])])
+
+            # Second pram is Bool
+        elif command == NWC_OUTPUT_LOCK:
+            self.update_from_relay.emit(command, [float(prams[0]), strtobool(prams[1])])
+
         # No prams
+        # if prams is None:
+        #     self.update_from_relay.emit(command, [])
+        # elif len(prams) == 1:
+        #     self.update_from_relay.emit(command, [int(prams[0])])
+        # else:
+        #     self.update_from_relay.emit(command, [int(prams[0]), int(prams[1])])
+
         elif command == NWC_WORKSHOP_HEATER or \
                 command == NWC_ACCESS_BOOST or \
                 command == NWC_DRYING_AREA or \
@@ -359,6 +377,7 @@ class CommunicationInterface(QObject):
                 command == NWC_SWITCH_REQUEST or \
                 command == NWC_RELOAD_PROCESSES or \
                 command == NWC_OUTPUT_RANGE or \
+                command == NWC_OUTPUT_LOCK or \
                 command == NWC_ACCESS_OPERATE or \
                 command == NWC_OUTPUT_TRIGGER or \
                 command == NWC_OUTPUT_TRIGGER or \
@@ -379,8 +398,6 @@ class CommunicationInterface(QObject):
                 command == NWC_FAN_UPDATE:
             self.update_from_relay.emit(command, [int(prams[0]), int(prams[1])])
         # 2 float prams
-        elif command == NWC_WATER_LEVELS:
-            self.update_from_relay.emit(command, [float(prams[0]), float(prams[1])])
 
     # Sending functions communication
     def get_next_udp_communication(self, who) -> (str, tuple):

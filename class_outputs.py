@@ -99,11 +99,15 @@ class OutputClass(QObject):
         self.update_info()
 
     def set_locked(self, lock):
+        if self.update_lock(lock):
+            self.db.execute_write('UPDATE {} SET locked = {} WHERE id = {} LIMIT 1'.format(DB_OUTPUTS, lock, self.ctrl_id))
+
+    def update_locked(self, lock):
         if lock == self.locked:
-            return
+            return False
         self.locked = lock
-        self.db.execute_write('UPDATE {} SET locked = {} WHERE id = {} LIMIT 1'.format(DB_OUTPUTS, lock, self.ctrl_id))
         self.update_info()
+        return True
 
     def set_mode(self, mode):
         """ Updates the outputs mode and saves it to the db and updates the outputs info control """
