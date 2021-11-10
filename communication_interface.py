@@ -235,6 +235,8 @@ class CommunicationInterface(QObject):
             module = MODULE_DE
         elif sender[1] == self.pc_relay_port:
             module = MODULE_SL
+        elif sender[1] == self.fu_port:
+            module = MODULE_FU
         else:
             module = 999
         self.process_command(command, data_list, relay_command, module)

@@ -105,6 +105,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 self.wc.show(DialogAccessModule(self))
             elif source is self.lbl_access:
                 self.wc.show(DialogElectMeter(self))
+
             # Area 1
             elif source is self.lbl_fan_1:
                 self.wc.show(DialogFan(self, 1))
@@ -123,6 +124,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 self.wc.show(DialogSensorSettings(self, 1, 11))
             elif source is self.lbl_soil_1:
                 self.wc.show(DialogSoilSensors(self, 1))
+
             # Area 2
             elif source is self.lbl_fan_2:
                 self.wc.show(DialogFan(self, 2))
@@ -141,6 +143,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 self.wc.show(DialogSensorSettings(self, 2, 13))
             elif source is self.lbl_soil_2:
                 self.wc.show(DialogSoilSensors(self, 2))
+
             # Area 3, drying
             elif source is self.le_stage_3:
                 if self.area_controller.area_has_process(3):
@@ -221,8 +224,11 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 self.main_window.logger.save_output_log(self.area_controller.output_controller.get_output_log_values())
                 self.main_window.logger.save_fan_log(self.area_controller.fan_controller.get_log_values())
                 self.main_window.logger.save_power_log(self.le_pwr_current.text() + ", " + self.le_pwr_total_1.text())
+        cm = datetime.now().minute
+        if cm % 2 == 0:
+            self.main_window.logger.save_soil_log(self.area_controller.soil_sensors.get_log_values())
 
-    def loop_6(self): # 2 mins
+    def loop_6(self):   # 2 min
         if self.master_mode == MASTER:
             self.coms_interface.send_command(NWC_SOIL_READ)
 
@@ -336,13 +342,13 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.pb_mm_reset_0.clicked.connect(lambda: self.area_controller.sensors[1].max_min.reset(0))
         self.pb_mm_reset_1.clicked.connect(lambda: self.area_controller.sensors[2].max_min.reset(0))
 
+        # Signals
         self.coms_interface.update_sensors.connect(self.update_sensors)
         self.coms_interface.update_switch.connect(self.update_switch)
         self.access.update_access.connect(self.update_access)
         self.access.update_duration.connect(self.update_cover_duration)
         self.coms_interface.update_power.connect(self.update_power)
         self.coms_interface.update_other_readings.connect(self.update_others)
-        # self.area_controller.soil_sensors.update_soil_reading.connect(self.update_soil_display)
         self.area_controller.fan_controller.update_fans_speed.connect(self.update_fans)
         self.coms_interface.update_float_switch.connect(self.update_float)
         self.coms_interface.update_from_relay.connect(self.process_relay_command)
@@ -981,9 +987,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             #     if self.area_controller.area_is_manual(1):
             #         self.db.set_config(CFT_AREA, "mode {}".format(1), state + 1)
             if sw == OUT_LIGHT_2:
-                if self.area_controller.area_has_process(2):
-                    # if self.area_controller.light_relay_2 != state:
-                    self.area_controller.reload_sensor_ranges(2)
+                self.area_controller.reload_sensor_ranges(2)
                 self.area_controller.light_relay_2 = state
                 if state == 0:
                     self.area_controller.day_night[2] = NIGHT

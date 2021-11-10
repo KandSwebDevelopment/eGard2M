@@ -13,13 +13,24 @@ class WindowsController(QObject):
         self.__window_list_menu.aboutToShow.connect(self.__window_list_menu_about_to_show)
 
     def show(self, dialog_, **kwargs):
+        if 'multi' not in kwargs:
+            if self.check_opened(dialog_):
+                return
         s = self.mdiArea.addSubWindow(dialog_)
         s.setGeometry(50, 50, dialog_.frameGeometry().width() + 15, dialog_.frameGeometry().height() + 30)
-        # s.setFixedSize(dialog_.frameGeometry().width() + 15, dialog_.frameGeometry().height() + 30)
+        if 'resize' not in kwargs:
+            s.setFixedSize(dialog_.frameGeometry().width() + 15, dialog_.frameGeometry().height() + 30)
         s.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint)
         dialog_.sub = s
         dialog_.show()
         # s.show()
+
+    def check_opened(self, dialog_):
+        for d in self.mdiArea.subWindowList():
+            if d.windowTitle() == dialog_.windowTitle():
+                self.mdiArea.setActiveSubWindow(d)
+                return True
+        return False
 
     def show_journal(self, area):
         if self.my_parent.area_controller.area_has_process(area):

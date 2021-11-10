@@ -93,7 +93,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # System
         self.actionSettings.triggered.connect(lambda: self.wc.show(DialogSettings(self)))
         self.actionI_O_Data.triggered.connect(lambda: self.wc.show(DialogEngineerIo(self)))
-        self.actionSend_Command.triggered.connect(lambda: self.wc.show(DialogEngineerCommandSender(self)))
+        self.actionSend_Command.triggered.connect(lambda: self.wc.show(DialogEngineerCommandSender(self), multi=True))
         self.actionReconnect.triggered.connect(self.reconnect)
         self.actionSystem_Info.triggered.connect(lambda: self.wc.show(DialogSysInfo(self)))
         self.actionSync_IO.triggered.connect(lambda: self.main_panel.io_reboot())

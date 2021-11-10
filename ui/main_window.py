@@ -182,7 +182,7 @@ class Ui_MainWindow(object):
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
-        MainWindow.setWindowTitle(_translate("MainWindow", "MainWindow"))
+        MainWindow.setWindowTitle(_translate("MainWindow", "eBud"))
         self.menuSystem.setTitle(_translate("MainWindow", "System"))
         self.menuEngineer.setTitle(_translate("MainWindow", "Engineer"))
         self.menuDispatch.setTitle(_translate("MainWindow", "Dispatch"))
@@ -208,14 +208,14 @@ class Ui_MainWindow(object):
         self.actionOverview.setText(_translate("MainWindow", "Overview"))
         self.actionSeeds.setText(_translate("MainWindow", "Seeds"))
         self.actionPicker.setText(_translate("MainWindow", "Picker"))
-        self.actionPreformance.setText(_translate("MainWindow", "Preformance"))
+        self.actionPreformance.setText(_translate("MainWindow", "Performance"))
         self.actionFinder.setText(_translate("MainWindow", "Finder"))
         self.actionReconnect.setText(_translate("MainWindow", "Reconnect"))
         self.actionSystem_Info.setText(_translate("MainWindow", "System Info"))
         self.actionSettings.setText(_translate("MainWindow", "Settings"))
-        self.actionWizzard.setText(_translate("MainWindow", "Wizzard"))
+        self.actionWizzard.setText(_translate("MainWindow", "Wizard"))
         self.actionManager.setText(_translate("MainWindow", "Manager"))
-        self.actionPreformance_2.setText(_translate("MainWindow", "Preformance"))
+        self.actionPreformance_2.setText(_translate("MainWindow", "Performance"))
         self.actionJournals.setText(_translate("MainWindow", "Journals"))
         self.actionStock.setText(_translate("MainWindow", "Stock"))
         self.actionLow_Stock.setText(_translate("MainWindow", "Low Stock"))
@@ -228,7 +228,7 @@ class Ui_MainWindow(object):
         self.actionReboot_DHT_s.setText(_translate("MainWindow", "Reboot DHT\'s"))
         self.actionPatterns.setText(_translate("MainWindow", "Patterns"))
         self.actionI_O_VC.setText(_translate("MainWindow", "I/O VC"))
-        self.actionEnviroment.setText(_translate("MainWindow", "Enviroment"))
+        self.actionEnviroment.setText(_translate("MainWindow", "Environment"))
 
 
 if __name__ == "__main__":

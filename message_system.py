@@ -74,7 +74,7 @@ class MessageSystem(QObject):
                 return
         self._put(mid, msg, dur, level)
         self._display(mid, msg, level)
-        # self.my_parent.coms_interface.relay_send(NWC_MESSAGE)
+        self.my_parent.coms_interface.relay_send(NWC_MESSAGE)
 
     def has_msg_id(self, mid):
         sql = 'SELECT mid FROM {} WHERE mid = {} OR mid = {}'.format(DB_MESSAGE_SYSTEM, mid, mid * -1)
@@ -106,6 +106,7 @@ class MessageSystem(QObject):
             self._delete(mid)
             self.load()
             self.my_parent.coms_interface.relay_send(NWC_MESSAGE)
+        self.load()
 
     def _get(self, mid):
         """ Query's db and returns message with Id = mid or None"""

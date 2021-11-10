@@ -61,6 +61,7 @@ from ui.dialogWorkshopSettings import Ui_DialogWorkshopSetting
 from ui.dialogsysInfo import Ui_DialogSysInfo
 from ui.dialogFanDry import Ui_DialogFanDry
 from ui.dialogStrainPerformance2 import Ui_DialogStrainPreformance
+from ui.dialogSoilLimits import Ui_DialogSoilLimits
 
 
 class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
@@ -5183,6 +5184,34 @@ class DialogProcessManager(QDialog, Ui_dialogProcessManager):
                 self.db.execute_write(sql)
 
 
+class DialogSoilLimits(QDialog, Ui_DialogSoilLimits):
+    def __init__(self, parent, area):
+        super(DialogSoilLimits, self).__init__()
+        self.setupUi(self)
+        self.sub = None
+        self.dialog_soil_sensors = parent
+        # self.db = self.main_panel.db
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.area = area
+        self.soil_sensors = self.dialog_soil_sensors.soil_sensors
+
+        for s in range(1, 5):
+            w, d = self.soil_sensors.get_wet_dry(self.area, s)
+            getattr(self, "le_dry_{}".format(s)).setText(str(d))
+            getattr(self, "le_wet_{}".format(s)).setText(str(w))
+            getattr(self, "le_raw_{}".format(s)).setText(str(self.soil_sensors.get_raw(self.area, s)))
+
+        self.pb_save_1.clicked.connect(lambda: self.save(1))
+        self.pb_save_2.clicked.connect(lambda: self.save(2))
+        self.pb_save_3.clicked.connect(lambda: self.save(3))
+        self.pb_save_4.clicked.connect(lambda: self.save(4))
+
+    def save(self, sensor):
+        wet = int(getattr(self, "le_wet_{}".format(sensor)).text())
+        dry = int(getattr(self, "le_dry_{}".format(sensor)).text())
+        self.soil_sensors.set_wet_dry(self.area, sensor, wet, dry)
+
+
 class DialogSoilSensors(QDialog, Ui_DialogSoilSensors):
     def __init__(self, parent, area):
         super(DialogSoilSensors, self).__init__()
@@ -5202,15 +5231,17 @@ class DialogSoilSensors(QDialog, Ui_DialogSoilSensors):
         for i in items:
             for x in range(1, 5):
                 getattr(self, "cb_plant_{}".format(x)).addItem(str(i), i)
-        ss = self.main_panel.area_controller.soil_sensors.get_sensor_status(self.area)
+        self.soil_sensors = self.main_panel.area_controller.soil_sensors
         for x in range(1, 5):
-            getattr(self, "cb_plant_{}".format(x)).setCurrentIndex(getattr(self, "cb_plant_{}".format(x)).findData(ss[x - 1]))
+            getattr(self, "cb_plant_{}".format(x)).setCurrentIndex\
+                (getattr(self, "cb_plant_{}".format(x)).findData(self.soil_sensors.get_item(self.area, x)))
         self.cb_plant_1.currentIndexChanged.connect(lambda: self.change_item(1))
         self.cb_plant_2.currentIndexChanged.connect(lambda: self.change_item(2))
         self.cb_plant_3.currentIndexChanged.connect(lambda: self.change_item(3))
         self.cb_plant_4.currentIndexChanged.connect(lambda: self.change_item(4))
 
         self.pb_read.clicked.connect(lambda: self.main_panel.coms_interface.send_data(COM_SOIL_READ, True, MODULE_IO))
+        self.pb_advanced.clicked.connect(lambda: self.main_panel.main_window.wc.show(DialogSoilLimits(self, self.area)))
         # self.cb_plant_1.currentIndexChanged.connect(self.change_item)
         # self.ck_active_all.setChecked(self.all_active)
         # self.ck_active_all.clicked.connect(self.change_all_active) occupied
@@ -5218,15 +5249,7 @@ class DialogSoilSensors(QDialog, Ui_DialogSoilSensors):
     def change_item(self, sensor):
         item = self.sender().currentData()
         s = sensor + ((self.area - 1) * 4)
-        self.db.set_config_both(CFT_SOIL_SENSORS, s, item)
-        self.main_panel.area_controller.soil_sensors.load_status()
-
-    def change_all_active(self):
-        aa = self.ck_active_all.isChecked()
-        if aa == self.all_active:
-            return
-        self.db.set_config_both(CFT_SOIL_SENSORS, "area {}".format(self.area), aa)
-        self.main_panel.area_controller.soil_sensors.load_status()
+        self.soil_sensors.set_item(self.area, sensor, item)
 
 
 class DialogStrains(QDialog, Ui_DialogStrains):
