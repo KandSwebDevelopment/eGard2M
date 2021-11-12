@@ -5,6 +5,7 @@ from PyQt5.QtCore import QSettings, pyqtSlot
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox
 
 from class_access import Access
+from class_feed_unit import FeederUnit
 from class_logger import Logger
 from communication_interface import CommunicationInterface, MyIp
 from controller_feeding import FeedControl
@@ -13,7 +14,8 @@ from dbController import MysqlDB
 from dialogs import DialogEngineerCommandSender, DialogEngineerIo, DialogDispatchInternal, DialogDispatchCounter, \
     DialogDispatchReports, DialogStrainFinder, DialogDispatchStorage, DialogDispatchOverview, DialogSysInfo, \
     DialogSettings, DialogProcessPerformance, DialogDispatchLoadingBay, DialogProcessManager, DialogStrains, \
-    DialogSeedPicker, DialogProcessLogs, DialogPatternMaker, DialogIOVC, DialogGraphEnv, DialogStrainPerformance
+    DialogSeedPicker, DialogProcessLogs, DialogPatternMaker, DialogIOVC, DialogGraphEnv, DialogStrainPerformance, \
+    DialogFeedStationCalibrate
 from functions import multi_status_bar, get_last_friday
 from functions_colors import get_css_colours
 from status_codes import *
@@ -68,6 +70,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.access = Access(self)
         self.area_controller = AreaController(self)
         self.feed_controller = FeedControl(self)
+        self.feeder_unit = FeederUnit(self)
 
         # This can only be called after the feed_control has initialised, it sets the days_till_feed
         # self.area_controller.output_controller.outputs[OUT_WATER_HEATER_1].new_day()
@@ -99,9 +102,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionSync_IO.triggered.connect(lambda: self.main_panel.io_reboot())
         self.actionI_O_VC.triggered.connect(lambda: self.wc.show(DialogIOVC(self)))
 
-        # Logs
-        self.actionEnviroment.triggered.connect(lambda: self.wc.show(DialogGraphEnv(self)))
-
         # Dispatch
         self.actionCounter.triggered.connect(lambda: self.wc.show(DialogDispatchCounter(self.main_panel)))
         self.actionInternal.triggered.connect(lambda: self.wc.show(DialogDispatchInternal(self.main_panel)))
@@ -115,6 +115,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionManager.triggered.connect(lambda: self.wc.show(DialogProcessManager(self.main_panel)))
         self.actionJournals.triggered.connect(lambda: self.wc.show(DialogProcessLogs(self)))
         self.actionPatterns.triggered.connect(lambda: self.wc.show(DialogPatternMaker(self)))
+
+        # Feeding
+        self.actionCalibrate.triggered.connect(lambda: self.wc.show(DialogFeedStationCalibrate(self)))
+
         # Materials
         self.actionSeeds.triggered.connect(lambda: self.wc.show(DialogStrains(self)))
         self.actionFinder.triggered.connect(lambda: self.wc.show(DialogStrainFinder(self.main_panel)))

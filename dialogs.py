@@ -6,6 +6,7 @@ import pprint
 import socket
 import sys
 from datetime import *
+from functools import partial
 
 import numpy
 import serial
@@ -62,7 +63,7 @@ from ui.dialogsysInfo import Ui_DialogSysInfo
 from ui.dialogFanDry import Ui_DialogFanDry
 from ui.dialogStrainPerformance2 import Ui_DialogStrainPreformance
 from ui.dialogSoilLimits import Ui_DialogSoilLimits
-
+from ui.dialogFeederCalibrate import Ui_dialogFeederCalibrate
 
 class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
     def __init__(self, parent=None):
@@ -2220,6 +2221,112 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         # if self.is_changed:
         #     self.main_panel.coms_interface.relay_send(NWC_PROCESS_MIX_CHANGE, self.location)
         self.sub.close()
+
+
+class DialogFeedStationCalibrate(QDialog, Ui_dialogFeederCalibrate):
+    def __init__(self, parent=None):
+        super(DialogFeedStationCalibrate, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.main_window = parent
+        self.sub = None
+        self.db = parent.db
+        self.pin_on = None
+        self.is_running = False
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.switch_off)
+        self.timer.setInterval(1000)
+        self.duration = 0
+        self.ctrl_on = -1
+        self.last = 0
+        self.feeder_unit = self.main_window.feeder_unit
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.pb_save_mix.clicked.connect(self.save_mix)
+        self.pb_stop.clicked.connect(self.stop)
+        self.pb_run_mix.clicked.connect(self.calibrate_mix_pump)
+        for x in range(1, 9):
+            getattr(self, "pb_run_%i" % x).clicked.connect(partial(self.calibrate, x))
+            getattr(self, "pb_dispense_%i" % x).clicked.connect(partial(self.dispense, x))
+            getattr(self, "pb_save_%i" % x).clicked.connect(partial(self.save, x))
+        self.load()
+
+    def load(self):
+        pots = self.feeder_unit.pots
+        for row in pots:
+            getattr(self, "lbl_name_c_%i" % row).setText("{} {}".format(row, pots[row]['name']))
+            txt = ""
+            if pots[row]['level'] != 0:
+                txt = "{}ms/ml  {}ml/s".format(pots[row]['time'], round(1 / pots[row]['time'] * 1000, 1))
+            getattr(self, "lbl_current_%i" % row).setText(txt)
+
+    def calibrate(self, pot):
+        print("calibrate ", pot)
+        d = getattr(self, "le_dur_%i" % pot).text()
+        if d == "":
+            return
+        self.duration = int(d)
+        self.feeder_unit.dispense_ms(pot, self.duration)
+
+    def dispense(self, pot):
+        d = getattr(self, "le_test_%i" % pot).text()
+        if d == "":
+            return
+        amount = int(d)
+        self.feeder_unit.dispense_pot(pot, amount)
+
+    def calibrate_mix_pump(self):
+        self.pin_on = SW_FEED_PUMP
+        d = self.le_dur_mix.text()
+        if d.isnumeric():
+            duration = int(d)
+            self.main_window.coms_interface.send_data(
+                CMD_SWITCH_TIMED, True, MODULE_FU, SW_FEED_PUMP, ON_RELAY, duration)
+
+    def switch_off(self):
+        self.duration -= 1
+        self.main_panel.coms_interface.send_lock_command(1, CMD_SWITCH, self.pin_on, OFF)
+        print("Off ", datetime.now())
+        self.main_panel.coms_interface.send_switch(OUT_FEEDER_ACTIVE, OFF)
+        self.timer.stop()
+        if self.ctrl_on < 9:
+            # getattr(self, "le_dur_%i" % self.ctrl_on).setText(str(self.duration))
+            getattr(self, "le_dur_%i" % self.ctrl_on).setText(str(self.last))
+            getattr(self, "pb_run_%i" % self.ctrl_on).setText("Run")
+        else:
+            self.pb_run_mix.setText("Run")
+            self.le_dur_mix.setText(str(self.last))
+
+    def stop(self):
+        self.main_panel.coms_interface.send_data(CMD_CANCEL_SW, True, MODULE_FU)
+
+    def set_controls(self, state):
+        for x in range(1, 9):
+            getattr(self, "pb_run_%i" % x).setEnabled(state)
+            getattr(self, "le_dur_%i" % x).setEnabled(state)
+            getattr(self, "le_result_%i" % x).setEnabled(state)
+        self.le_dur_mix.setEnabled(state)
+        self.le_result_mix.setEnabled(state)
+        self.pb_run_mix.setEnabled(state)
+
+    def save(self, pot):
+        result = getattr(self, "le_result_%i" % pot).text()
+        if result == "":
+            return
+        result = int(result)
+        value = int(getattr(self, "le_dur_%i" % pot).text())
+        value /= result
+        sql = 'UPDATE {} SET `ml10` = {} WHERE `pot` = {}'.format(DB_FEEDER_POTS, value, pot)
+        self.db.execute_write(sql)
+        self.load()
+
+    def save_mix(self):
+        result = self.le_result_mix.text()
+        if not result.isnumeric():
+            return
+        result = int(result)
+        value = int(self.le_dur_mix.text())
+        value *= 1000 / result
+        self.db.set_config(CFT_FEEDER, "feed pump 1L", int(value))
 
 
 class DialogAreaManual(QWidget, Ui_frm_area_manual):

@@ -59,7 +59,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             getattr(self, "tesstatus_%i" % x).viewport().setCursor(QtGui.QCursor(QtCore.Qt.PointingHandCursor))
 
         self.today = datetime.now().day  # Holds today's date. Used to detect when day changes
-        self.mid_day = False             # False till mid day then true till new day
+        self.mid_day = False  # False till mid day then true till new day
 
         self.area_controller = None
         self.feed_controller = None
@@ -180,7 +180,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.loop_5()
 
         # Every 10
-        if self.timer_counter % 15 == 0:       # 15 sec
+        if self.timer_counter % 15 == 0:  # 15 sec
             self.loop_3()
             return
 
@@ -228,7 +228,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         if cm % 2 == 0:
             self.main_window.logger.save_soil_log(self.area_controller.soil_sensors.get_log_values())
 
-    def loop_6(self):   # 2 min
+    def loop_6(self):  # 2 min
         if self.master_mode == MASTER:
             self.coms_interface.send_command(NWC_SOIL_READ)
 
@@ -241,7 +241,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             if self.feed_controller.feed_due_today() and \
                     self.main_window.feed_controller.mute == False and \
                     self.main_window.factory == False:
-                if datetime.now().time() > (    # feed_time is a string not a datetime object
+                if datetime.now().time() > (  # feed_time is a string not a datetime object
                         datetime.strptime(self.feed_controller.feed_time, "%H:%M") - timedelta(hours=2)).time():
                     play_sound(SND_ATTENTION)
         self.loop_15_flag = not self.loop_15_flag
@@ -255,10 +255,10 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.msg_sys = self.main_window.msg_sys
         self.connect_signals()
 
-        if self.has_scales:     # These have to be here to allow signals to connect
+        if self.has_scales:  # These have to be here to allow signals to connect
             self.scales.connect()
         self.update_duration_texts()
-        self.area_controller.output_controller.water_heater_update_info()   # Required here it init things
+        self.area_controller.output_controller.water_heater_update_info()  # Required here it init things
         self.loop_15()  # Instant feed due check
         self.lbl_water_required.setText(str(self.main_window.feed_controller.get_next_water_required()))
         self.check_upcoming_starts()
@@ -278,10 +278,13 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.pbstageadvance_1.clicked.connect(lambda: self.stage_advance(1))
         self.pb_hold_1.clicked.connect(lambda: self.stage_adjust(1, 1))
         self.pbadjust_1.clicked.connect(lambda: self.wc.show(DialogProcessAdjustments(self, 1)))
-        self.pb_output_status_1.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_11))
-        self.pb_output_status_2.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_12))
+        self.pb_output_status_1.clicked.connect(
+            lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_11))
+        self.pb_output_status_2.clicked.connect(
+            lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_12))
         self.pb_output_status_3.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_AUX_1))
-        self.pb_output_status_9.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_SPARE_1))
+        self.pb_output_status_9.clicked.connect(
+            lambda: self.area_controller.output_controller.switch_output(OUT_SPARE_1))
         self.pb_output_mode_1.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 1)))
         self.pb_output_mode_2.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 2)))
         self.pb_output_mode_3.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 3)))
@@ -295,10 +298,13 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.pb_feed_mix_2.clicked.connect(lambda: self.wc.show(DialogFeedMix(self, 2)))
         self.pb_pid_2.clicked.connect(lambda: self.wc.show_process_info(2))
         self.pbadjust_2.clicked.connect(lambda: self.wc.show(DialogProcessAdjustments(self, 2)))
-        self.pb_output_status_4.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_21))
-        self.pb_output_status_5.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_22))
+        self.pb_output_status_4.clicked.connect(
+            lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_21))
+        self.pb_output_status_5.clicked.connect(
+            lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_22))
         self.pb_output_status_6.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_AUX_2))
-        self.pb_output_status_10.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_SPARE_2))
+        self.pb_output_status_10.clicked.connect(
+            lambda: self.area_controller.output_controller.switch_output(OUT_SPARE_2))
         self.pb_output_mode_4.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 2, 1)))
         self.pb_output_mode_5.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 2, 2)))
         self.pb_output_mode_6.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 2, 3)))
@@ -317,7 +323,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.pb_mm_reset_9.clicked.connect(lambda: self.area_controller.sensors[13].max_min.reset(0))
         # Area 3
         self.pb_pid_3.clicked.connect(lambda: self.wc.show_process_info(3))
-        self.pb_output_status_7.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_31))
+        self.pb_output_status_7.clicked.connect(
+            lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_31))
         self.pb_output_mode_7.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 3, 1)))
         self.pb_mm_reset_11.clicked.connect(lambda: self.area_controller.sensors[7].max_min.reset(0))
         self.pb_mm_reset_12.clicked.connect(lambda: self.area_controller.sensors[8].max_min.reset(0))
@@ -330,12 +337,15 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.pb_pm2_7.clicked.connect(lambda: self.wc.show(DialogDispatchLoadingBay(self, 7)))
         self.pb_pm2_8.clicked.connect(lambda: self.wc.show(DialogDispatchLoadingBay(self, 8)))
         # Workshop
-        self.pb_output_status_8.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_ROOM))
+        self.pb_output_status_8.clicked.connect(
+            lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_ROOM))
         self.pb_output_mode_8.clicked.connect(lambda: self.wc.show(DialogWorkshopSettings(self)))
         self.pb_mm_reset_10.clicked.connect(lambda: self.area_controller.sensors[9].max_min.reset(0))
         # Water
-        self.pb_output_status_11.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_WATER_HEATER_1))
-        self.pb_output_status_12.clicked.connect(lambda: self.area_controller.output_controller.switch_output(OUT_WATER_HEATER_2))
+        self.pb_output_status_11.clicked.connect(
+            lambda: self.area_controller.output_controller.switch_output(OUT_WATER_HEATER_1))
+        self.pb_output_status_12.clicked.connect(
+            lambda: self.area_controller.output_controller.switch_output(OUT_WATER_HEATER_2))
         self.pb_output_mode_11.clicked.connect(lambda: self.wc.show(DialogWaterHeaterSettings(self, 1)))
         self.pb_output_mode_12.clicked.connect(lambda: self.wc.show(DialogWaterHeaterSettings(self, 2)))
         # Outside
@@ -483,7 +493,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                     ctrl_le = self.lestageinfo_1
                     ctrl_advance = self.pb_advance_1
                     # self.process_from_location(1)
-                    ctrl_le.setText(str(next_stage_days))    # + day + str(
+                    ctrl_le.setText(str(next_stage_days))  # + day + str(
                     if next_stage_days > 1:
                         ctrl_advance.setEnabled(True)
                         ctrl.setEnabled(False)
@@ -509,12 +519,13 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                     for w in p.strain_window:
                         ctrl = getattr(self, "pb_pm_%i" % x)
                         ctrl.setText(str(x))
-                        flush_start = self.db.execute_single("SELECT start FROM {} WHERE item = {}".format(DB_FLUSHING, x))
+                        flush_start = self.db.execute_single(
+                            "SELECT start FROM {} WHERE item = {}".format(DB_FLUSHING, x))
                         if flush_start is not None:
                             w = 4
                         if x in self.area_controller.get_area_items(3):
                             w = -1
-                        if w == -1:     # Item removed
+                        if w == -1:  # Item removed
                             ctrl.setText("")
                             ctrl.setEnabled(False)
                             ctrl.setToolTip("")
@@ -539,7 +550,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                                                           "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
                                                           .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
                             ctrl.setToolTip(name)
-                        elif w == 4:   # Item is flushing
+                        elif w == 4:  # Item is flushing
                             ctrl.setEnabled(True)
                             ctrl.setStyleSheet("background-color: DodgerBlue;")
                             name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
@@ -606,7 +617,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
     def check_upcoming_starts(self):
         rows = self.db.execute(
             'SELECT id, start FROM {} WHERE `start` >= "{}" AND running = 0'.
-            format(DB_PROCESS, datetime.now().date() - timedelta(days=10)))
+                format(DB_PROCESS, datetime.now().date() - timedelta(days=10)))
         for row in rows:
             if row[1] <= (datetime.now() + timedelta(days=7)).date():
                 m = ("New process No:{} is due to start on {}\n\rPre-start due on {}"
@@ -653,7 +664,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.sender().setStyleSheet("")
         self.sender().setText("")
         self.sender().setEnabled(False)
-        p = self.area_controller.get_area_process(2)  # Don't need to check if process at location as it should never be here unless there is a process
+        p = self.area_controller.get_area_process(
+            2)  # Don't need to check if process at location as it should never be here unless there is a process
         p.strain_location[item - 1] = 3
         sql = "INSERT INTO {} (area, process_id, item) VALUES (3, {}, {})".format(DB_AREAS, p.id, item)
         self.db.execute_write(sql)
@@ -705,7 +717,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         getattr(self, "pb_pm2_%i" % item).setEnabled(False)
         p = self.area_controller.get_area_process(3)
         if p is None:  # If p is none then the process is still running in area 2
-            p = self.area_controller.get_area_process(2)  # ??? Is this right - an item shouldn't finish unless in area 3
+            p = self.area_controller.get_area_process(
+                2)  # ??? Is this right - an item shouldn't finish unless in area 3
         p.strain_location[item - 1] = 50
         # Remove it from areas table
         sql = "DELETE FROM {} WHERE process_id = {} AND item = {} AND area = 3 LIMIT 1".format(DB_AREAS, p.id, item)
@@ -756,16 +769,18 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         _time.sleep(1)
         self.coms_interface.send_switch(SW_FANS_POWER, self.area_controller.fan_controller.master_power)
         _time.sleep(1)
-        self.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, 1, self.area_controller.fan_controller.fans[1].speed)
+        self.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, 1,
+                                      self.area_controller.fan_controller.fans[1].speed)
         _time.sleep(1)
-        self.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, 2, self.area_controller.fan_controller.fans[2].speed)
+        self.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, 2,
+                                      self.area_controller.fan_controller.fans[2].speed)
         _time.sleep(1)
         self.coms_interface.send_switch(SW_FAN_1_OFF, ON)
         _time.sleep(1)
         self.coms_interface.send_switch(SW_FAN_2_OFF, ON)
         _time.sleep(1)
         outputs = self.area_controller.output_controller.outputs
-        for o in outputs:   # o = index
+        for o in outputs:  # o = index
             self.coms_interface.send_switch(outputs[o].output_pin, outputs[o].relay_position)
             _time.sleep(1)
 
@@ -867,7 +882,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.pb_cover.setEnabled(False)
             self.pb_cover_close.setEnabled(True)
 
-        if self.access.has_status(ACS_COVER_CLOSED):    # Closed limit sw
+        if self.access.has_status(ACS_COVER_CLOSED):  # Closed limit sw
             self.le_access_status_1.setStyleSheet("background-color: Green; color: White; border-radius: 6px;")
             # self.lbl_cover_position.setPixmap(QtGui.QPixmap(":/normal/locked.png"))
             self.lbl_cover_lock.setStyleSheet("")
@@ -1148,7 +1163,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.area_controller.output_controller.outputs[OUT_WATER_HEATER_1].new_day()
         self.area_controller.output_controller.outputs[OUT_WATER_HEATER_2].new_day()
         self.check_upcoming_starts()
-        self.area_controller.max_min_reset_clock()      # Reset max min's that are on clock
+        self.area_controller.max_min_reset_clock()  # Reset max min's that are on clock
         # # Reset feeder for new day
         # self.water_control.new_day()
         # self.water_control.start()
@@ -1182,7 +1197,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 self.coms_interface.relay_send(NWC_FAN_UPDATE, self.area_controller.fan_controller.get_speed(1),
                                                self.area_controller.fan_controller.get_speed(2))
             else:
-                self.update_fans(1, data[0] - 1)    # The -1 is because the master has added 1 for IO
+                self.update_fans(1, data[0] - 1)  # The -1 is because the master has added 1 for IO
                 self.update_fans(2, data[1] - 1)
         elif cmd == NWC_FAN_REQUIRED:
             self.area_controller.fan_controller.set_req_temperature(data[0], data[1])
@@ -1234,10 +1249,16 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].auto_boost = data[0]
             self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].update_info()
 
+        elif cmd == NWC_FEEDER_STATUS:
+            pass  # Calibrate
+        elif cmd == NWC_SWITCH_TIMED:
+            pass  # Calibrate
+
     def get_switch_position(self, sw):
         if sw == 0:
             self.coms_interface.relay_send(NWC_SWITCH, sw, self.area_controller.light_relay_1)
         elif sw == 1:
             self.coms_interface.relay_send(NWC_SWITCH, sw, self.area_controller.light_relay_2)
         else:
-            self.coms_interface.relay_send(NWC_SWITCH, sw, self.area_controller.output_controller.get_actual_position(sw))
+            self.coms_interface.relay_send(NWC_SWITCH, sw,
+                                           self.area_controller.output_controller.get_actual_position(sw))

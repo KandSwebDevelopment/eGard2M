@@ -43,11 +43,20 @@ class Ui_DialogEngineerCommandSender(object):
         self.lineEdit.setGeometry(QtCore.QRect(40, 70, 131, 20))
         self.lineEdit.setObjectName("lineEdit")
         self.pb_close = QtWidgets.QPushButton(DialogEngineerCommandSender)
-        self.pb_close.setGeometry(QtCore.QRect(680, 70, 75, 23))
+        self.pb_close.setGeometry(QtCore.QRect(200, 70, 75, 23))
         self.pb_close.setObjectName("pb_close")
 
         self.retranslateUi(DialogEngineerCommandSender)
         QtCore.QMetaObject.connectSlotsByName(DialogEngineerCommandSender)
+        DialogEngineerCommandSender.setTabOrder(self.cb_command, self.lineEdit)
+        DialogEngineerCommandSender.setTabOrder(self.lineEdit, self.le_value_1)
+        DialogEngineerCommandSender.setTabOrder(self.le_value_1, self.le_value_2)
+        DialogEngineerCommandSender.setTabOrder(self.le_value_2, self.le_value_3)
+        DialogEngineerCommandSender.setTabOrder(self.le_value_3, self.le_value_4)
+        DialogEngineerCommandSender.setTabOrder(self.le_value_4, self.ck_priority)
+        DialogEngineerCommandSender.setTabOrder(self.ck_priority, self.cb_to)
+        DialogEngineerCommandSender.setTabOrder(self.cb_to, self.pb_send)
+        DialogEngineerCommandSender.setTabOrder(self.pb_send, self.pb_close)
 
     def retranslateUi(self, DialogEngineerCommandSender):
         _translate = QtCore.QCoreApplication.translate
