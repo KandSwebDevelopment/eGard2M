@@ -2233,10 +2233,10 @@ class DialogFeedStationCalibrate(QDialog, Ui_dialogFeederCalibrate):
         self.db = parent.db
         self.pin_on = None
         self.is_running = False
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.switch_off)
-        self.timer.setInterval(1000)
-        self.duration = 0
+        # self.timer = QTimer()
+        # self.timer.timeout.connect(self.switch_off)
+        # self.timer.setInterval(1000)
+        # self.duration = 0
         self.ctrl_on = -1
         self.last = 0
         self.feeder_unit = self.main_window.feeder_unit
@@ -2248,6 +2248,7 @@ class DialogFeedStationCalibrate(QDialog, Ui_dialogFeederCalibrate):
             getattr(self, "pb_run_%i" % x).clicked.connect(partial(self.calibrate, x))
             getattr(self, "pb_dispense_%i" % x).clicked.connect(partial(self.dispense, x))
             getattr(self, "pb_save_%i" % x).clicked.connect(partial(self.save, x))
+        self.main_window.coms_interface.update_feeder_unit.connect(self.fu_update)
         self.load()
 
     def load(self):
@@ -2259,13 +2260,24 @@ class DialogFeedStationCalibrate(QDialog, Ui_dialogFeederCalibrate):
                 txt = "{}ms/ml  {}ml/s".format(pots[row]['time'], round(1 / pots[row]['time'] * 1000, 1))
             getattr(self, "lbl_current_%i" % row).setText(txt)
 
+    def fu_update(self, command, data):
+        print("FU Update {} data {}".format(command, data))
+        if command == CMD_SWITCH_TIMED:
+            try:
+                if data[1] == ON_RELAY:
+                    self.set_controls(False)
+                else:
+                    self.set_controls(True)
+            except:
+                pass
+
     def calibrate(self, pot):
         print("calibrate ", pot)
         d = getattr(self, "le_dur_%i" % pot).text()
         if d == "":
             return
-        self.duration = int(d)
-        self.feeder_unit.dispense_ms(pot, self.duration)
+        duration = int(d)
+        self.feeder_unit.dispense_ms(pot, duration)
 
     def dispense(self, pot):
         d = getattr(self, "le_test_%i" % pot).text()
@@ -2282,28 +2294,31 @@ class DialogFeedStationCalibrate(QDialog, Ui_dialogFeederCalibrate):
             self.main_window.coms_interface.send_data(
                 CMD_SWITCH_TIMED, True, MODULE_FU, SW_FEED_PUMP, ON_RELAY, duration)
 
-    def switch_off(self):
-        self.duration -= 1
-        self.main_panel.coms_interface.send_lock_command(1, CMD_SWITCH, self.pin_on, OFF)
-        print("Off ", datetime.now())
-        self.main_panel.coms_interface.send_switch(OUT_FEEDER_ACTIVE, OFF)
-        self.timer.stop()
-        if self.ctrl_on < 9:
-            # getattr(self, "le_dur_%i" % self.ctrl_on).setText(str(self.duration))
-            getattr(self, "le_dur_%i" % self.ctrl_on).setText(str(self.last))
-            getattr(self, "pb_run_%i" % self.ctrl_on).setText("Run")
-        else:
-            self.pb_run_mix.setText("Run")
-            self.le_dur_mix.setText(str(self.last))
+    # def switch_off(self):
+    #     self.duration -= 1
+    #     self.main_panel.coms_interface.send_lock_command(1, CMD_SWITCH, self.pin_on, OFF)
+    #     print("Off ", datetime.now())
+    #     self.main_panel.coms_interface.send_switch(OUT_FEEDER_ACTIVE, OFF)
+    #     self.timer.stop()
+    #     if self.ctrl_on < 9:
+    #         # getattr(self, "le_dur_%i" % self.ctrl_on).setText(str(self.duration))
+    #         getattr(self, "le_dur_%i" % self.ctrl_on).setText(str(self.last))
+    #         getattr(self, "pb_run_%i" % self.ctrl_on).setText("Run")
+    #     else:
+    #         self.pb_run_mix.setText("Run")
+    #         self.le_dur_mix.setText(str(self.last))
 
     def stop(self):
-        self.main_panel.coms_interface.send_data(CMD_CANCEL_SW, True, MODULE_FU)
+        self.main_window.coms_interface.send_data(CMD_CANCEL_SW, True, MODULE_FU)
 
     def set_controls(self, state):
         for x in range(1, 9):
             getattr(self, "pb_run_%i" % x).setEnabled(state)
             getattr(self, "le_dur_%i" % x).setEnabled(state)
             getattr(self, "le_result_%i" % x).setEnabled(state)
+            getattr(self, "le_test_%i" % x).setEnabled(state)
+            getattr(self, "pb_save_%i" % x).setEnabled(state)
+            getattr(self, "pb_dispense_%i" % x).setEnabled(state)
         self.le_dur_mix.setEnabled(state)
         self.le_result_mix.setEnabled(state)
         self.pb_run_mix.setEnabled(state)
@@ -2317,6 +2332,7 @@ class DialogFeedStationCalibrate(QDialog, Ui_dialogFeederCalibrate):
         value /= result
         sql = 'UPDATE {} SET `ml10` = {} WHERE `pot` = {}'.format(DB_FEEDER_POTS, value, pot)
         self.db.execute_write(sql)
+        self.feeder_unit.load_pots()
         self.load()
 
     def save_mix(self):

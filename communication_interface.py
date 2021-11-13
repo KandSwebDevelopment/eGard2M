@@ -240,7 +240,7 @@ class CommunicationInterface(QObject):
         elif sender[1] == self.fu_port:
             module = MODULE_FU
             self.update_feeder_unit.emit(command, data_list)
-            self.relay_send(NWC_FEEDER_UPDATE, command, data_list)
+            self.relay_send(NWC_FEEDER_UPDATE, received)
         else:
             module = 999
         self.process_command(command, data_list, relay_command, module)
@@ -356,58 +356,62 @@ class CommunicationInterface(QObject):
         elif command == NWC_OUTPUT_LOCK:
             self.update_from_relay.emit(command, [float(prams[0]), strtobool(prams[1])])
 
-        # No prams
-        if prams is None:
-            self.update_from_relay.emit(command, [])
-        elif len(prams) == 1:
-            self.update_from_relay.emit(command, [int(prams[0])])
-        else:
-            self.update_from_relay.emit(command, [int(prams[0]), int(prams[1])])
+        elif command == NWC_FEEDER_UPDATE:
+            p = prams
+            self.update_feeder_unit.emit(p.pop(0), p)
 
-        # elif command == NWC_WORKSHOP_HEATER or \
-        #         command == NWC_ACCESS_BOOST or \
-        #         command == NWC_DRYING_AREA or \
-        #         command == NWC_CHANGE_TO_FLUSHING or \
-        #         command == NWC_MOVE_TO_FINISHING or \
-        #         command == NWC_MESSAGE or \
-        #         command == NWC_SLAVE_START or \
-        #         command == NWC_STAGE_ADJUST or \
-        #         command == NWC_STOCK_TOTAL or \
-        #         command == NWC_WH_DURATION or \
-        #         command == NWC_WORKSHOP_DURATION or \
-        #         command == NWC_WORKSHOP_RANGES or \
-        #         command == NWC_SOIL_LOAD:
+        # # No prams
+        # if prams is None:
         #     self.update_from_relay.emit(command, [])
-        # # 1 pram
-        # elif command == NWC_FEED_DATE or \
-        #         command == NWC_FAN_PID or \
-        #         command == NWC_FEED or \
-        #         command == NWC_PROCESS_MIX_CHANGE or \
-        #         command == NWC_PROCESS_FEED_MODE or \
-        #         command == NWC_SWITCH_REQUEST or \
-        #         command == NWC_RELOAD_PROCESSES or \
-        #         command == NWC_OUTPUT_RANGE or \
-        #         command == NWC_OUTPUT_LOCK or \
-        #         command == NWC_ACCESS_OPERATE or \
-        #         command == NWC_OUTPUT_TRIGGER or \
-        #         command == NWC_OUTPUT_TRIGGER or \
-        #         command == NWC_WORKSHOP_FROST or \
-        #         command == NWC_WORKSHOP_BOOST:
+        # elif len(prams) == 1:
         #     self.update_from_relay.emit(command, [int(prams[0])])
-        # # 2 prams
-        # elif command == NWC_OUTPUT or \
-        #         command == NWC_OUTPUT_MODE or \
-        #         command == NWC_OUTPUT_SENSOR or \
-        #         command == NWC_SENSOR_RELOAD or \
-        #         command == NWC_WH_DURATION or \
-        #         command == NWC_WH_FREQUENCY or \
-        #         command == NWC_FAN_SENSOR or \
-        #         command == NWC_FAN_SPEED or \
-        #         command == NWC_FAN_MODE or \
-        #         command == NWC_FAN_REQUIRED or \
-        #         command == NWC_FAN_UPDATE:
+        # else:
         #     self.update_from_relay.emit(command, [int(prams[0]), int(prams[1])])
-        # # 2 float prams
+
+        elif command == NWC_WORKSHOP_HEATER or \
+                command == NWC_ACCESS_BOOST or \
+                command == NWC_DRYING_AREA or \
+                command == NWC_CHANGE_TO_FLUSHING or \
+                command == NWC_MOVE_TO_FINISHING or \
+                command == NWC_MESSAGE or \
+                command == NWC_SLAVE_START or \
+                command == NWC_STAGE_ADJUST or \
+                command == NWC_STOCK_TOTAL or \
+                command == NWC_WH_DURATION or \
+                command == NWC_WORKSHOP_DURATION or \
+                command == NWC_WORKSHOP_RANGES or \
+                command == NWC_SOIL_LOAD:
+            self.update_from_relay.emit(command, [])
+        # 1 pram
+        elif command == NWC_FEED_DATE or \
+                command == NWC_FAN_PID or \
+                command == NWC_FEED or \
+                command == NWC_PROCESS_MIX_CHANGE or \
+                command == NWC_PROCESS_FEED_MODE or \
+                command == NWC_SWITCH_REQUEST or \
+                command == NWC_RELOAD_PROCESSES or \
+                command == NWC_OUTPUT_RANGE or \
+                command == NWC_OUTPUT_LOCK or \
+                command == NWC_ACCESS_OPERATE or \
+                command == NWC_OUTPUT_TRIGGER or \
+                command == NWC_OUTPUT_TRIGGER or \
+                command == NWC_WORKSHOP_FROST or \
+                command == NWC_WORKSHOP_BOOST:
+            self.update_from_relay.emit(command, [int(prams[0])])
+        # 2 prams
+        elif command == NWC_OUTPUT or \
+                command == NWC_OUTPUT_MODE or \
+                command == NWC_OUTPUT_SENSOR or \
+                command == NWC_SENSOR_RELOAD or \
+                command == NWC_WH_DURATION or \
+                command == NWC_WH_FREQUENCY or \
+                command == NWC_FAN_SENSOR or \
+                command == NWC_FAN_SPEED or \
+                command == NWC_FAN_MODE or \
+                command == NWC_FAN_REQUIRED or \
+                command == NWC_FAN_UPDATE:
+            self.update_from_relay.emit(command, [int(prams[0]), int(prams[1])])
+        # 2 float prams
 
     # Sending functions communication
     def get_next_udp_communication(self, who) -> (str, tuple):
