@@ -1,6 +1,7 @@
 import collections
 import fnmatch
 import glob
+import math
 import os
 import pprint
 import socket
@@ -23,7 +24,6 @@ from class_process import ProcessClass
 from defines import *
 # from main import MainWindow
 from plotter import *
-from status_codes import FC_MESSAGE
 from ui.dialogDispatchCounter import Ui_DialogDispatchCounter
 from ui.dialogDispatchInternal import Ui_DialogDispatchInternal
 from functions import string_to_float, m_box, auto_capital, sound_click, minutes_to_hhmm, sound_check_out, \
@@ -64,6 +64,9 @@ from ui.dialogFanDry import Ui_DialogFanDry
 from ui.dialogStrainPerformance2 import Ui_DialogStrainPreformance
 from ui.dialogSoilLimits import Ui_DialogSoilLimits
 from ui.dialogFeederCalibrate import Ui_dialogFeederCalibrate
+from ui.dialogWaterTankCalibration import Ui_dailogWaterTanksCalibrate
+from ui.dialogFeederManualMix import Ui_DialogFeederManualMix
+
 
 class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
     def __init__(self, parent=None):
@@ -2223,6 +2226,91 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         self.sub.close()
 
 
+class DialogWaterTanksCalibrate(QDialog, Ui_dailogWaterTanksCalibrate):
+    def __init__(self, parent=None):
+        super(DialogWaterTanksCalibrate, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.main_window = parent
+        self.sub = None
+        self.db = parent.db
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.cb_tanks.addItem("1", 1)
+        self.cb_tanks.addItem("2", 2)
+        self.tank_id = 1
+        self.tank = None
+        self.cb_tanks.currentIndexChanged.connect(self.change_tank)
+        self.tw_data.setColumnCount(2)
+        self.tw_data.setHorizontalHeaderLabels(["Litres", "Reading"])
+        self.tw_data.setRowCount(21)
+        self.cb_tanks.setCurrentIndex(0)
+        self.change_tank()
+        self.tw_data.activated.connect(self.edit_level)
+        self.tw_data.clicked.connect(self.edit_level)
+        self.pb_read.setEnabled(False)
+        self.pb_read.clicked.connect(self.read)
+        self.pb_store.clicked.connect(self.store)
+        self.pb_store.setEnabled(False)
+        self.pb_clear.clicked.connect(self.clear)
+        self.pb_open.clicked.connect(self.open_tank_valve)
+        self.pb_close_valve.clicked.connect(self.close_tank_valve)
+        self.main_window.coms_interface.update_feeder_unit.connect(self.fu_update)
+
+    def load(self):
+        for row in self.tank.levels:
+            self.tw_data.setItem(int(row), 0, QTableWidgetItem(str(row)))
+            self.tw_data.setItem(int(row), 1, QTableWidgetItem(str(self.tank.levels[int(row)])))
+        self.tw_data.resizeColumnsToContents()
+
+    def change_tank(self):
+        self.tank_id = self.cb_tanks.currentData()
+        self.tank = self.main_window.water_controller.tanks[self.tank_id]
+        self.load()
+
+    def edit_level(self):
+        litres = string_to_float(self.tw_data.item(self.tw_data.currentRow(), 0).text())
+        self.le_litres.setText(str(litres))
+        self.le_reading.clear()
+        self.pb_read.setEnabled(True)
+
+    def store(self):
+        v = int(self.le_reading.text())
+        l = string_to_float(self.le_litres.text())
+        self.db.execute_write('UPDATE {} SET reading = {} WHERE tank = {} AND litres = {}'.
+                              format(DB_TANK_CONVERSION, v, self.tank_id, l))
+        self.tank.load_levels()
+        self.clear()
+        self.load()
+
+    def read(self):
+        self.le_reading.clear()
+        self.main_window.coms_interface.send_data(COM_TANK_LEVEL, True, MODULE_FU, self.tank_id)
+
+    def open_tank_valve(self):
+        self.main_window.coms_interface.send_switch(SW_WATER_MAINS_1 - 1 + self.tank_id, ON_RELAY, MODULE_FU)
+
+    def close_tank_valve(self):
+        self.main_window.coms_interface.send_switch(SW_WATER_MAINS_1 - 1 + self.tank_id, OFF_RELAY, MODULE_FU)
+
+    def fu_update(self, command, data):
+        if command == COM_TANK_LEVEL:
+            self.le_reading.setText(data[1])
+            self.pb_store.setEnabled(True)
+        elif command == CMD_SWITCH:
+            if int(data[0]) == SW_WATER_MAINS_1 or int(data[0]) == SW_WATER_MAINS_2:
+                if int(data[1]) == ON_RELAY:
+                    self.lbl_valve.setText("OPEN")
+                    self.lbl_valve.setStyleSheet("background-color: red; color: yellow")
+                else:
+                    self.lbl_valve.setText("Closed")
+                    self.lbl_valve.setStyleSheet("background-color: white; color: black")
+
+    def clear(self):
+        self.le_reading.clear()
+        self.le_litres.clear()
+        self.pb_store.setEnabled(False)
+
+
 class DialogFeedStationCalibrate(QDialog, Ui_dialogFeederCalibrate):
     def __init__(self, parent=None):
         super(DialogFeedStationCalibrate, self).__init__()
@@ -2231,6 +2319,8 @@ class DialogFeedStationCalibrate(QDialog, Ui_dialogFeederCalibrate):
         self.main_window = parent
         self.sub = None
         self.db = parent.db
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+
         self.pin_on = None
         self.is_running = False
         # self.timer = QTimer()
@@ -2240,10 +2330,10 @@ class DialogFeedStationCalibrate(QDialog, Ui_dialogFeederCalibrate):
         self.ctrl_on = -1
         self.last = 0
         self.feeder_unit = self.main_window.feeder_unit
-        self.pb_close.clicked.connect(lambda: self.sub.close())
         self.pb_save_mix.clicked.connect(self.save_mix)
         self.pb_stop.clicked.connect(self.stop)
         self.pb_run_mix.clicked.connect(self.calibrate_mix_pump)
+        self.lbl_running.setVisible(False)
         for x in range(1, 9):
             getattr(self, "pb_run_%i" % x).clicked.connect(partial(self.calibrate, x))
             getattr(self, "pb_dispense_%i" % x).clicked.connect(partial(self.dispense, x))
@@ -2264,12 +2354,17 @@ class DialogFeedStationCalibrate(QDialog, Ui_dialogFeederCalibrate):
         print("FU Update {} data {}".format(command, data))
         if command == CMD_SWITCH_TIMED:
             try:
-                if data[1] == ON_RELAY:
+                if int(data[1]) == ON_RELAY:
                     self.set_controls(False)
+                    self.lbl_running.setVisible(True)
                 else:
                     self.set_controls(True)
+                    self.lbl_running.setVisible(False)
             except:
                 pass
+        elif command == CMD_CANCEL_SW:
+            self.set_controls(True)
+            self.lbl_running.setVisible(False)
 
     def calibrate(self, pot):
         print("calibrate ", pot)
@@ -2284,12 +2379,12 @@ class DialogFeedStationCalibrate(QDialog, Ui_dialogFeederCalibrate):
         if d == "":
             return
         amount = int(d)
+        getattr(self, "le_seconds_%i" % pot).setText(str(round(self.feeder_unit.get_duration(pot, amount) / 1000, 1)))
         self.feeder_unit.dispense_pot(pot, amount)
 
     def calibrate_mix_pump(self):
-        self.pin_on = SW_FEED_PUMP
-        d = self.le_dur_mix.text()
-        if d.isnumeric():
+        d = string_to_float(self.le_dur_mix.text())
+        if d > 1000:
             duration = int(d)
             self.main_window.coms_interface.send_data(
                 CMD_SWITCH_TIMED, True, MODULE_FU, SW_FEED_PUMP, ON_RELAY, duration)
@@ -2322,13 +2417,14 @@ class DialogFeedStationCalibrate(QDialog, Ui_dialogFeederCalibrate):
         self.le_dur_mix.setEnabled(state)
         self.le_result_mix.setEnabled(state)
         self.pb_run_mix.setEnabled(state)
+        self.pb_save_mix.setEnabled(state)
 
     def save(self, pot):
         result = getattr(self, "le_result_%i" % pot).text()
         if result == "":
             return
-        result = int(result)
-        value = int(getattr(self, "le_dur_%i" % pot).text())
+        result = string_to_float(result)
+        value = string_to_float(getattr(self, "le_dur_%i" % pot).text())
         value /= result
         sql = 'UPDATE {} SET `ml10` = {} WHERE `pot` = {}'.format(DB_FEEDER_POTS, value, pot)
         self.db.execute_write(sql)
@@ -2343,6 +2439,362 @@ class DialogFeedStationCalibrate(QDialog, Ui_dialogFeederCalibrate):
         value = int(self.le_dur_mix.text())
         value *= 1000 / result
         self.db.set_config(CFT_FEEDER, "feed pump 1L", int(value))
+
+
+class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
+    my_parent = ...  # type: MainWindow
+
+    def __init__(self, parent):
+        """
+
+        """
+        super(DialogFeederManualMix, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.main_window = parent
+        self.db = parent.db
+        self.sub = None
+
+        self.feeder_unit = self.main_window.feeder_unit
+        self.feed_pump_1l = int(self.db.get_config(CFT_FEEDER, "feed pump 1L", 2))
+        self.waiting = False  # True when request for reading has been sent and waiting on reply
+        self.tank_current_litres = -1  # Current tank liters
+        self.tank_required_litres = 0
+        self.fill_amount = 0  # The amount to fill tank by
+        self.has_fault = 0  # Any value other than 0 indicates a fault
+        self.mix_count = 0  # Number of mixes in this feed
+        self.mixes_litres = []  # Recommended Litres for each mix
+        self.mix_litres = 0  # The actual litres of the mix being made
+        self.recipe = None  # Recipe of the mix from process recipe_final
+        self.recipe_id = 0
+        self.feed_qty = 0  # Quantity in this feed
+        self.buttons_active = []  # For the P pump buttons so they are not enabled by control update
+        self.current_mix = 1  # The mix number being made
+        self.action = None  # What it is doing, pump,feed mix etc so Stop knows what to do
+        self.nutrients_stirred = False  #
+        self.mix_stirred = False
+        self.nutrients_added = False
+        self.location = 0  # Location feeding
+        self.dispense_name = ""     # Name of nutrient being dispensed
+        self.dispense_mls = ""      # mls of nutrient being dispensed
+
+        self.pb_load_1.pressed.connect(lambda: self.load_feed(1))
+        self.pb_load_2.pressed.connect(lambda: self.load_feed(2))
+        self.pb_stir_n.pressed.connect(lambda: self.stir(1))
+        self.pb_stir_m.pressed.connect(lambda: self.stir(2))
+#         self.pb_fill.pressed.connect(self.fill)
+#         self.pb_read.pressed.connect(self.read)
+        self.pb_close.pressed.connect(lambda: self.sub.close())
+
+        self.main_window.coms_interface.update_feeder_unit.connect(self.fu_update)
+
+        self.pb_clear.pressed.connect(self.clear)
+        self.pb_stop.pressed.connect(lambda: self.main_window.coms_interface.send_data(CMD_CANCEL_SW, True, MODULE_FU))
+#         self.pb_zero.clicked.connect(lambda: self.my_parent.coms_interface.send_data(COM_MIX_TARE, True, MODULE_IO))
+        self.pb_pump_1.pressed.connect(lambda: self.dispense(1))
+        self.pb_pump_2.pressed.connect(lambda: self.dispense(2))
+        self.pb_pump_3.pressed.connect(lambda: self.dispense(3))
+        self.pb_pump_4.pressed.connect(lambda: self.dispense(4))
+        self.pb_pump_5.pressed.connect(lambda: self.dispense(5))
+        self.pb_pump_6.pressed.connect(lambda: self.dispense(6))
+        self.pb_pump_7.pressed.connect(lambda: self.dispense(7))
+        self.pb_pump_8.pressed.connect(lambda: self.dispense(8))
+
+        self.rb_v4_1.toggled.connect(self.valve_change)
+        self.rb_v4_1.valve = 4.1
+        self.rb_v4_2.toggled.connect(self.valve_change)
+        self.rb_v4_2.valve = 4.2
+        self.rb_v5_1.toggled.connect(self.valve_change)
+        self.rb_v5_1.valve = 5.1
+        self.rb_v5_2.toggled.connect(self.valve_change)
+        self.rb_v5_2.valve = 5.2
+#         self.my_parent.coms_interface.send_data(COM_SCALES_POWER, True, MODULE_IO, 1)
+#
+#         self.my_parent.coms_interface.update_mix_weight.connect(self.new_reading)
+#         self.my_parent.coms_interface.send_data(COM_MIX_TARE, True, MODULE_IO)
+#         self.my_parent.feeder.update_mix_fill.connect(self.mix_update)
+#         self.tank = self.my_parent.feeder.mix_tank
+#         self.tank.fault.connect(self.fault)
+#         self.tank.update_progress.connect(self.update_progress)
+#         self.tank.update_status.connect(self.tank_status)
+#
+        for i in range(1, 9):
+            sql = "SELECT n.name FROM {} n INNER JOIN {} p ON p.nid = n.id WHERE p.pot = {}"\
+                .format(DB_NUTRIENTS_NAMES, DB_NUTRIENT_PROPERTIES, i)
+            name = self.db.execute_single(sql)
+            if name is None:
+                getattr(self, "pb_pump_%i" % i).setEnabled(False)
+                getattr(self, "pb_pump_%i" % i).setText("None")
+            else:
+                getattr(self, "pb_pump_%i" % i).setEnabled(True)
+                getattr(self, "pb_pump_%i" % i).setText(name)
+#                 self.buttons_active.append(i)
+        self.msg = QMessageBox()
+        self.msg.setIcon(QMessageBox.Warning)
+        self.msg.setWindowTitle("Error")
+
+#         self.read()
+#
+#     @pyqtSlot(int, str)
+#     def mix_update(self, code, msg):
+#         self.te_messages.append(msg)
+#         if code == 0:
+#             self.controls_update(True)
+#         else:
+#             self.pb_read.setEnabled(True)
+#             self.pb_fill.setEnabled(True)
+#
+#     @pyqtSlot(str)
+#     def update_progress(self, info):
+#         if info == "#CLEAR":
+#             self.te_messages.clear()
+#             return
+#         self.te_messages.append(str(info))
+#
+#
+#     def drain(self):
+#         required = self.le_fill_to.text()
+#         if required.isnumeric():
+#             required = int(required)
+#             self.mix_litres = required
+#             self.controls_update(False)
+#         self.tank.emerg_stop = False
+#         th = threading.Thread(target=self.tank.drain_tank, args=(required,))
+#         th.start()
+#
+#     def feed(self, loc):
+#         if not self.mix_stirred and self.recipe_id != WATER_ONLY_IDX:
+#             self.msg.setText("The mix has not been stirred ")
+#             self.msg.setWindowTitle("Error")
+#             self.msg.setStandardButtons(QMessageBox.Ok)
+#             self.msg.exec_()
+#             return
+#
+#         th = threading.Thread(target=self.tank.outlet_operate, args=(loc, self.mix_litres, "feed"))
+#         th.start()
+#
+#     def fill(self):
+#         self.update_progress("#CLEAR")
+#         required = string_to_float(self.le_fill_to.text())
+#         if required > self.mix_litres:
+#             self.tank_required_litres = required
+#             self.controls_update(False)
+#             # @ToDo check if water heater is on
+#             self.update_progress("Filling ...")
+#             self.my_parent.feeder.tank_required_litres = self.tank_required_litres
+#             th = threading.Thread(target=self.my_parent.feeder.fill_mix_tank)
+#             th.start()
+#             self.action = MFA_FILL
+#         else:
+#             self.update_progress("Enter the required amount greater than {} ")
+#
+#     def flush(self, loc):
+#         if self.tank_current_litres < self.flush_litres:
+#             self.msg.setText("Add water for system flush")
+#             self.msg.setWindowTitle("Error")
+#             self.msg.setStandardButtons(QMessageBox.Ok)
+#             self.msg.exec_()
+#             return
+#         self.tank.emerg_stop = False
+#         th = threading.Thread(target=self.tank.outlet_operate, args=(loc, self.tank_current_litres, "flush"))
+#         th.start()
+#
+#     def read(self):
+#         # self.controls_update(False)
+#         self.my_parent.coms_interface.send_data(COM_MIX_READ_LEVEL, True, MODULE_FU)
+#         self.update_progress("#CLEAR")
+#         self.update_progress("Checking levels in mix tank")
+#         self.action = MFA_READ
+#         self.my_parent.coms_interface.send_data(COM_MIX_READ_LEVEL, True, MODULE_FU)
+#
+
+    def valve_change(self):
+        rb = self.sender()
+        if rb.isChecked():
+            if rb.valve == 4.1:
+                self.frm_v5.setEnabled(True)
+                self.frm_v6.setEnabled(True)
+                self.frm_v7.setEnabled(True)
+                self.feeder_unit.set_valve_position(4, VALVE_POS_A)
+            elif rb.valve == 4.2:
+                self.frm_v5.setEnabled(False)
+                self.frm_v6.setEnabled(False)
+                self.frm_v7.setEnabled(False)
+                self.feeder_unit.set_valve_position(4, VALVE_POS_B)
+            elif rb.valve == 5.1:
+                self.frm_v7.setEnabled(False)
+                self.feeder_unit.set_valve_position(5, VALVE_POS_A)
+            elif rb.valve == 5.2:
+                self.feeder_unit.set_valve_position(5, VALVE_POS_B)
+                self.frm_v6.setEnabled(False)
+                self.frm_v7.setEnabled(True)
+
+    def reset(self):
+        self.nutrients_added = False
+        self.mix_stirred = False
+        self.nutrients_stirred = False
+        for i in range(1, 9):
+            getattr(self, "lbl_added_{}".format(i)).setText("")
+
+#     def check_nutrients(self) -> bool:
+#         if self.recipe_id == WATER_ONLY_IDX:
+#             return True
+#         for i in range(1, 9):
+#             if getattr(self, "le_ml_{}".format(i)).text() != "" and getattr(self, "le_ml_{}".format(i)).text() != "0":
+#                 if getattr(self, "lbl_added_{}".format(i)).text() == "":
+#                     self.msg.setText("Not all the nutrients have been added")
+#                     self.msg.setWindowTitle("Error")
+#                     self.msg.setStandardButtons(QMessageBox.Ok)
+#                     self.msg.exec_()
+#                     return True  # True debug, False for normal operation
+#         return True
+
+    def dispense(self, pot):
+        if not self.nutrients_stirred:
+            self.msg.setText("The nutrients have not been stirred ")
+            self.msg.setStandardButtons(QMessageBox.Ok)
+            self.msg.exec_()
+            return
+        ctrl = getattr(self, "lbl_added_%i" % pot)  # Amount already added
+        required = getattr(self, "le_ml_%i" % pot).text()
+        oa = 0
+        required = int(string_to_float(required))
+        if required < 1 or required > 50:
+            self.msg.setText("Invalid amount ")
+            self.msg.setStandardButtons(QMessageBox.Ok)
+            self.msg.exec_()
+            return
+        if ctrl.text().isnumeric():
+            self.dispense_name = getattr(self, "pb_pump_%i" % pot).text()
+            oa = int(ctrl.text())
+            self.msg.setText(
+                "The mix already contains {}mls of {}. Do you wish to add another {}mls ".
+                format(ctrl.text(), self.dispense_name, required))
+            self.msg.setWindowTitle("Confirm Add Again")
+            self.msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            self.msg.setDefaultButton(QMessageBox.Cancel)
+            if self.msg.exec_() == QMessageBox.No:
+                return
+        self.nutrients_added = True
+        ctrl.setText(str(oa + required))
+        self.dispense_mls = required
+        self.feeder_unit.dispense_pot(pot, required)
+
+    def load_feed(self, loc):
+        process = self.main_window.area_controller.get_area_process(loc)
+        if process == 0:
+            return
+        feed_total = (process.feed_litres * process.feed_quantity) + process.feed_litres_adj
+        self.recipe = process.recipe_final
+        self.feed_qty = process.feed_quantity
+        self.recipe_id = process.recipe_id
+        self.location = loc
+        # t = feed_total
+        self.mix_count = math.ceil(feed_total / self.max_mix_litres)
+        # mix_litres = math.ceil(feed_total / math.ceil(feed_total / self.max_mix_litres))
+        self.mixes_litres = ([feed_total // self.mix_count + (1 if x < feed_total % self.mix_count else 0)
+                              for x in range(self.mix_count)])
+        self.lbl_recipie.setText(process.recipe_name)
+        self.lbl_feed_total.setText(str(int(feed_total)) + "L")
+        self.lbl_mix_count.setText(str(self.mix_count))
+        self.lbl_status.setText("Mix {} of {}".format(self.current_mix, self.mix_count))
+        s = ""
+        for i in range(1, self.mix_count + 1):
+            s += str(i) + "=" + str(self.mixes_litres[i - 1]) + "L    "
+        self.lbl_feed_total_2.setText(s)
+        self.load_mix(1)
+        self.controls_update(True)
+
+    def load_mix(self, num):
+        if num - 1 >= len(self.mixes_litres):
+            return
+        self.clear()
+        self.le_fill_to.setText(str(int(self.mixes_litres[num - 1])))
+        # recipe = self.db.execute("SELECT nid, ml, frequency FROM {} WHERE rid = {}".format(DB_RECIPES, self.recipe_id))
+        # for nid in recipe:
+        #     pot = self.db.execute_one_row("SELECT fp.pot, fp.current_level FROM {} fp INNER JOIN {} np ON fp.pot = np.pot AND nid = {}".format(DB_FEEDER_POTS, DB_NUTRIENT_PROPERTIES, nid[0]))
+        #     getattr(self, "le_ml_%i" % pot[0]).setText(str(int(nid[1] * self.mixes_litres[num - 1])))
+        for i in self.recipe:
+            print(i)
+            nid = i[0]
+            if nid == WATER_ONLY_IDX:
+                break
+            mls = i[1] + i[5]
+            pot = self.db.execute_one_row(
+                "SELECT fp.pot, fp.current_level FROM {} fp INNER JOIN {} np ON fp.pot = np.pot AND nid = {}".format(
+                    DB_FEEDER_POTS, DB_NUTRIENT_PROPERTIES, nid))
+            getattr(self, "le_ml_%i" % pot[0]).setText(str(int(mls * self.mixes_litres[num - 1])))
+
+    def clear(self):
+        self.le_fill_to.setText("")
+        for i in range(1, 9):
+            getattr(self, "le_ml_%i" % i).setText("")
+
+    def controls_update(self, state):
+        for i in range(1, 9):
+            if state and i in self.buttons_active:
+                getattr(self, "pb_pump_%i" % i).setEnabled(state)
+            else:
+                getattr(self, "pb_pump_%i" % i).setEnabled(False)
+        self.pb_read.setEnabled(state)
+        self.pb_fill.setEnabled(state)
+        self.pb_stir_m.setEnabled(state)
+        self.pb_stir_n.setEnabled(state)
+        if self.location == 1 or self.location == 0:
+            self.pb_feed.setEnabled(state)
+            self.pb_flush_1.setEnabled(state)
+        else:
+            self.pb_flush_1.setEnabled(False)
+            self.pb_feed.setEnabled(False)
+        if self.location == 2 or self.location == 0:
+            self.pb_flush_2.setEnabled(state)
+            self.pb_feed_2.setEnabled(state)
+        else:
+            self.pb_flush_2.setEnabled(False)
+            self.pb_feed_2.setEnabled(False)
+        self.pb_close.setEnabled(state)
+        self.pb_read.setEnabled(state)
+        if self.le_tank_level.text() == "" or self.le_tank_level.text() == "0":
+            self.pb_drain.setEnabled(False)
+        else:
+            self.pb_drain.setEnabled(state)
+
+    def stir(self, item):   # 1= Nut, 2= Mix
+        if item == 1:
+            self.feeder_unit.stir_nutrients()
+        elif item == 2:
+            self.feeder_unit.stir_mix()
+
+    def fu_update(self, command, data):
+        if command == CMD_SWITCH or command == CMD_SWITCH_TIMED:
+            sw = int(data[0])
+            state = int(data[1])
+            if sw == SW_NUTRIENT_STIR:
+                if state == ON_RELAY:
+                    self.lbl_status.setText("Stirring Nutrients")
+                    self.nutrients_stirred = True
+                    # self.lbl_status.setStyleSheet("background-color: red; color: yellow")
+                else:
+                    self.lbl_status.setText("")
+                    # self.lbl_status.setStyleSheet("background-color: white; color: black")
+            elif sw == SW_MIX_STIR:
+                if state == ON_RELAY:
+                    self.lbl_status.setText("Stirring Mix")
+                    # self.lbl_status.setStyleSheet("background-color: red; color: yellow")
+                else:
+                    self.lbl_status.setText("")
+            elif SW_PARA_PUMP_1 <= sw <= SW_PARA_PUMP_8:
+                if state == ON_RELAY:
+                    self.lbl_status.setText("Adding {}mls of {} ({})".
+                                            format(self.dispense_mls, self.dispense_name,
+                                                   self.feeder_unit.get_duration(
+                                                       sw - SW_PARA_PUMP_1 + 1, self.dispense_mls)))
+                else:
+                    self.lbl_status.clear()
+
+#     def close(self):
+#         self.my_parent.coms_interface.send_data(COM_SCALES_POWER, False, MODULE_IO, 0)
+#         super(DialogFeedStationManual, self).close()
 
 
 class DialogAreaManual(QWidget, Ui_frm_area_manual):
@@ -3966,8 +4418,12 @@ class DialogFanDry(QDialog, Ui_DialogFanDry):
         self.db = self.main_panel.db
         self.id = 3        # Also is area
         self.pb_close.clicked.connect(lambda: self.sub.close())
-        self.pb_on.clicked.connect(lambda: self.main_panel.coms_interface.send_switch(SW_DRY_FAN, ON))
-        self.pb_off.clicked.connect(lambda: self.main_panel.coms_interface.send_switch(SW_DRY_FAN, OFF))
+        self.pb_on.clicked.connect(lambda: self.change(ON))
+        self.pb_off.clicked.connect(lambda: self.change(OFF))
+
+    def change(self, new_state):
+        self.main_panel.coms_interface.send_switch(SW_DRY_FAN, new_state)
+        self.db.set_config_both(CFT_DRYING, "fan", new_state)
 
 
 class DialogWorkshopSettings(QWidget, Ui_DialogWorkshopSetting):

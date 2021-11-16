@@ -13,6 +13,17 @@ class FeederUnit(QObject):
         self.pots = collections.defaultdict(dict)
         self.coms = self.main_window.coms_interface
 
+        self.nutrient_stir_time = int(self.db.get_config(CFT_FEEDER, "nutrient stir time", 30)) * 1000
+        self.soak_time = int(self.db.get_config(CFT_FEEDER, "soak time", 10))
+        self.flush_litres = int(self.db.get_config(CFT_FEEDER, "flush litres", 4))
+        self.max_mix_litres = int(self.db.get_config(CFT_FEEDER, "max mix litres", 6))
+        self.mix_stir_time = int(self.db.get_config(CFT_FEEDER, "mix stir time", 30)) * 1000
+
+        self.soak_time = int(self.db.get_config(CFT_FEEDER, "soak time", 10))
+        self.flush_litres = int(self.db.get_config(CFT_FEEDER, "flush litres", 4))
+        self.max_mix_litres = int(self.db.get_config(CFT_FEEDER, "max mix litres", 6))
+        self.mix_stir_time = int(self.db.get_config(CFT_FEEDER, "mix stir time", 30)) * 1000
+
         self.load_pots()
 
     def load_pots(self):
@@ -46,3 +57,14 @@ class FeederUnit(QObject):
     def dispense_ms(self, pot, ms):
         self.coms.send_data(CMD_SWITCH_TIMED, True, MODULE_FU, self.pots[pot]['pin'], ON_RELAY, ms)
 
+    def get_duration(self, pot, mls):
+        return mls * self.pots[pot]['time']
+
+    def stir_nutrients(self):
+        self.coms.send_data(CMD_SWITCH_TIMED, True, MODULE_FU, SW_NUTRIENT_STIR, ON_RELAY, self.nutrient_stir_time)
+
+    def stir_mix(self):
+        self.coms.send_data(CMD_SWITCH_TIMED, True, MODULE_FU, SW_MIX_STIR, ON_RELAY, self.mix_stir_time)
+
+    def set_valve_position(self, valve, pos):
+        self.coms.send_data(CMD_VALVE, valve, pos)

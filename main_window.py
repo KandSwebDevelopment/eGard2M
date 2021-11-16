@@ -9,13 +9,14 @@ from class_feed_unit import FeederUnit
 from class_logger import Logger
 from communication_interface import CommunicationInterface, MyIp
 from controller_feeding import FeedControl
+from controller_water import WaterController
 from controller_windows import WindowsController
 from dbController import MysqlDB
 from dialogs import DialogEngineerCommandSender, DialogEngineerIo, DialogDispatchInternal, DialogDispatchCounter, \
     DialogDispatchReports, DialogStrainFinder, DialogDispatchStorage, DialogDispatchOverview, DialogSysInfo, \
     DialogSettings, DialogProcessPerformance, DialogDispatchLoadingBay, DialogProcessManager, DialogStrains, \
     DialogSeedPicker, DialogProcessLogs, DialogPatternMaker, DialogIOVC, DialogGraphEnv, DialogStrainPerformance, \
-    DialogFeedStationCalibrate
+    DialogFeedStationCalibrate, DialogWaterTanksCalibrate, DialogFeederManualMix
 from functions import multi_status_bar, get_last_friday
 from functions_colors import get_css_colours
 from status_codes import *
@@ -71,6 +72,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.area_controller = AreaController(self)
         self.feed_controller = FeedControl(self)
         self.feeder_unit = FeederUnit(self)
+        self.water_controller = WaterController(self)
 
         # This can only be called after the feed_control has initialised, it sets the days_till_feed
         # self.area_controller.output_controller.outputs[OUT_WATER_HEATER_1].new_day()
@@ -117,7 +119,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionPatterns.triggered.connect(lambda: self.wc.show(DialogPatternMaker(self)))
 
         # Feeding
-        self.actionCalibrate.triggered.connect(lambda: self.wc.show(DialogFeedStationCalibrate(self)))
+        self.actionNutrient_Pumps.triggered.connect(lambda: self.wc.show(DialogFeedStationCalibrate(self)))
+        self.actionWater_Tanks.triggered.connect(lambda: self.wc.show(DialogWaterTanksCalibrate(self)))
+        self.actionManual_Feed.triggered.connect(lambda: self.wc.show(DialogFeederManualMix(self)))
 
         # Materials
         self.actionSeeds.triggered.connect(lambda: self.wc.show(DialogStrains(self)))

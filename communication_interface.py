@@ -222,7 +222,7 @@ class CommunicationInterface(QObject):
             command = command.replace('<', '')
             command = command.replace('>', '')
             data_list.pop(0)  # Remove command from list
-            if len(data_list) > 0:
+            if len(data_list) > 0 and sender[1] != self.fu_port:
                 data_list.pop()  # Remove blank line
                 data_list.pop()  # Remove goodbye
         if self.master_mode == MASTER and (sender[1] == self.pc_relay_port or sender[1] == self.slave_port):
@@ -241,6 +241,7 @@ class CommunicationInterface(QObject):
             module = MODULE_FU
             self.update_feeder_unit.emit(command, data_list)
             self.relay_send(NWC_FEEDER_UPDATE, received)
+            return
         else:
             module = 999
         self.process_command(command, data_list, relay_command, module)
@@ -358,7 +359,10 @@ class CommunicationInterface(QObject):
 
         elif command == NWC_FEEDER_UPDATE:
             p = prams
-            self.update_feeder_unit.emit(p.pop(0), p)
+            c = p.pop(0)
+            c = c.replace('<', '')
+            c = c.replace('>', '')
+            self.update_feeder_unit.emit(c, p)
 
         # # No prams
         # if prams is None:

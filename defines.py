@@ -310,6 +310,7 @@ MSG_FLOAT_HEATER_2 = 14
 MSG_FLOAT_FEEDING = 15  # Tank 1 float down during feed time
 MSG_FLOAT_FEEDING_2 = 16
 MSG_FEED_DATE = 18  #
+MSG_IO_BOOT = 30
 
 # To locations - For the client so correct ip address can be connected to, to send
 MODULE_IO = 0
@@ -556,6 +557,8 @@ SVC_FEED_FLUSH_AREA_2 = 3
 # Servo degrees for positions. NEVER set above 90 as valve will not let servo move to that position
 VALVE_CLOSED = 90
 VALVE_OPEN = 0
+VALVE_POS_A = 0
+VALVE_POS_B = 180
 
 # US Destinations
 # USD_DISPLAY = 1                     # The display

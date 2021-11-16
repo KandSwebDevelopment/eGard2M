@@ -752,20 +752,25 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.coms_interface.relay_send(NWC_FEED, loc)
 
     def io_reboot(self):
+        self.msg_sys.add("IO Reboot", MSG_DATA_LINK, CRITICAL)
         th = threading.Thread(target=self.io_sync)
         th.start()
         # self.io_sync()
 
     def io_sync(self):
         # Send all parameters to the IO unit as it has rebooted
+        # _time.sleep(1)
+        if self.area_controller.area_has_process(1):
+            self.coms_interface.send_switch(SW_LIGHT_1, self.area_controller.get_area_process(1).check_light())
         _time.sleep(1)
-        self.coms_interface.send_switch(SW_LIGHT_1, self.area_controller.get_area_process(1).check_light())
+        if self.area_controller.area_has_process(2):
+            self.coms_interface.send_switch(SW_LIGHT_2, self.area_controller.get_area_process(2).check_light())
         _time.sleep(1)
-        self.coms_interface.send_switch(SW_LIGHT_2, self.area_controller.get_area_process(2).check_light())
+        if self.area_controller.area_has_process(1):
+            self.coms_interface.send_switch(SW_LIGHT_1, self.area_controller.get_area_process(1).check_light())
         _time.sleep(1)
-        self.coms_interface.send_switch(SW_LIGHT_1, self.area_controller.get_area_process(1).check_light())
-        _time.sleep(1)
-        self.coms_interface.send_switch(SW_LIGHT_2, self.area_controller.get_area_process(2).check_light())
+        if self.area_controller.area_has_process(2):
+            self.coms_interface.send_switch(SW_LIGHT_2, self.area_controller.get_area_process(2).check_light())
         _time.sleep(1)
         self.coms_interface.send_switch(SW_FANS_POWER, self.area_controller.fan_controller.master_power)
         _time.sleep(1)
@@ -775,9 +780,11 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.coms_interface.send_data(CMD_FAN_SPEED, True, MODULE_IO, 2,
                                       self.area_controller.fan_controller.fans[2].speed)
         _time.sleep(1)
-        self.coms_interface.send_switch(SW_FAN_1_OFF, ON)
+        if self.area_controller.area_has_process(1):
+            self.coms_interface.send_switch(SW_FAN_1_OFF, ON)
         _time.sleep(1)
-        self.coms_interface.send_switch(SW_FAN_2_OFF, ON)
+        if self.area_controller.area_has_process(2):
+            self.coms_interface.send_switch(SW_FAN_2_OFF, ON)
         _time.sleep(1)
         outputs = self.area_controller.output_controller.outputs
         for o in outputs:  # o = index
