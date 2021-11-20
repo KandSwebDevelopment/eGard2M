@@ -109,6 +109,9 @@ class FeedControl(QThread):
     def get_feeds_remaining(self, area):
         return self.feeds[area].get_feeds_remaining()
 
+    def get_recipe_name(self, area):
+        return self.feeds[area].recipe_name
+
     def get_days_till_feed(self):
         a = b = 99
         if self.main_window.area_controller.area_has_process(1):

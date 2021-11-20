@@ -12,7 +12,8 @@ from PyQt5.QtWidgets import QWidget, QMdiSubWindow, QMessageBox
 from defines import *
 from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan, DialogOutputSettings, \
     DialogSensorSettings, DialogProcessAdjustments, DialogWaterHeaterSettings, DialogWorkshopSettings, DialogElectMeter, \
-    DialogJournal, DialogSoilSensors, DialogGraphEnv, DialogFanDry, DialogLogViewer, DialogDispatchLoadingBay
+    DialogJournal, DialogSoilSensors, DialogGraphEnv, DialogFanDry, DialogLogViewer, DialogDispatchLoadingBay, \
+    DialogWaterTank
 from functions import play_sound, sound_access_warn
 from scales_com import ScalesComs
 from ui.mainPanel import Ui_MainPanel
@@ -43,6 +44,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.lbl_access.installEventFilter(self)
         self.lbl_soil_1.installEventFilter(self)
         self.lbl_soil_2.installEventFilter(self)
+        self.lbl_fill_tank_1.installEventFilter(self)
+        self.lbl_fill_tank_2.installEventFilter(self)
 
         self.tesstatus_2.viewport().installEventFilter(self)
         self.tesstatus_3.viewport().installEventFilter(self)
@@ -105,6 +108,10 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 self.wc.show(DialogAccessModule(self))
             elif source is self.lbl_access:
                 self.wc.show(DialogElectMeter(self))
+            elif source is self.lbl_fill_tank_1:
+                self.wc.show(DialogWaterTank(self.main_window, 1))
+            elif source is self.lbl_fill_tank_2:
+                self.wc.show(DialogWaterTank(self.main_window, 2))
 
             # Area 1
             elif source is self.lbl_fan_1:
@@ -605,11 +612,13 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         if self.area_controller.area_has_process(2):
             status = self.area_controller.get_area_process(2).check_light()
             self.area_controller.get_area_process(2).check_trans()
-            if self.area_controller.light_relay_2 != status:
+            if self.area_controller.light_relay_2 != status or self.area_controller.light_relay_2 == -1:
                 if self.master_mode == MASTER:
                     self.coms_interface.send_switch(SW_LIGHT_2, status)
                 else:
                     self.coms_interface.relay_send(NWC_SWITCH_REQUEST, SW_LIGHT_2)
+                if self.area_controller.light_relay_2 == -1:
+                    self.area_controller.light_relay_2 = -2
         else:
             if self.area_controller.light_relay_2 != OFF:
                 self.coms_interface.send_switch(SW_LIGHT_2, OFF)
@@ -753,6 +762,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
 
     def io_reboot(self):
         self.msg_sys.add("IO Reboot", MSG_DATA_LINK, CRITICAL)
+        if self.master_mode == SLAVE:
+            return
         th = threading.Thread(target=self.io_sync)
         th.start()
         # self.io_sync()

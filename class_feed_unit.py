@@ -67,4 +67,7 @@ class FeederUnit(QObject):
         self.coms.send_data(CMD_SWITCH_TIMED, True, MODULE_FU, SW_MIX_STIR, ON_RELAY, self.mix_stir_time)
 
     def set_valve_position(self, valve, pos):
-        self.coms.send_data(CMD_VALVE, valve, pos)
+        self.coms.send_data(CMD_VALVE, True, MODULE_FU, valve, pos)
+
+    def set_calibration_weight(self, weight):
+        self.coms.send_data(COM_MIX_SET_CAL, weight)

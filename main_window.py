@@ -16,7 +16,7 @@ from dialogs import DialogEngineerCommandSender, DialogEngineerIo, DialogDispatc
     DialogDispatchReports, DialogStrainFinder, DialogDispatchStorage, DialogDispatchOverview, DialogSysInfo, \
     DialogSettings, DialogProcessPerformance, DialogDispatchLoadingBay, DialogProcessManager, DialogStrains, \
     DialogSeedPicker, DialogProcessLogs, DialogPatternMaker, DialogIOVC, DialogGraphEnv, DialogStrainPerformance, \
-    DialogFeedStationCalibrate, DialogWaterTanksCalibrate, DialogFeederManualMix
+    DialogFeedStationCalibrate, DialogWaterTanksCalibrate, DialogFeederManualMix, DialogMixTankCalibrate
 from functions import multi_status_bar, get_last_friday
 from functions_colors import get_css_colours
 from status_codes import *
@@ -92,7 +92,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.update_stock()
         self.main_panel.check_light()
-        self.coms_interface.send_switch(SW_DRY_FAN, self.area_controller.drying_fan, MODULE_IO)
+        if self.area_controller.drying_fan:
+            self.coms_interface.send_switch(SW_DRY_FAN, ON_RELAY, MODULE_IO)
+        else:
+            self.coms_interface.send_switch(SW_DRY_FAN, OFF_RELAY, MODULE_IO)
 
     def connect_signals(self):
         # System
@@ -121,6 +124,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # Feeding
         self.actionNutrient_Pumps.triggered.connect(lambda: self.wc.show(DialogFeedStationCalibrate(self)))
         self.actionWater_Tanks.triggered.connect(lambda: self.wc.show(DialogWaterTanksCalibrate(self)))
+        self.actionMix_Tank.triggered.connect(lambda: self.wc.show(DialogMixTankCalibrate(self)))
         self.actionManual_Feed.triggered.connect(lambda: self.wc.show(DialogFeederManualMix(self)))
 
         # Materials

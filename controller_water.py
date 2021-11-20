@@ -1,4 +1,5 @@
 import collections
+import math
 
 from PyQt5.QtCore import QObject
 from PyQt5.QtGui import QPixmap
@@ -11,7 +12,7 @@ class WaterController(QObject):
     def __init__(self, parent):
         """
 
-        :type parent: _main
+        :type parent: MainWindow
         """
         super(WaterController, self).__init__()
         self.main_window = parent     # Areas controller
@@ -25,8 +26,42 @@ class WaterController(QObject):
         self.main_window.coms_interface.send_data(COM_TANK_LEVEL, True, MODULE_FU, 1)
         self.main_window.coms_interface.send_data(COM_TANK_LEVEL, True, MODULE_FU, 2)
 
+    def get_tank_require_level(self, tank):
+        req = self.main_window.feed_controller.get_next_water_required()
+        if tank == 2 and req <= self.tanks[1].max:
+            return 0        # 2nd tank and tank 1 is able to hold required
+        if req < self.tanks[1].min:
+            return self.tanks[1].min
+        if req > self.tanks[1].max:
+            return math.ceil(req / 2)   # This will be same for both tanks as they will hold equal amounts
+        return req
+
     def set_current_level(self, tank, reading):
         self.tanks[tank].update_level(reading)
+
+    def get_current_level(self, tank):
+        return self.tanks[tank].current_level
+
+    def fill_tank(self, tank, level):
+        if level <= self.tanks[tank].current_level:
+            return
+        reading = self.tanks[tank].litres_to_reading(level)
+        self.main_window.coms_interface.send_data(COM_TANK_FILL, True, MODULE_FU, tank, reading)
+
+    def drain_tank(self, tank, level):
+        if level >= self.tanks[tank].current_level:
+            return
+        reading = self.tanks[tank].litres_to_reading(level)
+        self.main_window.coms_interface.send_data(COM_TANK_DRAIN, True, MODULE_FU, tank, reading)
+
+    def stop_fill(self):
+        self.main_window.coms_interface.send_data(COM_STOP_FILL, True, MODULE_FU)
+
+    def stop_drain(self):
+        self.main_window.coms_interface.send_data(COM_STOP_DRAIN, True, MODULE_FU)
+
+    def read_tank(self, tank):
+        self.main_window.coms_interface.send_data(COM_TANK_LEVEL, True, MODULE_FU, tank)
 
     def fu_update(self, command, data):
         if command == COM_TANK_LEVEL:

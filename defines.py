@@ -6,12 +6,12 @@ MASTER = 1
 SLAVE = 2
 
 # Mode of coms
-MASTER_COM = 1
-SLAVE_COM = 2
+# MASTER_COM = 1
+# SLAVE_COM = 2
 
 # Settings File Name
 FN_SETTINGS = "eGard02M.ini"
-DATA_SETTINGS = "eGardner.dat"
+# DATA_SETTINGS = "eGardner.dat"
 
 # General
 DAY = 1
@@ -159,19 +159,28 @@ CMD_SWITCH_TIMED = "sw_timed"
 CMD_CANCEL_SW = "cancel_sw"
 COM_FU_RESTART = "reboot"
 COM_FEEDER_STATUS = "feeder status"
+CMD_VALVE = "valve"                 # Operate servo valve
+COM_VALVE_POS = "servo_pos"             # Get servo pos, send servo number
+CMD_VALVE_CLUSTER = "cluster"
 COM_MIX_READ_LEVEL = "read_scale"
 COM_MIX_FILL = "mix_fill"               # Fill mix tank to required level. Send required level
-CMD_VALVE = "valve"                 # Operate servo valve
-CMD_VALVE_CLUSTER = "cluster"
 COM_MIX_TARE = "tare_1"
 COM_MIX_CAL_1 = "cal_1a"
 COM_MIX_CAL_2 = "cal_1b"
-COM_MIX_SET_CAL = "set_cal_weight_1"
-COM_SCALES_POWER = "scales_power"
-COM_GET_CAL = "get_cal_weight_1"
+COM_MIX_SET_CAL = "set_cal"
+COM_MIX_POWER = "scales_power"
+COM_MIX_GET_CAL = "get_cal"
 COM_MIX_OVER_STATUS = "mix overflow status"
+COM_STOP_MIX_FILL = "stop_m_fill"
+COM_MIX_DISPENSE = "mix_dispense"
+COM_DISPENSE_STOP = "stop_dispense"
 COM_TANK_LEVEL = "tank_level"           # Request water tank level, send tank number
-COM_TANK_FILL = "fill_tank"             # Fill water tank to required level. Send tank number and required amount
+COM_TANK_FILL = "fill_tank"             # Fill water tank to required level. Send tank number and required reading
+COM_STOP_FILL = "stop_fill"
+COM_FILL_END = "fill_end"
+COM_TANK_DRAIN = "tank_drain"           # Drain tank, send tank number and required reading
+COM_STOP_DRAIN = "stop_drain"
+COM_DRAIN_END = "drain_end"
 
 # DE Module
 COM_WATTS = "watts"
@@ -549,23 +558,10 @@ SV_FEED_2 = 4
 SV_DRAIN_1 = 5
 SV_DRAIN_2 = 6
 
-# Servo Valve Clusters
-SVC_INPUT_WATER_SELECT = 1
-SVC_FEED_FLUSH_AREA_1 = 2
-SVC_FEED_FLUSH_AREA_2 = 3
-
-# Servo degrees for positions. NEVER set above 90 as valve will not let servo move to that position
-VALVE_CLOSED = 90
-VALVE_OPEN = 0
+# Servo degrees for positions.
+VALVE_CLOSED = 0
+VALVE_OPEN = 90
 VALVE_POS_A = 0
 VALVE_POS_B = 180
 
-# US Destinations
-# USD_DISPLAY = 1                     # The display
-# USD_WATER_SUPPLY = 2                # The water supply thread
-# USD_FEEDER = 3                      # The feeder thread
-# USD_HARDWARE_TEST = 4               # The hardware test window
 
-# Water supply (thread_water)
-WT_MODE_READ = 1        # When mode is set to this is will only read tanks
-WT_MODE_FILL = 2        # This mode will read and fill if necessary
