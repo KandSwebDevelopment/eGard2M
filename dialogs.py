@@ -6,6 +6,7 @@ import os
 import pprint
 import socket
 import sys
+import threading
 from datetime import *
 from functools import partial
 
@@ -686,7 +687,7 @@ class DialogDispatchReports(QDialog, Ui_DialogDispatchReport):
 
     def monthly_totals_by_type(self):
         txt = '<h3>Monthly</h3><h4>Types</h4>' \
-               '<table cellspacing = "5"  border = "0">'
+              '<table cellspacing = "5"  border = "0">'
         txt += '<tr><th>Month</th><th>Type 1</th><th>Type 2</th><th>Total</th></tr>'
         sql = "SELECT MONTHNAME(d.`date`) month_name, MONTH(d.date) month_number, ROUND(SUM(d.amount), 2) total " \
               "FROM dispatch d WHERE d.p_type = 1 " \
@@ -883,7 +884,7 @@ class DialogDispatchInternal(QDialog, Ui_DialogDispatchInternal):
         print(sql)
         self.db.execute_write(sql)
         self.main_panel.logger.save_dispatch_counter("INT", "--", self.jar, self.strain_name, self.strain_id,
-                                                    self.reading, self.reading)
+                                                     self.reading, self.reading)
         self.db.execute_write('INSERT INTO {} (date, type, jar, strain, grams, client) VALUES ("'
                               '{}", "{}", "{}", {}, {}, 1)'.
                               format(DB_DISPATCH, datetime.now(), t_type, self.jar, self.strain_id, amount))
@@ -933,7 +934,7 @@ class DialogDispatchLoadingBay(QDialog, Ui_DialogDispatchLoading):
         self.strain_total = 0
         self.strain_id = 0
         self.process_id = 0
-        self.adding_to_jar = False      # True when adding to a jar with same strain
+        self.adding_to_jar = False  # True when adding to a jar with same strain
         self.step = 0  # 0=Not started, 1=item selected waiting on empty, 2=nett stored waiting on filled
         self.empty_grams = string_to_float(self.db.get_config(CFT_DISPATCH, "empty grams", 1.5))
 
@@ -1085,12 +1086,13 @@ class DialogDispatchLoadingBay(QDialog, Ui_DialogDispatchLoading):
             # Add entry in journal
             dt = datetime.strftime(datetime.now(), '%d/%m/%y %H:%M')
             # Calculate days drying
-            s = self.db.execute_single('SELECT started FROM {} WHERE item = {}'.format(DB_PROCESS_DRYING, self.cb_strain.currentData()))
+            s = self.db.execute_single(
+                'SELECT started FROM {} WHERE item = {}'.format(DB_PROCESS_DRYING, self.cb_strain.currentData()))
             d = (datetime.now().date() - s).days
             # Add journal entry
             self.main_panel.area_controller.get_area_process(3).journal_write(
                 "{} Number {} finished {} days drying and {} grams stored in {}".
-                format(dt, self.cb_strain.currentData(), d, self.strain_total, self.jar_id))
+                    format(dt, self.cb_strain.currentData(), d, self.strain_total, self.jar_id))
             # Call the finish item
             self.main_panel.finish_item(self.cb_strain.currentData(), self.strain_total, False)
             self.te_jar_info.setText("Remove Jar")
@@ -1705,7 +1707,7 @@ class DialogDispatchOverview(QDialog, Ui_DialogLogistics):
         a_list = {}
         for key, value in self.stock.items():
             a_list[value['name']] = value['amount']
-        as_list = sorted(a_list.items(), key=lambda x: x[1])    # This sorts it by weight
+        as_list = sorted(a_list.items(), key=lambda x: x[1])  # This sorts it by weight
         txt = '<table>'
         for item in as_list:
             txt += '<tr><td>{}</td><td>{}</td></tr>'.format(item[0], round(item[1], 1))
@@ -1949,7 +1951,8 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         nid = self.cb_nutrients_1.currentData()
         if nid == 0:
             return
-        self.feed_control.feeds[self.area].change_recipe_item(self.mix_number, (nid, string_to_float(self.le_ml_1.text())))
+        self.feed_control.feeds[self.area].change_recipe_item(self.mix_number,
+                                                              (nid, string_to_float(self.le_ml_1.text())))
         self._load()
         self.cb_nutrients_1.setCurrentIndex(0)
         self.le_ml_1.clear()
@@ -2026,7 +2029,7 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         self.mix_number = mix_num
         feed_data = self.feed_control.feeds[self.area].get_mixes()
         # Set check boxes
-        for x in range(1, 9):   # Loop through all check boxes and tick if in items
+        for x in range(1, 9):  # Loop through all check boxes and tick if in items
             getattr(self, "ck_fed_%i" % (x + 10)).blockSignals(True)
             if x in feed_data[self.mix_number]['items']:
                 getattr(self, "ck_fed_%i" % (x + 10)).setChecked(True)
@@ -2064,13 +2067,13 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
             self.lw_recipe_1.addItem(lw_item)
         else:
             if recipe is None:
-                return      # Safety check, need looking into
+                return  # Safety check, need looking into
             if recipe == WATER_ONLY_IDX:
                 # Water only recipe
                 lw_item = QListWidgetItem(str(x) + " Water only")
             else:
                 # Normal recipe
-                for nid in recipe:      # nid = (nid, mls)
+                for nid in recipe:  # nid = (nid, mls)
                     # ri - 0=nid, 1=ml, 2=L, 3=nid, 4=freq, 5=adj ml, 6=adj remaining
                     rs, diff = self.feed_control.recipe_item_status(self.area, self.mix_number, (nid[0], nid[1]))
                     if nid[0] == WATER_ONLY_IDX:
@@ -2457,7 +2460,8 @@ class DialogMixTankCalibrate(QDialog, Ui_DialogMixTankCalibrate):
 
         self.pb_set_weight.clicked.connect(self.set_weight)
         self.pb_tare.pressed.connect(lambda: self.main_window.coms_interface.send_data(COM_MIX_TARE, True, MODULE_FU))
-        self.pb_read.pressed.connect(lambda: self.main_window.coms_interface.send_data(COM_MIX_READ_LEVEL, True, MODULE_FU))
+        self.pb_read.pressed.connect(
+            lambda: self.main_window.coms_interface.send_data(COM_MIX_READ_LEVEL, True, MODULE_FU))
         self.pb_cal_start.pressed.connect(self.calibrate)
         self.main_window.coms_interface.update_feeder_unit.connect(self.fu_update)
         self.main_window.coms_interface.send_data(COM_MIX_GET_CAL, True, MODULE_FU)
@@ -2474,7 +2478,7 @@ class DialogMixTankCalibrate(QDialog, Ui_DialogMixTankCalibrate):
 
     def fu_update(self, command, data):
         if command == COM_MIX_READ_LEVEL:
-            self.le_current_level.setText(data[0])
+            self.le_current_level.setText(str(round(string_to_float(data[0]) / 1000, 1)))
         elif command == COM_MIX_CAL_1:
             if data[0] == 'No Scale':
                 self.lbl_status.setText("Error No Scale")
@@ -2507,7 +2511,7 @@ class DialogWaterTank(QDialog, Ui_DialogWaterTank):
         self.pb_close.pressed.connect(lambda: self.sub.close())
 
         self.tank_id = tank
-        self.action = 0     # 0 = None, 1 = fill, 2 = drain
+        self.action = 0  # 0 = None, 1 = fill, 2 = drain, 3 = empty
         self.lbl_name.setText("Tank {}".format(tank))
         self.water_controller = self.main_window.water_controller
         self.required = self.water_controller.get_tank_require_level(tank)
@@ -2521,6 +2525,8 @@ class DialogWaterTank(QDialog, Ui_DialogWaterTank):
         self.update_display()
 
     def empty(self):
+        self.main_window.coms_interface.send_data(CMD_VALVE, True, MODULE_FU, 3, VALVE_POS_B)
+        self.main_window.coms_interface.send_data(CMD_VALVE, True, MODULE_FU, self.tank_id, VALVE_OPEN)
 
     def read(self):
         self.le_current_level.clear()
@@ -2535,6 +2541,8 @@ class DialogWaterTank(QDialog, Ui_DialogWaterTank):
             self.water_controller.stop_fill()
         elif self.action == 2:
             self.water_controller.stop_drain()
+        elif self.action == 3:
+            self.main_window.coms_interface.send_data(CMD_VALVE, True, MODULE_FU, self.tank_id, VALVE_CLOSED)
 
     def update_display(self):
         self.lbl_required.setText(str(self.required))
@@ -2604,13 +2612,14 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.feed_qty = 0  # Quantity in this feed
         self.buttons_active = []  # For the P pump buttons so they are not enabled by control update
         self.current_mix = 1  # The mix number being made
-        self.action = None  # What it is doing, pump,feed mix etc so Stop knows what to do
+        self.action = 0  # 0= Nothing, 1=Fill for flush
         self.nutrients_stirred = False  #
         self.mix_stirred = False
         self.nutrients_added = False
         self.location = 0  # Location feeding
-        self.dispense_name = ""     # Name of nutrient being dispensed
-        self.dispense_mls = ""      # mls of nutrient being dispensed
+        self.dispense_name = ""  # Name of nutrient being dispensed
+        self.dispense_mls = ""  # mls of nutrient being dispensed
+        self.pump_times = 0     # how many times feed pump will have to operate to complete the entire feed
 
         self.feed_controller = self.main_window.feed_controller
 
@@ -2618,18 +2627,20 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.pb_load_2.pressed.connect(lambda: self.load_feed(2))
         self.pb_stir_n.pressed.connect(lambda: self.stir(1))
         self.pb_stir_m.pressed.connect(lambda: self.stir(2))
-#         self.pb_fill.pressed.connect(self.fill)
-        self.pb_read.pressed.connect(lambda: self.main_window.coms_interface.send_data(COM_MIX_READ_LEVEL, True, MODULE_FU))
-        self.pb_fill_1.pressed.connect(lambda: self.fill(1))    # Fill mix from tank 1
-        self.pb_fill_2.pressed.connect(lambda: self.fill(2))    # Fill mix from tank 2
+        self.pb_read.pressed.connect(self.read)
+        self.pb_fill_1.pressed.connect(lambda: self.fill(1))  # Fill mix from tank 1
+        self.pb_fill_2.pressed.connect(lambda: self.fill(2))  # Fill mix from tank 2
+        self.pb_drain.pressed.connect(self.drain)
 
         self.main_window.coms_interface.update_feeder_unit.connect(self.fu_update)
 
         self.pb_clear.pressed.connect(self.clear)
         self.pb_stop.pressed.connect(lambda: self.main_window.coms_interface.send_data(CMD_CANCEL_SW, True, MODULE_FU))
-        self.pb_stop_feed.pressed.connect(lambda: self.main_window.coms_interface.send_data(CMD_CANCEL_SW, True, MODULE_FU))
-        self.pb_stop_mix.pressed.connect(lambda: self.main_window.coms_interface.send_data(COM_STOP_MIX_FILL, True, MODULE_FU))
-        self.pb_zero.clicked.connect(lambda: self.main_window.coms_interface.send_data(COM_MIX_TARE, True, MODULE_FU))
+        self.pb_stop_feed.pressed.connect(
+            lambda: self.main_window.coms_interface.send_data(CMD_CANCEL_SW, True, MODULE_FU))
+        self.pb_stop_mix.pressed.connect(
+            lambda: self.main_window.coms_interface.send_data(COM_STOP_MIX_FILL, True, MODULE_FU))
+        self.pb_zero.clicked.connect(self.zero)
         self.pb_pump_1.pressed.connect(lambda: self.dispense(1))
         self.pb_pump_2.pressed.connect(lambda: self.dispense(2))
         self.pb_pump_3.pressed.connect(lambda: self.dispense(3))
@@ -2638,6 +2649,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.pb_pump_6.pressed.connect(lambda: self.dispense(6))
         self.pb_pump_7.pressed.connect(lambda: self.dispense(7))
         self.pb_pump_8.pressed.connect(lambda: self.dispense(8))
+        self.pb_add_all.pressed.connect(self.add_all)
 
         self.rb_v4_1.toggled.connect(self.valve_change)
         self.rb_v4_1.valve = 4.1
@@ -2647,10 +2659,10 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.rb_v5_1.valve = 5.1
         self.rb_v5_2.toggled.connect(self.valve_change)
         self.rb_v5_2.valve = 5.2
-#         self.my_parent.coms_interface.send_data(COM_SCALES_POWER, True, MODULE_IO, 1)
+        #         self.my_parent.coms_interface.send_data(COM_SCALES_POWER, True, MODULE_IO, 1)
 
         for i in range(1, 9):
-            sql = "SELECT n.name FROM {} n INNER JOIN {} p ON p.nid = n.id WHERE p.pot = {}"\
+            sql = "SELECT n.name FROM {} n INNER JOIN {} p ON p.nid = n.id WHERE p.pot = {}" \
                 .format(DB_NUTRIENTS_NAMES, DB_NUTRIENT_PROPERTIES, i)
             name = self.db.execute_single(sql)
             if name is None:
@@ -2659,39 +2671,67 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
             else:
                 getattr(self, "pb_pump_%i" % i).setEnabled(True)
                 getattr(self, "pb_pump_%i" % i).setText(name)
-#                 self.buttons_active.append(i)
+                self.buttons_active.append(i)
         self.msg = QMessageBox()
         self.msg.setIcon(QMessageBox.Warning)
         self.msg.setWindowTitle("Error")
 
-#     def drain(self):
-#         required = self.le_fill_to.text()
-#         if required.isnumeric():
-#             required = int(required)
-#             self.mix_litres = required
-#             self.controls_update(False)
-#         self.tank.emerg_stop = False
-#         th = threading.Thread(target=self.tank.drain_tank, args=(required,))
-#         th.start()
-#
-#         th = threading.Thread(target=self.tank.outlet_operate, args=(loc, self.mix_litres, "feed"))
-#         th.start()
-#
+        self.main_window.coms_interface.send_data(COM_SERVO_POS, True, MODULE_FU, 4)
+        self.main_window.coms_interface.send_data(COM_SERVO_POS, True, MODULE_FU, 5)
+        self.main_window.coms_interface.send_data(COM_SERVO_POS, True, MODULE_FU, 6)
+        self.main_window.coms_interface.send_data(COM_SERVO_POS, True, MODULE_FU, 7)
+
+        self.le_feed.setText(str(self.feeder_unit.feed_litres))
+        self.le_soak_time.setText(str(self.feeder_unit.soak_time))
+
+        self.le_feed.editingFinished.connect(self.calculate_mix_output)
+        self.le_fill_to.editingFinished.connect(self.calculate_mix_output)
+        self.le_flush_litres.setText(str(self.feeder_unit.flush_litres))
+        self.read()
+        self.pot_levels_update()
+
+    def read(self):
+        self.le_tank_level.clear()
+        self.main_window.coms_interface.send_data(COM_MIX_READ_LEVEL, True, MODULE_FU)
+
+    def drain(self):
+        required = string_to_float(self.le_fill_to.text())
+        if required < string_to_float(self.le_tank_level.text()):
+            self.mix_litres = required
+            self.controls_update(False)
+
     def fill(self, from_tank):
         required = string_to_float(self.le_fill_to.text())
-        self.main_window.coms_interface.send_data(COM_MIX_FILL, True, MODULE_FU, required, from_tank)
+        if required > string_to_float(self.le_tank_level.text()):
+            self.main_window.coms_interface.send_data(COM_MIX_FILL, True, MODULE_FU, required, from_tank)
 
-#     def flush(self, loc):
-#         if self.tank_current_litres < self.flush_litres:
-#             self.msg.setText("Add water for system flush")
-#             self.msg.setWindowTitle("Error")
-#             self.msg.setStandardButtons(QMessageBox.Ok)
-#             self.msg.exec_()
-#             return
-#         self.tank.emerg_stop = False
-#         th = threading.Thread(target=self.tank.outlet_operate, args=(loc, self.tank_current_litres, "flush"))
-#         th.start()
-#
+    def flush(self, tank):
+        self.msg.setText("Proceed with Area {} flushing")
+        self.msg.setWindowTitle("Confirm")
+        self.msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        if self.msg.exec_() == QMessageBox.Cancel:
+            return
+        self.main_window.coms_interface.send_data(CMD_VALVE, True, MODULE_FU, 3, VALVE_POS_A)
+        if tank == 1:
+            self.main_window.coms_interface.send_data(CMD_VALVE, True, MODULE_FU, 4, VALVE_POS_A)
+            self.main_window.coms_interface.send_data(CMD_VALVE, True, MODULE_FU, 6, VALVE_POS_B)
+        else:
+            self.main_window.coms_interface.send_data(CMD_VALVE, True, MODULE_FU, 4, VALVE_POS_B)
+            self.main_window.coms_interface.send_data(CMD_VALVE, True, MODULE_FU, 7, VALVE_POS_B)
+        self.main_window.coms_interface.send_data(COM_MIX_FILL, True, MODULE_FU, self.tank, string_to_float(self.le_flush_litres.text()))
+        self.action = 1
+        # th = threading.Thread(target=self.flush_thread, args=(tank, self.tank_current_litres))
+        # th.start()
+
+    def zero(self):
+        self.main_window.coms_interface.send_data(COM_MIX_TARE, True, MODULE_FU)
+        self.main_window.coms_interface.send_data(COM_MIX_READ_LEVEL, True, MODULE_FU)
+
+    def add_all(self):
+        # th = threading.Thread(target=self.tank.outlet_operate, args=(loc, self.tank_current_litres, "flush"))
+        # th.start()
+        pass
+
     def valve_change(self):
         rb = self.sender()
         if rb.isChecked():
@@ -2707,6 +2747,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
                 self.feeder_unit.set_valve_position(4, VALVE_POS_B)
             elif rb.valve == 5.1:
                 self.frm_v7.setEnabled(False)
+                self.frm_v6.setEnabled(True)
                 self.feeder_unit.set_valve_position(5, VALVE_POS_A)
             elif rb.valve == 5.2:
                 self.feeder_unit.set_valve_position(5, VALVE_POS_B)
@@ -2721,6 +2762,16 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
             elif rb.valve == 7.2:
                 self.feeder_unit.set_valve_position(7, VALVE_POS_B)
 
+    def calculate_mix_output(self):
+        """ This calculates how many times feed pump will have to operate to complete the entire feed"""
+        r = string_to_float(self.le_fill_to.text())
+        if r <= 0:
+            return
+        lpf = string_to_float(self.le_feed.text())
+        self.pump_times = math.ceil(r / lpf)
+        txt = "Fed in {} step{} of {}L each".format(self.pump_times, "" if self.pump_times < 2 else "s", lpf)
+        self.lbl_mix_output.setText(txt)
+
     def reset(self):
         self.nutrients_added = False
         self.mix_stirred = False
@@ -2728,18 +2779,18 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         for i in range(1, 9):
             getattr(self, "lbl_added_{}".format(i)).setText("")
 
-#     def check_nutrients(self) -> bool:
-#         if self.recipe_id == WATER_ONLY_IDX:
-#             return True
-#         for i in range(1, 9):
-#             if getattr(self, "le_ml_{}".format(i)).text() != "" and getattr(self, "le_ml_{}".format(i)).text() != "0":
-#                 if getattr(self, "lbl_added_{}".format(i)).text() == "":
-#                     self.msg.setText("Not all the nutrients have been added")
-#                     self.msg.setWindowTitle("Error")
-#                     self.msg.setStandardButtons(QMessageBox.Ok)
-#                     self.msg.exec_()
-#                     return True  # True debug, False for normal operation
-#         return True
+    #     def check_nutrients(self) -> bool:
+    #         if self.recipe_id == WATER_ONLY_IDX:
+    #             return True
+    #         for i in range(1, 9):
+    #             if getattr(self, "le_ml_{}".format(i)).text() != "" and getattr(self, "le_ml_{}".format(i)).text() != "0":
+    #                 if getattr(self, "lbl_added_{}".format(i)).text() == "":
+    #                     self.msg.setText("Not all the nutrients have been added")
+    #                     self.msg.setWindowTitle("Error")
+    #                     self.msg.setStandardButtons(QMessageBox.Ok)
+    #                     self.msg.exec_()
+    #                     return True  # True debug, False for normal operation
+    #         return True
 
     def dispense(self, pot):
         if not self.nutrients_stirred:
@@ -2756,12 +2807,12 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
             self.msg.setStandardButtons(QMessageBox.Ok)
             self.msg.exec_()
             return
+        self.dispense_name = getattr(self, "pb_pump_%i" % pot).text()
         if ctrl.text().isnumeric():
-            self.dispense_name = getattr(self, "pb_pump_%i" % pot).text()
             oa = int(ctrl.text())
             self.msg.setText(
-                "The mix already contains {}mls of {}. Do you wish to add another {}mls ".
-                format(ctrl.text(), self.dispense_name, required))
+                "The mix already contains {}mls of {}. "
+                "Do you wish to add another {}mls ".format(ctrl.text(), self.dispense_name, required))
             self.msg.setWindowTitle("Confirm Add Again")
             self.msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
             self.msg.setDefaultButton(QMessageBox.Cancel)
@@ -2824,6 +2875,10 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         for i in range(1, 9):
             getattr(self, "le_ml_%i" % i).setText("")
 
+    def pot_levels_update(self):
+        for i in range(1, 9):
+            getattr(self, "lbl_pot_amount_{}".format(i)).setText(str(self.feeder_unit.get_pot_level(i)))
+
     def controls_update(self, state):
         for i in range(1, 9):
             if state and i in self.buttons_active:
@@ -2853,7 +2908,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         else:
             self.pb_drain.setEnabled(state)
 
-    def stir(self, item):   # 1= Nut, 2= Mix
+    def stir(self, item):  # 1= Nut, 2= Mix
         if item == 1:
             self.feeder_unit.stir_nutrients()
         elif item == 2:
@@ -2886,9 +2941,34 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
                 else:
                     self.lbl_status.clear()
 
-#     def close(self):
-#         self.my_parent.coms_interface.send_data(COM_SCALES_POWER, False, MODULE_IO, 0)
-#         super(DialogFeedStationManual, self).close()
+            elif sw == SW_FEED_PUMP:
+                if self.action == 1:    # Flushing
+                    if state == ON_RELAY:
+                        self.lbl_status.setText("Flushing")
+                    else:
+                        self.lbl_status.setText("Area flush complete")
+                        self.action = 0
+
+        elif command == COM_SERVO_POS:
+            if int(data[0]) < 4 or int(data[0]) > 7:
+                return
+            ctrl = "rb_v{}_".format(data[0])
+            if int(data[1]) == VALVE_POS_A:
+                idx = 1
+            else:
+                idx = 2
+            ctrl += "{}".format(idx)
+            getattr(self, ctrl).setChecked(True)
+
+        elif command == COM_MIX_READ_LEVEL:
+            self.le_tank_level.setText(str(round(string_to_float(data[0]) / 1000, 1)))
+
+        elif command == COM_MIX_FILL_END:
+            if self.action == 1:
+                self.main_window.coms_interface.send_data(COM_MIX_DISPENSE, True, MODULE_FU, 0)
+    #     def close(self):
+    #         self.my_parent.coms_interface.send_data(COM_SCALES_POWER, False, MODULE_IO, 0)
+    #         super(DialogFeedStationManual, self).close()
 
 
 class DialogAreaManual(QWidget, Ui_frm_area_manual):
@@ -2972,9 +3052,9 @@ class DialogSysInfo(QDialog, Ui_DialogSysInfo):
             text = "Slave"
         text = "<table cellpadding='3' border='0'><tr><td width='30%'>Operation Mode</td><td>{}</td></tr>".format(text)
         text += "<tr><td>PC Name</td><td>{}</td></tr>".format(socket.gethostname())
-        text += "<tr><td>IP Address</td><td>{}</td></tr>"   # .format(self.server.server_ip_str)
-        text += "<tr><td>Server Status</td><td>{}</td></tr>"    # .format(FC_MESSAGE[self.server.server_status]['message'])
-        text += "<tr><td>Port</td><td>{}</td></tr>" # .format(self.server.port)
+        text += "<tr><td>IP Address</td><td>{}</td></tr>"  # .format(self.server.server_ip_str)
+        text += "<tr><td>Server Status</td><td>{}</td></tr>"  # .format(FC_MESSAGE[self.server.server_status]['message'])
+        text += "<tr><td>Port</td><td>{}</td></tr>"  # .format(self.server.port)
         text += "<tr><td colspan='2'>Interface Units</td></tr>"
         text += "<tr><td>UPD Server</td><td></td></tr>"
         text += "<tr><td>IP</td><td>{}</td></tr>".format(self.coms_interface.udp_server.remote_ip)
@@ -3676,27 +3756,36 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             times = self.get_limit(self.times, limit)
 
             if self.temp_1_1.isChecked():
-                self.plot.canvas.axes.plot(times, self.get_limit(self.values['1t'], limit), color='green', label='Area 1 Temperature')
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['1t'], limit), color='green',
+                                           label='Area 1 Temperature')
             if self.temp_1_2.isChecked():
-                self.plot.canvas.axes.plot(times, self.get_limit(self.values['1c'], limit), color='green', label='Area 1 Canopy', linestyle='dotted')
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['1c'], limit), color='green',
+                                           label='Area 1 Canopy', linestyle='dotted')
             if self.temp_1_3.isChecked():
-                self.plot.canvas.axes.plot(times, self.get_limit(self.values['1r'], limit), color='green', label='Area 1 Root', linestyle='dashed')
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['1r'], limit), color='green',
+                                           label='Area 1 Root', linestyle='dashed')
 
             if self.temp_2_1.isChecked():
-                self.plot.canvas.axes.plot(times, self.get_limit(self.values['2t'], limit), color='orange', label='Area 2 Temperature')
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['2t'], limit), color='orange',
+                                           label='Area 2 Temperature')
             if self.temp_2_2.isChecked():
-                self.plot.canvas.axes.plot(times, self.get_limit(self.values['2c'], limit), color='orange', label='Area 2 Canopy', linestyle='dotted')
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['2c'], limit), color='orange',
+                                           label='Area 2 Canopy', linestyle='dotted')
             if self.temp_2_3.isChecked():
-                self.plot.canvas.axes.plot(times, self.get_limit(self.values['2r'], limit), color='orange', label='Area 2 Root', linestyle='dashed')
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['2r'], limit), color='orange',
+                                           label='Area 2 Root', linestyle='dashed')
 
             if self.temp_3_1.isChecked():
-                self.plot.canvas.axes.plot(times, self.get_limit(self.values['dt'], limit), color='olive', label='Drying Temperature')
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['dt'], limit), color='olive',
+                                           label='Drying Temperature')
 
             if self.temp_4_1.isChecked():
-                self.plot.canvas.axes.plot(times, self.get_limit(self.values['ws'], limit), color='brown', label='Workshop')
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['ws'], limit), color='brown',
+                                           label='Workshop')
 
             if self.temp_5_1.isChecked():
-                self.plot.canvas.axes.plot(times, self.get_limit(self.values['ot'], limit), color='hotpink', label='Outside Temperature')
+                self.plot.canvas.axes.plot(times, self.get_limit(self.values['ot'], limit), color='hotpink',
+                                           label='Outside Temperature')
 
             if self.ck_hum_1.isChecked():
                 if self.ax2 is None:
@@ -3717,7 +3806,8 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             if self.ck_hum_4.isChecked():
                 if self.ax2 is None:
                     self.ax2 = self.plot.canvas.axes.twinx()
-                self.ax2.plot(self.times, self.values['oh'], color='purple', label='Outside Humidity', linestyle='dotted')
+                self.ax2.plot(self.times, self.values['oh'], color='purple', label='Outside Humidity',
+                              linestyle='dotted')
 
             if self.ax2 is not None:
                 self.ax2.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
@@ -3743,22 +3833,34 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         try:
             self.plot_outputs = MplWidget(self.wg_graph_2, 12, 5.3)
             self.plot_outputs.canvas.axes.cla()
-            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1h1'], color='green', label='Area 1 Heater 1')
-            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1h2'], color='green', label='Area 1 Heater 2', linestyle='dotted')
-            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1a'], color='green', label='Area 1 Aux', linestyle='dashed')
-            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1s'], color='green', label='Area 1 Socket')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1h1'], color='green',
+                                               label='Area 1 Heater 1')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1h2'], color='green',
+                                               label='Area 1 Heater 2', linestyle='dotted')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1a'], color='green', label='Area 1 Aux',
+                                               linestyle='dashed')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['1s'], color='green',
+                                               label='Area 1 Socket')
 
-            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2h1'], color='orange', label='Area 2 Heater 1')
-            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2h2'], color='orange', label='Area 2 Heater 2', linestyle='dotted')
-            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2a'], color='orange', label='Area 2 Aux', linestyle='dashed')
-            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2s'], color='orange', label='Area 2 Socket')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2h1'], color='orange',
+                                               label='Area 2 Heater 1')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2h2'], color='orange',
+                                               label='Area 2 Heater 2', linestyle='dotted')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2a'], color='orange', label='Area 2 Aux',
+                                               linestyle='dashed')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['2s'], color='orange',
+                                               label='Area 2 Socket')
 
-            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['h3'], color='pink', label='Area 3 Heater')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['h3'], color='pink',
+                                               label='Area 3 Heater')
 
-            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['ws'], color='brown', label='Workshop Heater')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['ws'], color='brown',
+                                               label='Workshop Heater')
 
-            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['wh1'], color='blue', label='Water Heater 1')
-            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['wh2'], color='blue', label='Water Heater 2', linestyle='dashed')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['wh1'], color='blue',
+                                               label='Water Heater 1')
+            self.plot_outputs.canvas.axes.plot(self.times, self.output_values['wh2'], color='blue',
+                                               label='Water Heater 2', linestyle='dashed')
 
             # self.plot_outputs.canvas.axes.set_ylabel("Outputs")
             # self.plot_outputs.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
@@ -3786,16 +3888,22 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
             limit = self.cb_limit_3.currentData()
             times = self.get_limit(self.times, limit)
             if self.ck_fan_1.isChecked():
-                self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['1in'], limit), color='green', label='Input 1')
-                self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['1rv'], limit), color='red', label='Set 1')
+                self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['1in'], limit), color='green',
+                                                label='Input 1')
+                self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['1rv'], limit), color='red',
+                                                label='Set 1')
             if self.ck_fan_2.isChecked():
-                self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['2in'], limit), color='orange', label='Input 2')
-                self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['2rv'], limit), color='blue', label='Set 2')
+                self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['2in'], limit), color='orange',
+                                                label='Input 2')
+                self.plot_fans.canvas.axes.plot(times, self.get_limit(self.fan_values['2rv'], limit), color='blue',
+                                                label='Set 2')
             ax2 = self.plot_fans.canvas.axes.twinx()
             if self.ck_fan_1.isChecked():
-                ax2.plot(times, self.get_limit(self.fan_values['1sw'], limit), color='brown', label='Speed 1', linestyle='dotted')
+                ax2.plot(times, self.get_limit(self.fan_values['1sw'], limit), color='brown', label='Speed 1',
+                         linestyle='dotted')
             if self.ck_fan_2.isChecked():
-                ax2.plot(times, self.get_limit(self.fan_values['2sw'], limit), color='black', label='Speed 2', linestyle='dotted')
+                ax2.plot(times, self.get_limit(self.fan_values['2sw'], limit), color='black', label='Speed 2',
+                         linestyle='dotted')
             # ax2.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
 
             self.plot_fans.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
@@ -3819,7 +3927,8 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         limit = self.cb_limit_4.currentData()
         times = self.get_limit(self.times, limit)
 
-        self.plot_power.canvas.axes.plot(times, self.get_limit(self.power_values['watts'], limit), color='green', label='Watts')
+        self.plot_power.canvas.axes.plot(times, self.get_limit(self.power_values['watts'], limit), color='green',
+                                         label='Watts')
 
         self.plot_power.canvas.axes.yaxis.set_major_locator(ticker.MaxNLocator(integer=True))
         self.plot_power.canvas.axes.xaxis.set_major_locator(MultipleLocator(10))
@@ -3851,7 +3960,8 @@ class DialogPatternMaker(QDialog, Ui_DialogPatterns):
 
         self.tw_pattern_stages.resizeColumnsToContents()
         self.tw_pattern_stages.resizeRowsToContents()
-        self.tw_pattern_stages.setHorizontalHeaderLabels(["Stage", "Duration", "Lighting", "Temperature", "Feeding", "Location"])
+        self.tw_pattern_stages.setHorizontalHeaderLabels(
+            ["Stage", "Duration", "Lighting", "Temperature", "Feeding", "Location"])
 
     def eventFilter(self, source, event):
         # Remember to install event filter for control first
@@ -4138,7 +4248,8 @@ class DialogStrainPerformance(QDialog, Ui_DialogStrainPreformance):
     def more_info(self, index):
         sid = int(self.tw_all.item(self.tw_all.currentRow(), 0).text())
         print(sid)
-        rows = self.db.execute('SELECT process_id, total_days, yield FROM {} WHERE strain_id = {}'.format(DB_PROCESS_STRAINS, sid))
+        rows = self.db.execute(
+            'SELECT process_id, total_days, yield FROM {} WHERE strain_id = {}'.format(DB_PROCESS_STRAINS, sid))
         txt = "<table>"
         r = 0
         self.tw_item.setRowCount(len(rows))
@@ -4270,55 +4381,56 @@ class DialogProcessInfo(QDialog, Ui_DialogProcessInfo):
         # Feed
         if p_class.location != 3:
             feed = self.main_panel.area_controller.main_window.feed_controller.feeds[p_class.location]
-            text = "<table><tr><td>Schedule</td><td>" + feed.pattern_name + "</td><td>" + str(feed.pattern_id) + "</td></tr>"
+            text = "<table><tr><td>Schedule</td><td>" + feed.pattern_name + "</td><td>" + str(
+                feed.pattern_id) + "</td></tr>"
             text += "<tr><td>Recipe</td><td>" + feed.recipe_name + "</td><td>" + str(feed.recipe_id) + "</td></tr>"
 
             text += "<tr><td>Changes in</td><td><b>" + str(feed.new_recipe_due) + " day" + \
                     "s" if feed.new_recipe_due > 1 else "" + "</b></td><td> </td></tr>"
-        #         table += "<tr><td>Next Recipe</td><td><b>" + r_name + "</b> [" + str(
-        #             p_class.recipe_next_id) + "]</td></tr>"
-        #         table += "<tr><td>Starts in</td><td><b>" + str(
-        #             p_class.recipe_expires_day - p_class.stage_days_elapsed) + "</b> days</td></tr>"
-        #         table += "</table><br>"
-        #         # Today
-        #         table += "<table cellpadding='3' border='1'><tr><td colspan='3'>Current Recipe " + str(
-        #             p_class.recipe_original[0][2]) + "Litre(s) Each</td></tr>"
-        #         table += '<tr><td>Nutrient</td><td>Amount</td><td>Freq</td></tr>'
-        #         for row in p_class.recipe_final:
-        #             if row[0] == 100:
-        #                 table += '<tr><td colspan="3" Font="3">Water Only</td></tr>'
-        #                 continue
-        #             sql = "SELECT name FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, row[0])
-        #             n_name = self.db.execute_single(sql)
-        #             colour = ""
-        #             if row[5] != 0:
-        #                 colour = " bgcolor='light gray'"
-        #             table += '<tr><td>' + n_name + '</td><td' + colour + '>' + str(
-        #                 row[1] + row[5]) + 'ml</td><td>' + str(
-        #                 row[4]) + '</td></tr>'
-        #         table += "</table><br><br>"
-        #
-        #         if len(p_class.recipe_next) > 0:
-        #             table += "<table cellpadding='3' border='1'><tr><td colspan='3'>Next Recipe " + str(
-        #                 p_class.recipe_next[0][2]) + "Litre(s) Each</td></tr>"
-        #             table += '<tr><td>Nutrient</td><td>Amount</td><td>Freq</td></tr>'
-        #             for row in p_class.recipe_next:
-        #                 if row[3] == 100:
-        #                     table += '<tr><td colspan="3" Font="3">Water Only</td></tr>'
-        #                     continue
-        #                 sql = "SELECT name FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, row[0])
-        #                 n_name = self.db.execute_single(sql)
-        #                 colour = ""
-        #                 if row[5] != 0:
-        #                     colour = " bgcolor='#00FF00'"
-        #                 table += '<tr><td>' + n_name + '</td><td' + colour + '>' + str(
-        #                     row[1] + row[5]) + 'ml</td><td>' + str(
-        #                     row[4]) + '</td></tr>'
-        #             table += "</table><br><br>"
-        #         self.tefeed.textCursor().insertHtml(table)
-        #     else:
-        #         table = "<table cellpadding='3' border='1'><tr><td>Current Feed Schedule</td><td><b>Missing</b> </td></tr>"
-        #         table += "</table><br><br>"
+            #         table += "<tr><td>Next Recipe</td><td><b>" + r_name + "</b> [" + str(
+            #             p_class.recipe_next_id) + "]</td></tr>"
+            #         table += "<tr><td>Starts in</td><td><b>" + str(
+            #             p_class.recipe_expires_day - p_class.stage_days_elapsed) + "</b> days</td></tr>"
+            #         table += "</table><br>"
+            #         # Today
+            #         table += "<table cellpadding='3' border='1'><tr><td colspan='3'>Current Recipe " + str(
+            #             p_class.recipe_original[0][2]) + "Litre(s) Each</td></tr>"
+            #         table += '<tr><td>Nutrient</td><td>Amount</td><td>Freq</td></tr>'
+            #         for row in p_class.recipe_final:
+            #             if row[0] == 100:
+            #                 table += '<tr><td colspan="3" Font="3">Water Only</td></tr>'
+            #                 continue
+            #             sql = "SELECT name FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, row[0])
+            #             n_name = self.db.execute_single(sql)
+            #             colour = ""
+            #             if row[5] != 0:
+            #                 colour = " bgcolor='light gray'"
+            #             table += '<tr><td>' + n_name + '</td><td' + colour + '>' + str(
+            #                 row[1] + row[5]) + 'ml</td><td>' + str(
+            #                 row[4]) + '</td></tr>'
+            #         table += "</table><br><br>"
+            #
+            #         if len(p_class.recipe_next) > 0:
+            #             table += "<table cellpadding='3' border='1'><tr><td colspan='3'>Next Recipe " + str(
+            #                 p_class.recipe_next[0][2]) + "Litre(s) Each</td></tr>"
+            #             table += '<tr><td>Nutrient</td><td>Amount</td><td>Freq</td></tr>'
+            #             for row in p_class.recipe_next:
+            #                 if row[3] == 100:
+            #                     table += '<tr><td colspan="3" Font="3">Water Only</td></tr>'
+            #                     continue
+            #                 sql = "SELECT name FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, row[0])
+            #                 n_name = self.db.execute_single(sql)
+            #                 colour = ""
+            #                 if row[5] != 0:
+            #                     colour = " bgcolor='#00FF00'"
+            #                 table += '<tr><td>' + n_name + '</td><td' + colour + '>' + str(
+            #                     row[1] + row[5]) + 'ml</td><td>' + str(
+            #                     row[4]) + '</td></tr>'
+            #             table += "</table><br><br>"
+            #         self.tefeed.textCursor().insertHtml(table)
+            #     else:
+            #         table = "<table cellpadding='3' border='1'><tr><td>Current Feed Schedule</td><td><b>Missing</b> </td></tr>"
+            #         table += "</table><br><br>"
             self.tefeed.textCursor().insertHtml(text)
 
         # Water supply
@@ -4364,7 +4476,7 @@ class DialogFan(QDialog, Ui_DialogFan):
         self.setWindowTitle("Fan {} Settings".format(fan_id))
         self.main_panel = parent
         self.db = self.main_panel.db
-        self.id = fan_id        # Also is area
+        self.id = fan_id  # Also is area
         self.fan_controller = self.main_panel.area_controller.fan_controller
         self.dl_fan.valueChanged.connect(self.change_speed)
         self.pb_close.clicked.connect(lambda: self.sub.close())
@@ -4376,7 +4488,7 @@ class DialogFan(QDialog, Ui_DialogFan):
         self.cb_mode.addItem("Auto", 2)
         self.cb_mode.setCurrentIndex(self.cb_mode.findData(self.fan_controller.get_mode(self.id)))
         self.cb_mode.currentIndexChanged.connect(self.change_mode)
-        self.cb_sensor.addItem("Humidity", 1)   # The data is the area_range as in the sensors_config table
+        self.cb_sensor.addItem("Humidity", 1)  # The data is the area_range as in the sensors_config table
         self.cb_sensor.addItem("Temperature", 2)
         self.cb_sensor.addItem("Canopy", 3)
         self.cb_sensor.addItem("Root", 4)
@@ -4510,7 +4622,7 @@ class DialogFanDry(QDialog, Ui_DialogFanDry):
         self.setWindowTitle("Fan 3 Settings")
         self.main_panel = parent
         self.db = self.main_panel.db
-        self.id = 3        # Also is area
+        self.id = 3  # Also is area
         self.pb_close.clicked.connect(lambda: self.sub.close())
         self.pb_on.clicked.connect(lambda: self.change(ON))
         self.pb_off.clicked.connect(lambda: self.change(OFF))
@@ -4678,10 +4790,10 @@ class DialogWaterHeaterSettings(QWidget, Ui_DialogWaterHeatertSetting):
 
         self.lbl_name.setText("Water Heater {}".format(self.tank))
         sql = 'SELECT `id`, `name`, `area`, `type`, `input`, `range`, `pin`, `short_name` FROM {} WHERE ' \
-              '`area` = 7 AND `item` = {}'. format(DB_OUTPUTS, self.tank)
+              '`area` = 7 AND `item` = {}'.format(DB_OUTPUTS, self.tank)
         row = self.db.execute_one_row(sql)
         self.mode = row[3]
-        self.pin_id = row[6]       # Use as index for the Outputs[] dictionary
+        self.pin_id = row[6]  # Use as index for the Outputs[] dictionary
         self.output = self.main_panel.area_controller.output_controller.outputs[self.pin_id]
         self.output_controller = self.main_panel.area_controller.output_controller
         self.frequency = int(self.db.get_config(CFT_WATER_HEATER, "frequency {}".format(self.tank), 1))
@@ -4769,7 +4881,7 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self.low_org = 0
         self.set_org = 0
         self.high_org = 0
-        self.inverted = False   # True means you are working on inactive values
+        self.inverted = False  # True means you are working on inactive values
 
         # Load sensor config from db
         self.config = self.db.execute_one_row('SELECT id, name, maps_to, calibration, step, area, area_range, '
@@ -4781,10 +4893,11 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
 
         # get day or night
         self.on_day = self.main_panel.area_controller.get_light_status(self.area)
-        self.day_night = self.on_day    # Holds the day night value. Will be same as on_day unless inverted
+        self.day_night = self.on_day  # Holds the day night value. Will be same as on_day unless inverted
 
         # Is sensor used by fan
-        self.fan_sensor_current = self.db.execute_single('SELECT sensor FROM {} WHERE id = {}'.format(DB_FANS, self.area))
+        self.fan_sensor_current = self.db.execute_single(
+            'SELECT sensor FROM {} WHERE id = {}'.format(DB_FANS, self.area))
         if self.fan_sensor_current == self.s_id:
             # This sensor is fan sensor
             self.fan_sensor = True
@@ -4984,7 +5097,8 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         if self.low > nv - 0.5:
             self.le_low.setText(str(nv - 0.5))
             self.db.execute_write('UPDATE {} SET value = {} WHERE area= {} AND day = {} AND item = {} AND setting = '
-                                  '"low" LIMIT 1'.format(DB_PROCESS_TEMPERATURE, nv, self.area, self.day_night, self.item))
+                                  '"low" LIMIT 1'.format(DB_PROCESS_TEMPERATURE, nv, self.area, self.day_night,
+                                                         self.item))
             self.low = nv - 0.5
 
     def _check_set_high(self, nv):
@@ -4992,7 +5106,8 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         if self.set > nv - 0.5:
             self.le_set.setText(str(nv - 0.5))
             self.db.execute_write('UPDATE {} SET value = {} WHERE area= {} AND day = {} AND item = {} AND setting = '
-                                  '"set" LIMIT 1'.format(DB_PROCESS_TEMPERATURE, nv, self.area, self.day_night, self.item))
+                                  '"set" LIMIT 1'.format(DB_PROCESS_TEMPERATURE, nv, self.area, self.day_night,
+                                                         self.item))
             self.set = nv - 0.5
             self.main_panel.area_controller.fan_controller.set_req_temperature(self.area, self.set)
 
@@ -5001,7 +5116,8 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         if self.set < nv + 0.5:
             self.le_set.setText(str(nv + 0.5))
             self.db.execute_write('UPDATE {} SET value = {} WHERE area= {} AND day = {} AND item = {} AND setting = '
-                                  '"set" LIMIT 1'.format(DB_PROCESS_TEMPERATURE, nv, self.area, self.day_night, self.item))
+                                  '"set" LIMIT 1'.format(DB_PROCESS_TEMPERATURE, nv, self.area, self.day_night,
+                                                         self.item))
             self.set = nv + 0.5
             self.main_panel.area_controller.fan_controller.set_req_temperature(self.area, self.set)
 
@@ -5014,7 +5130,7 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         msg.setDefaultButton(QMessageBox.Cancel)
         if msg.exec_() == QMessageBox.Cancel:
             return
-        self.main_panel.area_controller.fan_controller.set_fan_sensor(self.area, self.s_id)      # Set new
+        self.main_panel.area_controller.fan_controller.set_fan_sensor(self.area, self.s_id)  # Set new
         self.fan_sensor_current = self.s_id
         self.pb_set_fan.setEnabled(False)
         self.main_panel.coms_interface.send_data(CMD_SET_FAN_SENSOR, True, MODULE_IO, self.area, self.s_id)
@@ -5097,7 +5213,8 @@ class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
         self.new_feed_date = self.main_panel.feed_controller.get_last_feed_date(self.area)
 
         if self.area < 3:
-            self.cb_feed_mode.setCurrentIndex(self.cb_feed_mode.findData(self.main_panel.feed_controller.get_feed_mode(self.area)))
+            self.cb_feed_mode.setCurrentIndex(
+                self.cb_feed_mode.findData(self.main_panel.feed_controller.get_feed_mode(self.area)))
             self.de_feed_date.setDate(self.new_feed_date)
         else:
             self.cb_feed_mode.setEnabled(False)
@@ -5120,7 +5237,8 @@ class DialogProcessAdjustments(QWidget, Ui_DialogProcessAdjust):
         self.main_panel.update_next_feeds()
         # self.main_panel.area_controller.output_controller.water_heater_update_info()
         self.de_feed_date.setDate(self.main_panel.feed_controller.get_last_feed_date(self.area))
-        self.main_panel.coms_interface.relay_send(NWC_FEED, self.area)  # Just send feed as it is only the feed date that is changed
+        self.main_panel.coms_interface.relay_send(NWC_FEED,
+                                                  self.area)  # Just send feed as it is only the feed date that is changed
         self.sub.close()
 
     def new_date(self):
@@ -5191,14 +5309,14 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
 
         # get day or night
         self.on_day = self.main_panel.area_controller.get_light_status(self.area)
-        self.day_night = self.on_day    # Holds the day night value. Will be same as on_day unless inverted
+        self.day_night = self.on_day  # Holds the day night value. Will be same as on_day unless inverted
         self.mode = 0
-        self.pin_id = 0      # Use as index for the Outputs[] dictionary
-        self.db_id = 0          # Id in db
+        self.pin_id = 0  # Use as index for the Outputs[] dictionary
+        self.db_id = 0  # Id in db
         self.sensor = 0
         self.offset_on = 0
         self.offset_off = 0
-        self.inverted = True    # Set true as invert() will change it
+        self.inverted = True  # Set true as invert() will change it
 
         self.load()
         self.invert()
@@ -5245,16 +5363,16 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
     def load(self):
         if self.day_night == DAY or self.day_night == MANUAL:
             sql = 'SELECT `id`, `name`, `area`, `type`, `input`, `range`, `pin`, `short_name` FROM {} WHERE ' \
-                  '`area` = {} AND `item` = {}'. format(DB_OUTPUTS, self.area, self.item)
+                  '`area` = {} AND `item` = {}'.format(DB_OUTPUTS, self.area, self.item)
             dnt = "Day"
         else:
             sql = 'SELECT `id`, `name`, `area`, `type`, `input`, `range_night`, `pin`, `short_name` FROM {} WHERE ' \
-                  '`area` = {} AND `item` = {}'. format(DB_OUTPUTS, self.area, self.item)
+                  '`area` = {} AND `item` = {}'.format(DB_OUTPUTS, self.area, self.item)
             dnt = "Night"
         row = self.db.execute_one_row(sql)
         self.db_id = row[0]
         self.mode = row[3]
-        self.pin_id = row[6]       # Use as index for the Outputs[] dictionary
+        self.pin_id = row[6]  # Use as index for the Outputs[] dictionary
         self.sensor = row[4]
         t = row[5].split(',')
         self.offset_on = string_to_float(t[0])
@@ -5589,7 +5707,7 @@ class DialogProcessPerformance(QDialog, Ui_DialogProcessPreformance):
     def load_process(self, pid):
         rows = self.db.execute(
             "SELECT item, strain_id, yield FROM {} WHERE process_id = {} AND location > 0 ORDER BY item".
-            format(DB_PROCESS_STRAINS, pid))
+                format(DB_PROCESS_STRAINS, pid))
         txt = '<table cellspacing = "5"  border = "0" width = "50%">'
         total_dif = total = waiting_count = finished_count = 0
         for row in rows:
@@ -5640,10 +5758,10 @@ class DialogProcessManager(QDialog, Ui_dialogProcessManager):
         self.qty = 1
         self.strains = collections.defaultdict()
         self.pattern = 0
-        self.longest = 0    # The number of days for longest flowering
+        self.longest = 0  # The number of days for longest flowering
         self.shortest = 0
-        self.total_days = 0     # Total days for process
-        self.edit_id = 0        # Id of process to edit
+        self.total_days = 0  # Total days for process
+        self.edit_id = 0  # Id of process to edit
         self.running = 0
         self.location = 0
         self.start = ""
@@ -5752,7 +5870,8 @@ class DialogProcessManager(QDialog, Ui_dialogProcessManager):
                     ctrl.blockSignals(False)
                 else:
                     # No stock of seed so look up from db
-                    strain = self.db.execute_one_row('SELECT name, breeder FROM {} WHERE id = {}'.format(DB_STRAINS, row[1]))
+                    strain = self.db.execute_one_row(
+                        'SELECT name, breeder FROM {} WHERE id = {}'.format(DB_STRAINS, row[1]))
                     if len(strain) > 0:
                         ctrl.addItem("{} ({})".format(strain[0], strain[1]), row[1])
                         ctrl.setCurrentIndex(ctrl.findData(row[1]))
@@ -5807,8 +5926,8 @@ class DialogProcessManager(QDialog, Ui_dialogProcessManager):
         s = ""
         for x in self.strains:
             s += str(self.strains[x]) + ", "
-        s = s[:len(s) - 2]      # Remove last comma
-        if len(s) == 0:     # No strains
+        s = s[:len(s) - 2]  # Remove last comma
+        if len(s) == 0:  # No strains
             self.longest = 0
             self.longest = 0
             return
@@ -5830,7 +5949,7 @@ class DialogProcessManager(QDialog, Ui_dialogProcessManager):
     def save(self):
         if self.edit_id == 0:
             sql = 'INSERT INTO {} (running, location, start, end, pattern, stage, qty, feed_mode) VALUES({}, {}, "{}",' \
-                  ' "{}", {}, {}, {}, {})'.\
+                  ' "{}", {}, {}, {}, {})'. \
                 format(DB_PROCESS, self.running, self.location, self.start, self.end, self.pattern, self.stage,
                        self.qty, self.feed_mode)
             self.db.execute_write(sql)
@@ -5838,13 +5957,13 @@ class DialogProcessManager(QDialog, Ui_dialogProcessManager):
             # Enter strains in the process strains table
             for x in range(1, self.qty + 1):
                 sid = getattr(self, "cb_strain_%i" % x).currentData()
-                sql = 'INSERT INTO {} (process_id, item, strain_id) VALUES ({}, {}, {})'.\
+                sql = 'INSERT INTO {} (process_id, item, strain_id) VALUES ({}, {}, {})'. \
                     format(DB_PROCESS_STRAINS, self.edit_id, x, sid)
                 self.db.execute_write(sql)
                 # Deduct from stock - NOT until it is started
         else:
             sql = 'UPDATE {} SET running = {}, location = {}, start = "{}", end = "{}", pattern = {}, stage = {}, ' \
-                  'qty = {}, feed_mode = {} WHERE id = {}'.\
+                  'qty = {}, feed_mode = {} WHERE id = {}'. \
                 format(DB_PROCESS, self.running, self.location, self.start, self.end, self.pattern, self.stage,
                        self.qty, self.feed_mode, self.edit_id)
             self.db.execute_write(sql)
@@ -5852,7 +5971,7 @@ class DialogProcessManager(QDialog, Ui_dialogProcessManager):
             sql = 'DELETE FROM {} WHERE process_id = {}'.format(DB_PROCESS_STRAINS, self.edit_id)
             self.db.execute_write(sql)
             for x in range(1, self.qty + 1):
-                sql = 'INSERT INTO {} (strain_id, process_id, item) VALUES ({}, {}, {})'.\
+                sql = 'INSERT INTO {} (strain_id, process_id, item) VALUES ({}, {}, {})'. \
                     format(DB_PROCESS_STRAINS, getattr(self, "cb_strain_%i" % x).currentData(), self.edit_id, x)
                 self.db.execute_write(sql)
 
@@ -5906,7 +6025,7 @@ class DialogSoilSensors(QDialog, Ui_DialogSoilSensors):
                 getattr(self, "cb_plant_{}".format(x)).addItem(str(i), i)
         self.soil_sensors = self.main_panel.area_controller.soil_sensors
         for x in range(1, 5):
-            getattr(self, "cb_plant_{}".format(x)).setCurrentIndex\
+            getattr(self, "cb_plant_{}".format(x)).setCurrentIndex \
                 (getattr(self, "cb_plant_{}".format(x)).findData(self.soil_sensors.get_item(self.area, x)))
         self.cb_plant_1.currentIndexChanged.connect(lambda: self.change_item(1))
         self.cb_plant_2.currentIndexChanged.connect(lambda: self.change_item(2))
@@ -6113,7 +6232,8 @@ class DialogStrains(QDialog, Ui_DialogStrains):
 
         self.db.execute_write(sql)
         # if self.de_pur_date.date() != "":
-        sql = 'UPDATE {} SET date_add = "{}" WHERE id = {}'.format(DB_STRAINS, self.de_pur_date.date().toPyDate(), self.id)
+        sql = 'UPDATE {} SET date_add = "{}" WHERE id = {}'.format(DB_STRAINS, self.de_pur_date.date().toPyDate(),
+                                                                   self.id)
         self.db.execute_write(sql)
         # if self.le_last_date.text() != "":
         #     sql = 'UPDATE {} SET last_used_id = "{}" WHERE id = {}'.format(DB_STRAINS, self.le_last_date.text(), self.id)
@@ -6210,7 +6330,7 @@ class DialogSeedPicker(QDialog, Ui_DialogSeedPicker):
                 "<td>Sativa</td><td>ID</td></tr>"
         p_text += "<tr><td>Qty</td><td>Stock</td><td>Name</td><td>Breeder</td><td>ID</td></tr>"
         for row in rows:
-            text += "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>"\
+            text += "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>" \
                 .format(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7])
             p_text += "<tr><td> </td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>".format(
                 row[0], row[1], row[2], row[7])
@@ -6243,5 +6363,3 @@ class DialogSeedPicker(QDialog, Ui_DialogSeedPicker):
 
     def handle_paint_request(self, printer):
         self.print_contents.print_(printer)
-
-

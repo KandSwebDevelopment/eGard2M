@@ -160,7 +160,7 @@ CMD_CANCEL_SW = "cancel_sw"
 COM_FU_RESTART = "reboot"
 COM_FEEDER_STATUS = "feeder status"
 CMD_VALVE = "valve"                 # Operate servo valve
-COM_VALVE_POS = "servo_pos"             # Get servo pos, send servo number
+COM_SERVO_POS = "servo_pos"             # Get servo pos, send servo number
 CMD_VALVE_CLUSTER = "cluster"
 COM_MIX_READ_LEVEL = "read_scale"
 COM_MIX_FILL = "mix_fill"               # Fill mix tank to required level. Send required level
@@ -170,6 +170,7 @@ COM_MIX_CAL_2 = "cal_1b"
 COM_MIX_SET_CAL = "set_cal"
 COM_MIX_POWER = "scales_power"
 COM_MIX_GET_CAL = "get_cal"
+COM_MIX_FILL_END = "mix_fill_end"
 COM_MIX_OVER_STATUS = "mix overflow status"
 COM_STOP_MIX_FILL = "stop_m_fill"
 COM_MIX_DISPENSE = "mix_dispense"
@@ -559,8 +560,8 @@ SV_DRAIN_1 = 5
 SV_DRAIN_2 = 6
 
 # Servo degrees for positions.
-VALVE_CLOSED = 0
-VALVE_OPEN = 90
+VALVE_CLOSED = 90
+VALVE_OPEN = 0
 VALVE_POS_A = 0
 VALVE_POS_B = 180
 

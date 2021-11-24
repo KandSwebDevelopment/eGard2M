@@ -272,7 +272,7 @@ class FanClass(QThread):
             # s = int((10 - s) / 4) + 1   # 6 Speed
             # s = int((10 - s) / 2) - 4   # set 1
             # self.switch(s)
-            print(self.id, " PID ", speed_raw, " Sw ", s)
+            # print(self.id, " PID ", speed_raw, " Sw ", s)
             # if self._logging_t and self.fan_controller.master_mode == MASTER:
             #     self.fan_controller.area_controller.main_window.logger.save_fan_log(
             #         "{}, {}, {}, {}".format(self.id, self.input, s, self._set_point))

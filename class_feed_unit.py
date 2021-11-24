@@ -19,7 +19,7 @@ class FeederUnit(QObject):
         self.max_mix_litres = int(self.db.get_config(CFT_FEEDER, "max mix litres", 6))
         self.mix_stir_time = int(self.db.get_config(CFT_FEEDER, "mix stir time", 30)) * 1000
 
-        self.soak_time = int(self.db.get_config(CFT_FEEDER, "soak time", 10))
+        self.feed_litres = int(self.db.get_config(CFT_FEEDER, "feed L", 10))
         self.flush_litres = int(self.db.get_config(CFT_FEEDER, "flush litres", 4))
         self.max_mix_litres = int(self.db.get_config(CFT_FEEDER, "max mix litres", 6))
         self.mix_stir_time = int(self.db.get_config(CFT_FEEDER, "mix stir time", 30)) * 1000
@@ -44,6 +44,9 @@ class FeederUnit(QObject):
             return 0
         return p
 
+    def get_pot_level(self, pot):
+        return self.pots[pot]['level']
+
     def dispense_nid(self, nid, mls):
         pot = self.pot_from_nid(nid)
         self.dispense_pot(pot, mls)
@@ -56,6 +59,9 @@ class FeederUnit(QObject):
 
     def dispense_ms(self, pot, ms):
         self.coms.send_data(CMD_SWITCH_TIMED, True, MODULE_FU, self.pots[pot]['pin'], ON_RELAY, ms)
+
+    def deduct_from_pot(self, pot, mls):
+        self.db.execute_write("UPDATE {} SET ")
 
     def get_duration(self, pot, mls):
         return mls * self.pots[pot]['time']
