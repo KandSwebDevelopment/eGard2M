@@ -44,6 +44,12 @@ class FeederUnit(QObject):
             return 0
         return p
 
+    def nid_from_pot(self, pot):
+        n = self.db.execute_single('SELECT nid FROM {} WHERE pot = {}'.format(DB_NUTRIENT_PROPERTIES, pot))
+        if n is None:
+            return 0
+        return n
+
     def get_pot_level(self, pot):
         return self.pots[pot]['level']
 
@@ -56,12 +62,14 @@ class FeederUnit(QObject):
             return
         dur = mls * self.pots[pot]['time']
         self.dispense_ms(pot, dur)
+        self.deduct_from_pot(pot, mls)
 
     def dispense_ms(self, pot, ms):
         self.coms.send_data(CMD_SWITCH_TIMED, True, MODULE_FU, self.pots[pot]['pin'], ON_RELAY, ms)
 
     def deduct_from_pot(self, pot, mls):
-        self.db.execute_write("UPDATE {} SET ")
+        self.db.execute_write("UPDATE {} SET current_level = current_level - {} WHERE pot = {} LIMIT 1".format(DB_FEEDER_POTS, mls, pot))
+        self.pots[pot]['level'] -= mls
 
     def get_duration(self, pot, mls):
         return mls * self.pots[pot]['time']

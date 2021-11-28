@@ -99,6 +99,8 @@ class AreaController(QObject):
 
         self.output_controller.load_all_areas()
 
+        self.main_window.coms_interface.send_switch(SW_DRY_FAN, self.drying_fan, MODULE_IO)
+
     def reload_area(self, area):
         """ Load the PID's and items for the area"""
         sql = "SELECT process_id, item FROM {} WHERE area = {}".format(DB_AREAS, area)

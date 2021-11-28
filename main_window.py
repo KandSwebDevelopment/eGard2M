@@ -16,7 +16,8 @@ from dialogs import DialogEngineerCommandSender, DialogEngineerIo, DialogDispatc
     DialogDispatchReports, DialogStrainFinder, DialogDispatchStorage, DialogDispatchOverview, DialogSysInfo, \
     DialogSettings, DialogProcessPerformance, DialogDispatchLoadingBay, DialogProcessManager, DialogStrains, \
     DialogSeedPicker, DialogProcessLogs, DialogPatternMaker, DialogIOVC, DialogGraphEnv, DialogStrainPerformance, \
-    DialogFeedStationCalibrate, DialogWaterTanksCalibrate, DialogFeederManualMix, DialogMixTankCalibrate
+    DialogFeedStationCalibrate, DialogWaterTanksCalibrate, DialogFeederManualMix, DialogMixTankCalibrate, \
+    DialogNutrients
 from functions import multi_status_bar, get_last_friday
 from functions_colors import get_css_colours
 from status_codes import *
@@ -126,6 +127,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionWater_Tanks.triggered.connect(lambda: self.wc.show(DialogWaterTanksCalibrate(self)))
         self.actionMix_Tank.triggered.connect(lambda: self.wc.show(DialogMixTankCalibrate(self)))
         self.actionManual_Feed.triggered.connect(lambda: self.wc.show(DialogFeederManualMix(self)))
+        self.actionNutrients.triggered.connect(lambda: self.wc.show(DialogNutrients(self)))
 
         # Materials
         self.actionSeeds.triggered.connect(lambda: self.wc.show(DialogStrains(self)))
