@@ -18,11 +18,9 @@ class FeederUnit(QObject):
         self.flush_litres = int(self.db.get_config(CFT_FEEDER, "flush litres", 4))
         self.max_mix_litres = int(self.db.get_config(CFT_FEEDER, "max mix litres", 6))
         self.mix_stir_time = int(self.db.get_config(CFT_FEEDER, "mix stir time", 30)) * 1000
-
         self.feed_litres = int(self.db.get_config(CFT_FEEDER, "feed L", 10))
-        self.flush_litres = int(self.db.get_config(CFT_FEEDER, "flush litres", 4))
-        self.max_mix_litres = int(self.db.get_config(CFT_FEEDER, "max mix litres", 6))
-        self.mix_stir_time = int(self.db.get_config(CFT_FEEDER, "mix stir time", 30)) * 1000
+        self.correction_mix_fill = int(self.db.get_config(CFT_FEEDER, "correction_mix_fill", 50))
+        self.correction_mix_empty = int(self.db.get_config(CFT_FEEDER, "correction_mix_empty", 50))
 
         self.load_pots()
 

@@ -568,8 +568,8 @@ class CommunicationInterface(QObject):
     def send_switch(self, sw_num, state, to=MODULE_IO):
         self.send_data(CMD_SWITCH, True, to, sw_num, state)
 
-    def send_switch_timed(self, sw_num, state, duration, to=MODULE_IO):
-        self.send_data(CMD_SWITCH_TIMED, True, to, sw_num, state, duration)
+    def send_switch_timed(self, sw_num, state, duration):
+        self.send_data(CMD_SWITCH_TIMED, True, MODULE_FU, sw_num, state, duration)
 
     def send_command(self, command, item=None, val=None, urgent=False, to=MODULE_IO):
         cmd = "<" + command

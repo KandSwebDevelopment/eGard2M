@@ -316,7 +316,7 @@ class FeedClass(QObject):
         """ Adds a new mix using next mix number. The mix will be water only with the
             items set to none """
         n = len(self.area_data['mixes']) + 1
-        self.area_data["mixes"][n] = {"items": {},  # Plant numbers
+        self.area_data["mixes"][n] = {"items": [],  # Plant numbers
                                       "recipe": WATER_ONLY_IDX,
                                       "base id": WATER_ONLY_IDX,
                                       "lpp": self.feed_litres,  # Liters per plant
@@ -328,7 +328,7 @@ class FeedClass(QObject):
         """ Adds a new mix using next mix number. The mix will be a copy of the original but with the
             items set to none """
         n = len(self.area_data['mixes']) + 1
-        self.area_data["mixes"][n] = {"items": {},  # Plant numbers
+        self.area_data["mixes"][n] = {"items": [],  # Plant numbers
                                       "recipe": copy.deepcopy(self.recipe),
                                       "base id": self.recipe_id,
                                       "lpp": self.feed_litres,  # Liters per plant
@@ -411,8 +411,8 @@ class FeedClass(QObject):
         self.save_adjustments(mix_num)
 
     def change_recipe_item(self, mix_num, change):
-        """
-
+        """ This changes a recipe item. the change will contain the nid to change and the new mls for that nid
+            If the nid does not exist in the recipe it will be added
         :param mix_num: The mix number to change item in
         :type mix_num: int
         :type change: tuple     (nid, mls)
@@ -420,13 +420,36 @@ class FeedClass(QObject):
         r = self.area_data['mixes'][mix_num]['recipe']
         #  recipe  nid, ml, L, rid, freq
         if r != WATER_ONLY_IDX:
+            if change[1] == 0:
+                if not self.nid_in_recipe(change[0], self.recipe):
+                    self.remove_nid_from_recipe(change[0], self.area_data['mixes'][mix_num]['recipe'])
+                    self.save_mix_adjustment(mix_num)
+                    return
             for rl in r:
                 if rl[0] == change[0]:
                     rl[1] = change[1]
                     self.save_mix_adjustment(mix_num)
                     return
+        else:
+            self.area_data['mixes'][mix_num]['recipe'] = []
         # If here it is a new item to the recipe
-        r = [[change[0], change[1]], r[0][2], r[0][3], r[0][4]]
+        self.area_data['mixes'][mix_num]['recipe'].append([change[0], change[1]])
+        self.save_mix_adjustment(mix_num)
+
+    def nid_in_recipe(self, nid, recipe):
+        """ Returns True if the nid is in the recipe """
+        for r in recipe:
+            if r[0] == nid:
+                return True
+        return False
+
+    def remove_nid_from_recipe(self, nid, recipe):
+        idx = 0
+        for r in recipe:
+            if r[0] == nid:
+                break
+            idx += 1
+        recipe.pop(idx)
 
     def change_items(self, mix_num, items):
         self.area_data['mixes'][mix_num]['items'] = items
@@ -434,6 +457,10 @@ class FeedClass(QObject):
             len(items) * self.area_data['mixes'][mix_num]["lpp"]
         self.save_adjustments(mix_num)
         self._refresh_water_total()
+
+    def move_item(self, mix_from, mix_to, item):
+        self.area_data['mixes'][mix_from]['items'].remove(item)
+        self.area_data['mixes'][mix_from]['items'].append(item)
 
     def change_mix_water(self, mix_num, new_lpp):
         self.area_data['mixes'][mix_num]['lpp'] = new_lpp

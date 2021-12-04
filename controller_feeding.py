@@ -205,6 +205,18 @@ class FeedControl(QThread):
     def change_items(self, area, mix_num, items):
         self.feeds[area].change_items(mix_num, items)
 
+    def move_item(self, area, mix_from, mix_to, item):
+        """ Move an item from one mix to another """
+        self.feeds[area].move_item(mix_from, mix_to, item)
+
+    def add_item(self, area, mix_num, item):
+        """ This adds an item to mix num. It removes the item from any other mixes"""
+        self.feeds[area].add_item(mix_num, item)
+
+    def remove_item(self, area, item):
+        """ This removes an item from all mixes"""
+        self.feeds[area].remove_item(item)
+
     def new_day(self):
         for a in range(1, 3):
             if a in self.feeds:
