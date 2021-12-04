@@ -85,7 +85,7 @@ class SoilSensorClass(QObject):
     def get_log_values(self):
         r = ""
         for o in self.final_reading:
-            r += str(o) + ", "
+            r += str(self.final_reading[o]) + ", "
         return r[0: len(r) - 2]
 
     def update_wet_dry(self, area, sensor, wet, dry):

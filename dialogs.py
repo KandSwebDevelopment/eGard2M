@@ -2971,6 +2971,10 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
             txt += "<b>Auto Feeding Unavailable</b><br>"
         self.le_fill_to.setText(str(water_total))
         self.recipe = self.feed_controller.get_recipe(self.area, num)
+        if self.recipe == WATER_ONLY_IDX:
+            txt = "Water Only<br>"
+            self.te_recipe.setHtml(txt)
+            return
         for i in self.recipe:
             print(i)
             nid = i[0]

@@ -302,6 +302,8 @@ class FeedClass(QObject):
         for mix in self.area_data['mixes']:
             if item in self.area_data['mixes'][mix]['items']:
                 self.area_data['mixes'][mix]['items'].remove(item)
+                self.update_mix_water_total(mix)
+                self.save_adjustments(mix)
 
     def add_item(self, mix, item):
         """ Add an item to mix's items
@@ -311,6 +313,8 @@ class FeedClass(QObject):
             return  # safety
         self.area_data["mixes"][mix]['items'].append(item)
         self.area_data["mixes"][mix]['items'].sort()
+        self.update_mix_water_total(mix)
+        self.save_adjustments(mix)
 
     def add_blank_mix(self):
         """ Adds a new mix using next mix number. The mix will be water only with the
@@ -453,14 +457,19 @@ class FeedClass(QObject):
 
     def change_items(self, mix_num, items):
         self.area_data['mixes'][mix_num]['items'] = items
-        self.area_data['mixes'][mix_num]['water total'] = \
-            len(items) * self.area_data['mixes'][mix_num]["lpp"]
+        self.update_mix_water_total(mix_num)
         self.save_adjustments(mix_num)
+
+    def update_mix_water_total(self, mix_num):
+        self.area_data['mixes'][mix_num]['water total'] = \
+            len(self.area_data['mixes'][mix_num]['items']) * self.area_data['mixes'][mix_num]["lpp"]
         self._refresh_water_total()
 
-    def move_item(self, mix_from, mix_to, item):
-        self.area_data['mixes'][mix_from]['items'].remove(item)
-        self.area_data['mixes'][mix_from]['items'].append(item)
+    # def move_item(self, mix_from, mix_to, item):
+    #     self.area_data['mixes'][mix_from]['items'].remove(item)
+    #     self.update_mix_water_total(mix_from)
+    #     self.area_data['mixes'][mix_to]['items'].append(item)
+    #     self.update_mix_water_total(mix_to)
 
     def change_mix_water(self, mix_num, new_lpp):
         self.area_data['mixes'][mix_num]['lpp'] = new_lpp
@@ -470,6 +479,9 @@ class FeedClass(QObject):
         self.save_adjustments(mix_num)
 
     def save_adjustments(self, mix_num):
+        """ This saves the following for an area mix
+            Freq, lpp, cycles, items and base id
+            This is either inserted or updated in the process feed adjustments table"""
         data = self.area_data['mixes'][mix_num]
         count = self.db.execute_single('SELECT COUNT(area) FROM {} WHERE area = {} AND mix_num = {}'.
                                        format(DB_PROCESS_FEED_ADJUSTMENTS, self.area, mix_num))
@@ -489,7 +501,7 @@ class FeedClass(QObject):
         self.db.execute_write(sql)
 
     def save_mix_adjustment(self, mix_num):
-        """ This save any adjustments to a mix"""
+        """ This saves the recipe for a mix in the mixes table"""
         # Delete any entries for this. Trust me this is best way
         self.db.execute_write('DELETE FROM {} WHERE area = {} AND mix_num = {}'.
                               format(DB_PROCESS_MIXES, self.area, mix_num))
