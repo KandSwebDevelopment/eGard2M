@@ -66,8 +66,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.update_status_bar(SBP_BOOT_TIME, datetime.now().strftime("%a %d  %H:%M"), OK, datetime.now().strftime("%b %Y"))
 
-        self.logger = Logger(self)
         self.msg_sys = MessageSystem(self, self.main_panel.listWidget)
+        self.logger = Logger(self)
         self.coms_interface = CommunicationInterface(self)
         self.access = Access(self)
         self.area_controller = AreaController(self)
@@ -93,10 +93,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.update_stock()
         self.main_panel.check_light()
-        if self.area_controller.drying_fan:
-            self.coms_interface.send_switch(SW_DRY_FAN, ON_RELAY, MODULE_IO)
-        else:
-            self.coms_interface.send_switch(SW_DRY_FAN, OFF_RELAY, MODULE_IO)
+        # if self.area_controller.drying_fan:
+        #     self.coms_interface.send_switch(SW_DRY_FAN, ON_RELAY, MODULE_IO)
+        # else:
+        #     self.coms_interface.send_switch(SW_DRY_FAN, OFF_RELAY, MODULE_IO)
 
     def connect_signals(self):
         # System

@@ -380,7 +380,7 @@ NWC_ACKNOWLEDGE = "acknowledged"
 NWC_CONFIG = "config"               # A generic command to get the other unit to reload values from config table (title_c)
 NWC_FEED = "feed"                   # Manual feed done (location)
 NWC_FEED_DATE = "feed date"                 # A feed has been changed, send location
-NWC_FEED_ADJUST = "feed adjust"     # if nutrient changes (location) This covers both nutrient change and litres change
+NWC_FEED_ADJUST = "feed adjust"     # Nutrient changes This covers both nutrient change and litres change, Send location
 NWC_FEEDER_POT_TOP_UP = "pot top up"     # Changes are in db so just reload section
 NWC_FEEDER_NUT_TOP_UP = "nut top up"     # Changes are in db so just reload section
 NWC_FEEDER_STATUS = "feeder status"
@@ -532,9 +532,8 @@ SW_FAN_1_OFF = 22
 SW_FAN_2_OFF = 23
 
 # Switch pins Feeder
-SW_NUTRIENT_STIR = 31    # 17
-SW_PARA_PUMP_BASE = 3   # 17
-SW_PARA_PUMP_1 = 22      # 18
+# SW_PARA_PUMP_BASE = 3   # 17
+SW_PARA_PUMP_1 = 22
 SW_PARA_PUMP_2 = 23
 SW_PARA_PUMP_3 = 24
 SW_PARA_PUMP_4 = 25
@@ -543,14 +542,16 @@ SW_PARA_PUMP_6 = 27
 SW_PARA_PUMP_7 = 28
 SW_PARA_PUMP_8 = 29
 SW_MIX_STIR = 30
-SW_FEED_PUMP = 32   # 27
-SW_WATER_MAINS_1 = 33
-SW_WATER_MAINS_2 = 34
-SW_A1_FEED = 35
-SW_A1_DRAIN = 36
-SW_A2_FEED = 37
-SW_A2_DRAIN = 38
-SW_MAN_FEED = 39
+SW_NUTRIENT_STIR = 31
+SW_FEED_PUMP = 32
+SW_FEEDER_SPARE = 33
+SW_WATER_MAINS_1 = 34
+SW_WATER_MAINS_2 = 35
+SW_MAN_FEED = 38
+SW_A1_FEED = 39
+SW_A1_DRAIN = 41
+SW_A2_FEED = 40
+SW_A2_DRAIN = 42
 
 # DE Module
 SW_COVER_LOCK = 22

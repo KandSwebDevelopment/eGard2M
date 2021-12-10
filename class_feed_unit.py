@@ -19,6 +19,7 @@ class FeederUnit(QObject):
         self.max_mix_litres = int(self.db.get_config(CFT_FEEDER, "max mix litres", 6))
         self.mix_stir_time = int(self.db.get_config(CFT_FEEDER, "mix stir time", 30)) * 1000
         self.feed_litres = int(self.db.get_config(CFT_FEEDER, "feed L", 10))
+        self.max_man_litres = int(self.db.get_config(CFT_FEEDER, "max manual feed", 1))
         self.correction_mix_fill = int(self.db.get_config(CFT_FEEDER, "correction_mix_fill", 50))
         self.correction_mix_empty = int(self.db.get_config(CFT_FEEDER, "correction_mix_empty", 50))
 
@@ -27,7 +28,9 @@ class FeederUnit(QObject):
     def load_pots(self):
         rows = self.db.execute('SELECT pot, size, current_level, max, min, ml10, pin FROM {}'.format(DB_FEEDER_POTS))
         for row in rows:
-            name = self.db.execute_single("SELECT `name` FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, row[0]))
+            name = self.db.execute_single("SELECT nn.name FROM {} nn INNER JOIN {} np WHERE nn.id = np.nid "
+                                          "AND np.pot = {}".
+                                          format(DB_NUTRIENTS_NAMES, DB_NUTRIENT_PROPERTIES, row[0]))
             self.pots[row[0]] = {'size': row[1],
                                  'level': row[2],
                                  'max': row[3],
@@ -51,6 +54,9 @@ class FeederUnit(QObject):
     def get_pot_level(self, pot):
         return self.pots[pot]['level']
 
+    def set_pot_level(self, pot, level):
+        self.pots[pot]['level'] = level
+
     def dispense_nid(self, nid, mls):
         pot = self.pot_from_nid(nid)
         self.dispense_pot(pot, mls)
@@ -63,7 +69,7 @@ class FeederUnit(QObject):
         self.deduct_from_pot(pot, mls)
 
     def dispense_ms(self, pot, ms):
-        self.coms.send_data(CMD_SWITCH_TIMED, True, MODULE_FU, self.pots[pot]['pin'], ON_RELAY, ms)
+        self.coms.send_data(CMD_SWITCH_TIMED, True, MODULE_FU, self.pots[pot]['pin'], ON, ms)
 
     def deduct_from_pot(self, pot, mls):
         self.db.execute_write("UPDATE {} SET current_level = current_level - {} WHERE pot = {} LIMIT 1".format(DB_FEEDER_POTS, mls, pot))
@@ -73,13 +79,30 @@ class FeederUnit(QObject):
         return mls * self.pots[pot]['time']
 
     def stir_nutrients(self):
-        self.coms.send_data(CMD_SWITCH_TIMED, True, MODULE_FU, SW_NUTRIENT_STIR, ON_RELAY, self.nutrient_stir_time)
+        self.coms.send_data(CMD_SWITCH_TIMED, True, MODULE_FU, SW_NUTRIENT_STIR, ON, self.nutrient_stir_time)
 
     def stir_mix(self):
-        self.coms.send_data(CMD_SWITCH_TIMED, True, MODULE_FU, SW_MIX_STIR, ON_RELAY, self.mix_stir_time)
+        self.coms.send_data(CMD_SWITCH_TIMED, True, MODULE_FU, SW_MIX_STIR, ON, self.mix_stir_time)
 
     def set_valve_position(self, valve, pos):
         self.coms.send_data(CMD_VALVE, True, MODULE_FU, valve, pos)
+
+    def set_feed_valves(self, area, feed_flush, state):
+        """ If area = 0 then it is manual, feed_flush doesn't matter
+            else for area 1 and 2 feed_flush, 1 = Feed, 2 = Flush
+            state will be either ON or OFF """
+        if area == 0:   # Manual
+            self.coms.send_switch(SW_MAN_FEED, state)
+        elif area == 1:
+            if feed_flush == 1:
+                self.coms.send_switch(SW_A1_FEED, state)
+            else:
+                self.coms.send_switch(SW_A1_DRAIN, state)
+        elif area == 2:
+            if feed_flush == 1:
+                self.coms.send_switch(SW_A2_FEED, state)
+            else:
+                self.coms.send_switch(SW_A2_DRAIN, state)
 
     def set_calibration_weight(self, weight):
         self.coms.send_data(COM_MIX_SET_CAL, weight)

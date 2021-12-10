@@ -231,9 +231,10 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 self.main_window.logger.save_output_log(self.area_controller.output_controller.get_output_log_values())
                 self.main_window.logger.save_fan_log(self.area_controller.fan_controller.get_log_values())
                 self.main_window.logger.save_power_log(self.le_pwr_current.text() + ", " + self.le_pwr_total_1.text())
+                self.main_window.logger.save_soil_log(self.area_controller.soil_sensors.get_log_values())
         cm = datetime.now().minute
         if cm % 2 == 0:
-            self.main_window.logger.save_soil_log(self.area_controller.soil_sensors.get_log_values())
+            pass
 
     def loop_6(self):  # 2 min
         if self.master_mode == MASTER:
@@ -1228,6 +1229,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.area_controller.fan_controller.speed_update(data[0], data[1])
         elif cmd == NWC_FAN_SENSOR:
             self.area_controller.fan_controller.set_fan_sensor(data[0], data[1])
+        elif cmd == NWC_PROCESS_MIX_CHANGE:
+            self.main_window.feed_controller.reload_area(data[0])
         elif cmd == NWC_FEED_DATE:
             self.area_controller.output_controller.water_heater_update_info()
         elif cmd == NWC_FEED:
