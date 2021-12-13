@@ -658,6 +658,7 @@ class FeedClass(QObject):
         self.save_mix_adjustment(mix_num)
 
     def new_day(self):
+        # self.load_mixes()
         self.get_recipe_status()
         self._refresh_water_total()
 

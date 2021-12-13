@@ -70,12 +70,12 @@ class WaterController(QObject):
         elif command == CMD_SWITCH:
             if int(data[0]) == SW_WATER_MAINS_1:
                 if int(data[1]) == ON:
-                    getattr(self.main_window.main_panel, "lbl_water_1").setPixmap(QPixmap(":/normal/valve-1.png"))
+                    getattr(self.main_window.main_panel, "lbl_water_1").setPixmap(QPixmap(":/normal/valve.png"))
                 else:
                     getattr(self.main_window.main_panel, "lbl_water_1").setPixmap(QPixmap(":/normal/valve_closed.png"))
             elif int(data[0]) == SW_WATER_MAINS_2:
                 if int(data[1]) == ON:
-                    getattr(self.main_window.main_panel, "lbl_water_2").setPixmap(QPixmap(":/normal/valve-1.png"))
+                    getattr(self.main_window.main_panel, "lbl_water_2").setPixmap(QPixmap(":/normal/valve.png"))
                 else:
                     getattr(self.main_window.main_panel, "lbl_water_2").setPixmap(QPixmap(":/normal/valve_closed.png"))
 

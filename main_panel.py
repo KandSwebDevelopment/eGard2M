@@ -28,7 +28,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.sub = self.main_window.mdiArea.addSubWindow(self)
         self.wc = self.main_window.wc
         self.master_mode = self.main_window.master_mode
-        self.sub.setMinimumSize(1100, 950)
+        self.sub.setMinimumSize(1100, 850)
         self.sub.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint | QtCore.Qt.FramelessWindowHint)
         self.setGeometry(0, 0, self.width(), self.height())
         # self.main_window.resize(self.width(), 1000)

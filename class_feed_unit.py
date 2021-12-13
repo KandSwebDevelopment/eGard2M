@@ -22,6 +22,7 @@ class FeederUnit(QObject):
         self.max_man_litres = int(self.db.get_config(CFT_FEEDER, "max manual feed", 1))
         self.correction_mix_fill = int(self.db.get_config(CFT_FEEDER, "correction_mix_fill", 50))
         self.correction_mix_empty = int(self.db.get_config(CFT_FEEDER, "correction_mix_empty", 50))
+        self.valve_open = 0     # Feed valve open so it knows what open to close
 
         self.load_pots()
 
@@ -87,22 +88,46 @@ class FeederUnit(QObject):
     def set_valve_position(self, valve, pos):
         self.coms.send_data(CMD_VALVE, True, MODULE_FU, valve, pos)
 
-    def set_feed_valves(self, area, feed_flush, state):
-        """ If area = 0 then it is manual, feed_flush doesn't matter
+    def set_servo_feed_valves(self, area, feed_flush, state):
+        """ For Servo valves
+            If area = 0 then it is manual, feed_flush doesn't matter
             else for area 1 and 2 feed_flush, 1 = Feed, 2 = Flush
             state will be either ON or OFF """
         if area == 0:   # Manual
-            self.coms.send_switch(SW_MAN_FEED, state)
+            self.coms.send_data(CMD_VALVE, True, MODULE_FU, 5, VALVE_OPEN)
+            self.valve_open = 5
         elif area == 1:
             if feed_flush == 1:
-                self.coms.send_switch(SW_A1_FEED, state)
+                self.coms.send_data(CMD_VALVE, True, MODULE_FU, 6, VALVE_OPEN)
+                self.valve_open = 6
             else:
-                self.coms.send_switch(SW_A1_DRAIN, state)
+                self.coms.send_data(CMD_VALVE, True, MODULE_FU, 8, VALVE_OPEN)
+                self.valve_open = 8
         elif area == 2:
             if feed_flush == 1:
-                self.coms.send_switch(SW_A2_FEED, state)
+                self.coms.send_data(CMD_VALVE, True, MODULE_FU, 7, VALVE_OPEN)
+                self.valve_open = 7
             else:
-                self.coms.send_switch(SW_A2_DRAIN, state)
+                self.coms.send_data(CMD_VALVE, True, MODULE_FU, 9, VALVE_OPEN)
+                self.valve_open = 9
+
+    def set_feed_valves(self, area, feed_flush, state):
+        """ For solenoid valves
+            If area = 0 then it is manual, feed_flush doesn't matter
+            else for area 1 and 2 feed_flush, 1 = Feed, 2 = Flush
+            state will be either ON or OFF """
+        if area == 0:   # Manual
+            self.coms.send_switch(SW_MAN_FEED, state, MODULE_FU)
+        elif area == 1:
+            if feed_flush == 1:
+                self.coms.send_switch(SW_A1_FEED, state, MODULE_FU)
+            else:
+                self.coms.send_switch(SW_A1_DRAIN, state, MODULE_FU)
+        elif area == 2:
+            if feed_flush == 1:
+                self.coms.send_switch(SW_A2_FEED, state, MODULE_FU)
+            else:
+                self.coms.send_switch(SW_A2_DRAIN, state, MODULE_FU)
 
     def set_calibration_weight(self, weight):
         self.coms.send_data(COM_MIX_SET_CAL, weight)
