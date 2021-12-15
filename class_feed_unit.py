@@ -1,4 +1,5 @@
 import collections
+import math
 
 from PyQt5.QtCore import QObject
 from defines import *
@@ -67,14 +68,19 @@ class FeederUnit(QObject):
             return
         dur = mls * self.pots[pot]['time']
         self.dispense_ms(pot, dur)
-        self.deduct_from_pot(pot, mls)
+        self.deduct_from_pot(pot, math.ceil(mls))
 
     def dispense_ms(self, pot, ms):
         self.coms.send_data(CMD_SWITCH_TIMED, True, MODULE_FU, self.pots[pot]['pin'], ON, ms)
 
     def deduct_from_pot(self, pot, mls):
-        self.db.execute_write("UPDATE {} SET current_level = current_level - {} WHERE pot = {} LIMIT 1".format(DB_FEEDER_POTS, mls, pot))
+        self.db.execute_write("UPDATE {} SET current_level = current_level - {} WHERE pot = {} LIMIT 1".
+                              format(DB_FEEDER_POTS, mls, pot))
         self.pots[pot]['level'] -= mls
+
+    def deduct_from_stock(self, nid, mls):
+        self.db.execute_write("UPDATE {} SET current_level = current_level - {} WHERE nid = {} LIMIT 1".
+                              format(DB_FEEDER_POTS, mls, nid))
 
     def get_duration(self, pot, mls):
         return mls * self.pots[pot]['time']

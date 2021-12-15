@@ -325,7 +325,7 @@ class FeedControl(QThread):
             for item in mixes[mix]['recipe']:
                 if item != WATER_ONLY_IDX:
                     mls = item[1] * mixes[mix]['lpp'] * len(mixes[mix]['items'])
-                    # self.main_window.feeder.deduct_nutrient(item, mls)
+                    self.main_window.feeder_unit.deduct_from_stock(item, mls)
                     if item[0] == WATER_ONLY_IDX:
                         nut = WATER_ONLY
                     else:
