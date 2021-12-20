@@ -378,6 +378,7 @@ class CommunicationInterface(QObject):
                 command == NWC_CHANGE_TO_FLUSHING or \
                 command == NWC_MOVE_TO_FINISHING or \
                 command == NWC_MESSAGE or \
+                command == NWC_RELOAD_PROCESSES or \
                 command == NWC_SLAVE_START or \
                 command == NWC_STAGE_ADJUST or \
                 command == NWC_STOCK_TOTAL or \
@@ -393,7 +394,6 @@ class CommunicationInterface(QObject):
                 command == NWC_PROCESS_MIX_CHANGE or \
                 command == NWC_PROCESS_FEED_MODE or \
                 command == NWC_SWITCH_REQUEST or \
-                command == NWC_RELOAD_PROCESSES or \
                 command == NWC_OUTPUT_RANGE or \
                 command == NWC_OUTPUT_LOCK or \
                 command == NWC_ACCESS_OPERATE or \

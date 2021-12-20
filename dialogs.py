@@ -69,6 +69,7 @@ from ui.dialogFeederManualMix import Ui_DialogFeederManualMix
 from ui.dialogWaterTank import Ui_DialogWaterTank
 from ui.dialogMixTankCalibration import Ui_DialogMixTankCalibrate
 from ui.dialogNutrients import Ui_DialogNutrients
+from ui.dialogNutrientPumpCalibrate import Ui_dialogNutrientPumpCalibrate
 
 
 class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
@@ -2329,9 +2330,9 @@ class DialogWaterTanksCalibrate(QDialog, Ui_dailogWaterTanksCalibrate):
         self.pb_store.setEnabled(False)
 
 
-class DialogFeedStationCalibrate(QDialog, Ui_dialogFeederCalibrate):
+class DialogNutrientPumpCalibrate(QDialog, Ui_dialogNutrientPumpCalibrate):
     def __init__(self, parent=None):
-        super(DialogFeedStationCalibrate, self).__init__()
+        super(DialogNutrientPumpCalibrate, self).__init__()
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setupUi(self)
         self.main_window = parent
@@ -2699,6 +2700,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.sub = None
         self.pb_close.pressed.connect(lambda: self.sub.close())
 
+        self.main_window.window_change.connect(self.window_change)
         self.feeder_unit = self.main_window.feeder_unit
         self.max_mix_litres = self.feeder_unit.max_mix_litres
         self.correction_mix_fill = self.feeder_unit.correction_mix_fill
@@ -2743,6 +2745,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.pb_feed.clicked.connect(self.start_feed)
 
         self.main_window.coms_interface.update_feeder_unit.connect(self.fu_update)
+        self.has_focus = True
 
         self.pb_clear.pressed.connect(self.clear)
         self.pb_nutrients.clicked.connect(lambda: self.main_window.wc.show(DialogNutrients(self.main_window)))
@@ -2796,12 +2799,20 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         # self.le_feed.editingFinished.connect(self.calculate_mix_output)
         # self.le_fill_to.editingFinished.connect(self.calculate_mix_output)
         self.le_flush_litres.setText(str(self.feeder_unit.flush_litres))
+        self.le_feed.editingFinished.connect(self.calculate_mix_output)
         self.read()
         self.pot_levels_update()
         self.enable_nutrients(False)
         self.enable_feed(False)
         self.enable_flush(False)
         self.rb_auto = self.rb_v4_1
+
+    def window_change(self, win_name):
+        if win_name == self.windowTitle():
+            self.has_focus = True
+        else:
+            self.has_focus = False
+        print("has focus ", self.has_focus)
 
     def log(self, txt):
         if len(txt) == 0:
@@ -2902,8 +2913,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
     def calculate_mix_output(self):
         """ This calculates
             how many times feed pump will have to operate to complete the entire feed"""
-        self.calculate_nutrients()
-        r = string_to_float(self.le_tank_level.text())
+        r = math.floor(string_to_float(self.le_tank_level.text()))
         if r <= 0:
             return
         lpf = string_to_float(self.le_feed.text())
@@ -3010,7 +3020,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
             level = 0
         txt = ""
         if self.rb_v4_2.isChecked():    # Manual
-            # self.feeder_unit.set_feed_valves(0, 0, ON)
+            self.feeder_unit.set_servo_feed_valves(0, 0, ON)
             if self.pumped < 1:
                 txt = "Starting "
                 txt += "Manual Feeding"
@@ -3018,12 +3028,13 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
                 level = self.feeder_unit.max_man_litres
                 self.le_feed.setText(str(level))
         elif self.rb_auto.isChecked():  # Auto
-            # self.feeder_unit.set_feed_valves(self.area, 1, ON)
+            self.feeder_unit.set_servo_feed_valves(self.area, 1, ON)
             txt = "Auto Feeding. " + self.lbl_mix_output.text()
             self.enable_feed(False)
         self.log(txt)
         self.main_window.coms_interface.send_data(COM_MIX_DISPENSE, True, MODULE_FU, level * 1000)
         self.action = 4     # Feeding
+        self.lbl_status.setText("Starting Feed 1")
         # self.pumped = 0
         self.soak_time_remaining = int(string_to_float(self.le_soak_time.text()))
         self.enable_water(False)
@@ -3043,10 +3054,6 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
             self.cb_mix.addItem(str(i), i)
         self.cb_mix.blockSignals(False)
         self.lbl_recipie.setText(self.feed_controller.get_recipe_name(area))
-        # feed_total = self.feed_controller.get_area_water_total(area)
-        # self.recipe = process.recipe_final
-        # self.feed_qty = process.feed_quantity
-        # self.recipe_id = process.recipe_id
         self.location = area
         # t = feed_total
         # self.mix_count = math.ceil(feed_total / self.max_mix_litres)
@@ -3103,6 +3110,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
             name = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, nid))
             txt += "{}mls of {}<br>".format(int(mls * water_total), name)
         self.te_recipe.setHtml(txt)
+        self.calculate_nutrients()
 
     def clear(self):
         self.action = 0
@@ -3137,8 +3145,14 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.pb_feed.setEnabled(state)
 
     def enable_flush(self, state=True):
-        self.pb_flush_1.setEnabled(state)
-        self.pb_flush_2.setEnabled(state)
+        if not state:
+            self.pb_flush_1.setEnabled(state)
+            self.pb_flush_2.setEnabled(state)
+            return
+        if self.area == 1:
+            self.pb_flush_1.setEnabled(True)
+        else:
+            self.pb_flush_2.setEnabled(True)
 
     def enable_water(self, state=True):
         self.pb_fill_1.setEnabled(state)
@@ -3166,11 +3180,12 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
             self.lbl_status.setText("Soaking  {}".format(self.soak_time_remaining))
             return
         self.soak_timer.stop()
-        level = string_to_float(self.le_tank_level.text()) - string_to_float(self.le_feed.text()) * (self.pumped - 1)
+        level = string_to_float(self.le_tank_level.text()) - string_to_float(self.le_feed.text())
         if level < 0:
             level = 0
         self.log("Soak complete. Continuing feed")
         self.main_window.coms_interface.send_data(COM_MIX_DISPENSE, True, MODULE_FU, level * 1000)
+        self.lbl_status.setText("Feed {} in progress".format(self.pumped + 1))
         self.soak_time_remaining = int(string_to_float(self.le_soak_time.text()))
 
     def stop_nutrients(self):
@@ -3196,6 +3211,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
                     self.lbl_status.setText("")
                     self.log("Nutrients Stirred")
                     # self.lbl_status.setStyleSheet("background-color: white; color: black")
+
             elif sw == SW_MIX_STIR:
                 if state == ON:
                     self.lbl_status.setText("Stirring Mix")
@@ -3204,8 +3220,11 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
                 else:
                     self.log("Mix Stirred")
                     self.lbl_status.setText("")
+
             elif SW_PARA_PUMP_1 <= sw <= SW_PARA_PUMP_8:
                 if state == ON:
+                    if self.dispense_mls == "":
+                        return  # This is a safety catch in case this is triggered by the calibration dialog
                     self.lbl_status.setText("Adding {}mls of {} ({})".
                                             format(self.dispense_mls, self.dispense_name,
                                                    round(self.feeder_unit.get_duration(
@@ -3243,7 +3262,10 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
             self.le_tank_level.setText(str(lev))
             if lev >= 1:
                 self.enable_nutrients()
-                self.calculate_mix_output()
+                if self.action != 4:
+                    self.calculate_mix_output()
+                    self.calculate_nutrients()
+                    self.enable_feed()
 
         elif command == COM_MIX_FILL_END:
             if self.action == 1:    # Fill for flush
@@ -3256,18 +3278,20 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
                 self.lbl_status.clear()
                 self.le_tank_level.setText(str(round(string_to_float(data[0]) / 1000, 1)))
                 self.enable_nutrients()
+                self.enable_feed()
 
         elif command == COM_MIX_DISPENSE_END:
             if self.action == 4:    # Feeding
                 self.pumped += 1
                 if self.rb_auto.isChecked():    # Auto
-                    if self.pumped <= self.pump_times:
+                    if self.pumped < self.pump_times:
                         self.lbl_status.setText("Auto Feeding {} Done with {} Remaining".
                                                 format(self.pumped, self.pump_times - self.pumped))
                         self.soak_timer.start()
                     else:
-                        self.feeder_unit.set_feed_valves(self.area, 1, OFF)
+                        self.feeder_unit.set_servo_feed_valves(self.area, 1, OFF)
                         self.log("Auto Feeding finished")
+                        self.lbl_status.clear()
                         self.enable_flush()
                         self.enable_feed(False)
                 else:
@@ -3276,12 +3300,12 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
                                                 format(self.pumped, self.pump_times - self.pumped))
                     else:
                         self.log("Manual Feeding finished")
-                        self.feeder_unit.set_feed_valves(0, 0, OFF)
+                        self.feeder_unit.set_servo_feed_valves(0, 0, OFF)
                         self.enable_flush()
                         self.enable_feed(False)
 
             elif self.action == 1:  # Flushing
-                self.feeder_unit.set_feed_valves(self.area, 2, OFF)
+                self.feeder_unit.set_servo_feed_valves(self.area, 2, OFF)
                 self.log("Flushing complete\r\nFeed Complete")
                 self.enable_water(True)
             else:

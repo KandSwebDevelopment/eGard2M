@@ -1,8 +1,8 @@
 import sys
 from datetime import *
 
-from PyQt5.QtCore import QSettings, pyqtSlot
-from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox
+from PyQt5.QtCore import QSettings, pyqtSlot, pyqtSignal
+from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QMdiArea
 
 from class_access import Access
 from class_feed_unit import FeederUnit
@@ -16,7 +16,7 @@ from dialogs import DialogEngineerCommandSender, DialogEngineerIo, DialogDispatc
     DialogDispatchReports, DialogStrainFinder, DialogDispatchStorage, DialogDispatchOverview, DialogSysInfo, \
     DialogSettings, DialogProcessPerformance, DialogDispatchLoadingBay, DialogProcessManager, DialogStrains, \
     DialogSeedPicker, DialogProcessLogs, DialogPatternMaker, DialogIOVC, DialogGraphEnv, DialogStrainPerformance, \
-    DialogFeedStationCalibrate, DialogWaterTanksCalibrate, DialogFeederManualMix, DialogMixTankCalibrate, \
+    DialogNutrientPumpCalibrate, DialogWaterTanksCalibrate, DialogFeederManualMix, DialogMixTankCalibrate, \
     DialogNutrients
 from functions import multi_status_bar, get_last_friday
 from functions_colors import get_css_colours
@@ -31,6 +31,8 @@ from main_panel import MainPanel
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
+    window_change = pyqtSignal(str, name="windowChange")
+
     def __init__(self):
         super(MainWindow, self).__init__()
 
@@ -46,7 +48,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             msg.exec_()
             # app.quit()
         multi_status_bar(self)
-
+        self.mdiArea.setActivationOrder(QMdiArea.ActivationHistoryOrder)
+        self.mdiArea.subWindowActivated.connect(self.window_activated)
         self.wc = WindowsController(self)
 
         self.settings = QSettings(FN_SETTINGS, QSettings.IniFormat)
@@ -98,6 +101,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # else:
         #     self.coms_interface.send_switch(SW_DRY_FAN, OFF_RELAY, MODULE_IO)
 
+    def window_activated(self):
+        self.window_change.emit(self.mdiArea.activeSubWindow().windowTitle())
+        print(self.mdiArea.activeSubWindow().windowTitle())
+
     def connect_signals(self):
         # System
         self.actionSettings.triggered.connect(lambda: self.wc.show(DialogSettings(self)))
@@ -123,7 +130,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionPatterns.triggered.connect(lambda: self.wc.show(DialogPatternMaker(self)))
 
         # Feeding
-        self.actionNutrient_Pumps.triggered.connect(lambda: self.wc.show(DialogFeedStationCalibrate(self)))
+        self.actionNutrient_Pumps.triggered.connect(lambda: self.wc.show(DialogNutrientPumpCalibrate(self)))
         self.actionWater_Tanks.triggered.connect(lambda: self.wc.show(DialogWaterTanksCalibrate(self)))
         self.actionMix_Tank.triggered.connect(lambda: self.wc.show(DialogMixTankCalibrate(self)))
         self.actionManual_Feed.triggered.connect(lambda: self.wc.show(DialogFeederManualMix(self)))

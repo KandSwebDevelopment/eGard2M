@@ -532,32 +532,40 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                         if flush_start is not None:
                             w = 4
                         if x in self.area_controller.get_area_items(3):
-                            w = -1
-                        if w == -1:  # Item removed
+                            w = -10
+                        if w == -10:  # Item removed
                             ctrl.setText("")
                             ctrl.setEnabled(False)
                             ctrl.setToolTip("")
-                        elif w == 1:
+                        elif w == 999:   # Not ready
+                            ctrl.setText(str(x))
+                            ctrl.setEnabled(True)
+                            name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
+                                                          "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
+                                                          .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
+                            ctrl.setToolTip(name)
+
+                        elif w < 0:
                             ctrl.setEnabled(True)
                             ctrl.setStyleSheet("background-color: Yellow;")
                             name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
                                                           "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
                                                           .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
-                            ctrl.setToolTip(name)
-                        elif w == 2:
+                            ctrl.setToolTip("{} Due in {} days".format(name, w))
+                        elif w < 7:
                             ctrl.setEnabled(True)
                             ctrl.setStyleSheet("background-color: Green;")
                             name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
                                                           "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
                                                           .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
-                            ctrl.setToolTip(name)
-                        elif w == 3:
+                            ctrl.setToolTip("{} Due plus {} days".format(name, w))
+                        elif 7 < w < 999:
                             ctrl.setEnabled(True)
                             ctrl.setStyleSheet("background-color: Orange;")
                             name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
                                                           "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
                                                           .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
-                            ctrl.setToolTip(name)
+                            ctrl.setToolTip("{} Over Due by {} days".format(name, w))
                         elif w == 4:  # Item is flushing
                             ctrl.setEnabled(True)
                             ctrl.setStyleSheet("background-color: DodgerBlue;")
@@ -568,13 +576,13 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                             ctrl.setToolTip("Day {} flushing\n\r{}".format(df, name))
 
                         x += 1
-                    for x in range(1, 9):
-                        if x in p.strain_window:
-                            return
-                        ctrl = getattr(self, "pb_pm_%i" % x)
-                        ctrl.setEnabled(False)
-                        ctrl.setText("")
-                        ctrl.setStyleSheet("")
+                    # for x in range(1, 9):
+                    #     if p.strain_window[x] != 999:
+                    #         return
+                    #     ctrl = getattr(self, "pb_pm_%i" % x)
+                    #     ctrl.setEnabled(False)
+                    #     ctrl.setText("")
+                    #     ctrl.setStyleSheet("")
                 else:
                     self.frmstagechange_2.setEnabled(False)
                     return None
@@ -627,7 +635,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
     def check_upcoming_starts(self):
         rows = self.db.execute(
             'SELECT id, start FROM {} WHERE `start` >= "{}" AND running = 0'.
-                format(DB_PROCESS, datetime.now().date() - timedelta(days=10)))
+            format(DB_PROCESS, datetime.now().date() - timedelta(days=10)))
         for row in rows:
             if row[1] <= (datetime.now() + timedelta(days=7)).date():
                 m = ("New process No:{} is due to start on {}\n\rPre-start due on {}"

@@ -80,7 +80,7 @@ class FeederUnit(QObject):
 
     def deduct_from_stock(self, nid, mls):
         self.db.execute_write("UPDATE {} SET current_level = current_level - {} WHERE nid = {} LIMIT 1".
-                              format(DB_FEEDER_POTS, mls, nid))
+                              format(DB_NUTRIENT_PROPERTIES, mls, nid))
 
     def get_duration(self, pot, mls):
         return mls * self.pots[pot]['time']

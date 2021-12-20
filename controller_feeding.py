@@ -322,10 +322,10 @@ class FeedControl(QThread):
                 format(mix, len(mixes[mix]['items']), items_str, mixes[mix]['lpp'], mixes[mix]['water total'])
             if mixes[mix]['recipe'] == WATER_ONLY_IDX:
                 return
-            for item in mixes[mix]['recipe']:
+            for item in mixes[mix]['recipe']:      # item = [nid, mls]
                 if item != WATER_ONLY_IDX:
                     mls = item[1] * mixes[mix]['lpp'] * len(mixes[mix]['items'])
-                    self.main_window.feeder_unit.deduct_from_stock(item, mls)
+                    self.main_window.feeder_unit.deduct_from_stock(item[0], mls)
                     if item[0] == WATER_ONLY_IDX:
                         nut = WATER_ONLY
                     else:
@@ -336,4 +336,113 @@ class FeedControl(QThread):
                     self.log_txt += "Water only\r"
         # self.main_window.feeder.check_pot_levels()
         # self.main_window.feeder.check_nutrient_levels()
+
+    def calculate_nutrients_needed(self):
+        feeds_list_1 = []
+        feeds_list_2 = []
+        has_1 = has_2 = False
+        qty_1 = qty_2 = 0
+        end_1 = datetime.now().date()
+        end_2 = datetime.now().date()
+        past_use = collections.defaultdict(dict)
+        used_1 = collections.defaultdict(float)
+        used_2 = collections.defaultdict(float)
+        self.nutrient_report.clear()
+        if self.main_window.area_controller.area_has_process(1):
+            feeds_list_1 = self.my_parent.process_from_location(1).feeds_till_end
+            if len(feeds_list_1) > 0:
+                qty_1 = self.my_parent.process_from_location(1).quantity
+                end_1 = feeds_list_1[len(feeds_list_1) - 1][4]
+                has_1 = True
+        if self.main_window.area_controller.area_has_process(2):
+            feeds_list_2 = self.my_parent.process_from_location(2).feeds_till_end
+            if len(feeds_list_2) > 0:
+                qty_2 = self.my_parent.process_from_location(2).quantity
+                end_2 = feeds_list_2[len(feeds_list_2) - 1][4]
+                has_2 = True
+        levels = self.levels.copy()
+        run_date = datetime.now().date()
+        feed_idx_1 = feed_idx_2 = 0
+        feed_num = 1
+        while True:
+            used_1.clear()
+            used_2.clear()
+            area = 0
+            if (has_1 and feed_idx_1 < len(feeds_list_1)) and (run_date == feeds_list_1[feed_idx_1][4]):
+                used_1 = self._nutrients_from_recipe(feeds_list_1[feed_idx_1][1], qty_1, feeds_list_1[feed_idx_1][2])
+                feed_idx_1 += 1
+                area += 1
+            if (has_2 and feed_idx_2 < len(feeds_list_2)) and (run_date == feeds_list_2[feed_idx_2][4]):
+                used_2 = self._nutrients_from_recipe(feeds_list_2[feed_idx_2][1], qty_2, feeds_list_2[feed_idx_2][2])
+                feed_idx_2 += 1
+                area += 2
+
+            if len(used_1) != 0 or len(used_2) != 0:
+                levels_before = levels.copy()
+                if len(used_1) == 0:
+                    used_1 = used_2.copy()
+                elif len(used_2) != 0:
+                    self._dict_add_sub(used_2, used_1, False)
+
+                # used_1 now contains the total used by both
+                if feed_num > 10:
+                    past_use.pop(feed_num - 10)
+                past_use[feed_num] = {'date': run_date, 'used': used_1.copy(), 'area': area}
+
+                feed_num += 1
+                # print("Feed num ", feed_num)
+                # pprint(levels)
+                # pprint(used_1)
+                self._dict_add_sub(used_1, levels)
+
+                nid_out = self._check_run_out(levels_before, used_1)
+                if len(nid_out) > 0:
+                    for nid_w in nid_out:
+                        if nid_w not in self.nutrient_report:
+                            # print("Run out ", nid_out)
+                            # pprint(past_use)
+                            out_day_1 = out_day_2 = out_stage_1 = out_stage_2 = low_day_1 = low_day_2 = low_stage_1 = low_stage_2 = 0
+                            if len(used_1) > 0 and has_1:
+                                out_day_1 = feeds_list_1[feed_idx_1 - 1][0]
+                                out_stage_1 = feeds_list_1[feed_idx_1 - 1][3]
+                            if len(used_2) > 0 and has_2:
+                                out_day_2 = feeds_list_2[feed_idx_2 - 1][0]
+                                out_stage_2 = feeds_list_2[feed_idx_2 - 1][3]
+                            used, remain, low_date, low_num, r_count_1, r_count_2 = \
+                                self._get_warn_levels(run_date, feed_num - 1, nid_w, levels_before[nid_w], past_use)
+                            if r_count_1 > 0:
+                                low_day_1 = feeds_list_1[feed_idx_1 - 1 - r_count_1][0]
+                                low_stage_1 = feeds_list_1[feed_idx_1 - 1 - r_count_1][3]
+                            if r_count_2 > 0:
+                                low_day_2 = feeds_list_2[feed_idx_2 - 1 - r_count_2][0]
+                                low_stage_2 = feeds_list_2[feed_idx_2 - 1 - r_count_2][3]
+
+                            self.nutrient_report[nid_w] = {'out date': run_date,
+                                                           'out feeds': feed_num,
+                                                           'out 1 day': out_day_1,
+                                                           'out 2 day': out_day_2,
+                                                           'out 1 stage': out_stage_1,
+                                                           'out 2 stage': out_stage_2,
+                                                           'out 1 feeds': feed_idx_1 - 1,
+                                                           'out 2 feeds': feed_idx_2 - 1 if feed_idx_2 >= len(
+                                                               feeds_list_1) else 0,
+                                                           'out level': levels_before[nid_w],
+                                                           'area': area,
+                                                           'low date': low_date,
+                                                           'low level': remain,
+                                                           'low to empty': used,
+                                                           'low feeds': low_num,
+                                                           'low_day_1': low_day_1,
+                                                           'low_day_2': low_day_2,
+                                                           'low_stage_1': low_stage_1,
+                                                           'low_stage_2': low_stage_2,
+                                                           'shortage': 0}
+
+            run_date += timedelta(days=1)
+            if run_date > end_1 and run_date > end_2:
+                for nid in self.nutrient_report:
+                    self.nutrient_report[nid]['shortage'] = levels[nid]
+                # pprint(self.nutrient_report)
+                break
+        return len(self.nutrient_report)
 

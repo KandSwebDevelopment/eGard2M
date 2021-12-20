@@ -771,7 +771,7 @@ class ProcessClass(QObject):
                 self.area_controller.main_panel.update_trans(self.location, WARM)
                 self.area_controller.cool_warm[self.location] = WARM
                 self.area_controller.max_min_reset_process(DAY)
-        elif self.light_off < ct < (self.light_off + timedelta(seconds=self.cool_time)):
+        elif self.light_off < ct + timedelta(hours=24) < (self.light_off + timedelta(seconds=self.cool_time)):
             if self.cool_warm != COOL:
                 self.cool_warm = COOL
                 self.area_controller.main_panel.update_trans(self.location, COOL)
@@ -869,17 +869,18 @@ class ProcessClass(QObject):
         self.strain_window.clear()
         # self.strain_window.append(0)
         for row in rows:
+            # 0 = Not ready, 1 = ready in 7 days, 2 = ready, 3 = beyond window
             if row[4] == 0:
-                self.strain_window.append(-1)
+                self.strain_window.append(-10)      # removed
                 continue
             if self.stage_days_elapsed > row[3]:
-                self.strain_window.append(3)
-            elif self.stage_days_elapsed >= row[2]:
-                self.strain_window.append(2)
-            elif self.stage_days_elapsed >= row[2] - 7:
-                self.strain_window.append(1)
+                self.strain_window.append(self.stage_days_elapsed - row[2])
+            elif self.stage_days_elapsed >= row[2]:     # ready
+                self.strain_window.append(self.stage_days_elapsed - row[2])
+            elif self.stage_days_elapsed >= row[2] - 7:     # before
+                self.strain_window.append(self.stage_days_elapsed - row[2])
             else:
-                self.strain_window.append(0)
+                self.strain_window.append(999)   # Not in window
 
         print("Class process, check stage, strain window ", self.strain_window)
 

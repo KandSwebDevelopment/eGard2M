@@ -1,6 +1,7 @@
 import collections
 import copy
 from datetime import timedelta, datetime
+from pprint import pprint
 
 from PyQt5.QtCore import QObject
 
@@ -83,6 +84,7 @@ class FeedClass(QObject):
                                         "cycles": 0},  # How many feeds this is used for
                                     },
                           }
+        self.feeds_till_end = []
 
     def load(self, area, pattern_id, stage, current_day, max_stages, items):
         """
@@ -254,6 +256,7 @@ class FeedClass(QObject):
             self._load_mixes(self.area)
         self._refresh_water_total()
         self.load_feed_date()
+        self.get_future_feeds()
 
     def load_org_recipe(self, mix_num):
         """Load original recipe/mix into mix number"""
@@ -570,8 +573,36 @@ class FeedClass(QObject):
         return int((self.recipe_expires_day - self.stage_days_elapsed)
                    / self.frequency)
 
+    def get_future_feeds(self):
+        day_offset = self.get_days_till_feed()
+        run_day = self.stage_days_elapsed + day_offset
+        carry_over = 0  # used to get correct first feed in the next stage
+        day_num = day_offset  # used to calculate the actual feed date,
+        for stage in range(self.stage, self.stages_max):
+            if stage != self.stage:
+                run_day = carry_over
+            feed_schedule = self.feed_schedules_all[stage][0]
+            if feed_schedule > 0:
+                sql = "SELECT start, dto, liters, rid, frequency FROM {} WHERE sid = {}".format(DB_FEED_SCHEDULES,
+                                                                                                feed_schedule)
+                rows = self.db.execute(sql)
+                for row in rows:
+                    while run_day <= row[1]:
+                        # print(row)                day       rid    liters
+                        self.feeds_till_end.append(
+                            [run_day, row[3], row[2], stage, (datetime.today() + timedelta(days=day_num)).date()])
+                        run_day += row[4]
+                        day_num += row[4]
+                        if run_day == row[1]:
+                            carry_over = row[4]
+                            break
+                        if run_day > row[1]:
+                            carry_over = run_day - row[1]
+                            break
+        pprint(self.feeds_till_end)
+
     def set_last_feed_date(self, f_date):
-        """ Sets the last feed date and next and the also updates the db"""
+        """ Sets the last feed date and the next feed date and the also updates the db"""
         t = self.feed_time.split(":")
         f_date = datetime(f_date.year, f_date.month, f_date.day, int(t[0]), int(t[1]))
         self.lfd = f_date
@@ -658,6 +689,7 @@ class FeedClass(QObject):
         self.save_mix_adjustment(mix_num)
 
     def new_day(self):
+        self.stage_days_elapsed += 1
         self.load_mixes()
         self.get_recipe_status()
         self._refresh_water_total()

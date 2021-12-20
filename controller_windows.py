@@ -1,5 +1,5 @@
 from PyQt5.QtCore import QObject, Qt
-from PyQt5.QtWidgets import QAction
+from PyQt5.QtWidgets import QAction, QMdiArea
 
 from dialogs import DialogJournal, DialogProcessInfo
 
@@ -11,6 +11,7 @@ class WindowsController(QObject):
         self.mdiArea = parent.mdiArea
         self.__window_list_menu = parent.menuWindows
         self.__window_list_menu.aboutToShow.connect(self.__window_list_menu_about_to_show)
+        # self.mdiArea.windowOrder(QMdiArea.ActivationHistoryOrder)
 
     def show(self, dialog_, **kwargs):
         if 'multi' not in kwargs:
