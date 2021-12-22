@@ -3093,14 +3093,14 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.le_fill_to.setText(str(water_total))
         self.recipe = self.feed_controller.get_recipe(self.area, num)
         if self.recipe == WATER_ONLY_IDX:
-            txt = "Water Only<br>"
+            txt += "Water Only<br>"
             self.te_recipe.setHtml(txt)
             return
         for i in self.recipe:
             print(i)
             nid = i[0]
             if nid == WATER_ONLY_IDX:
-                txt = "Water Only<br>"
+                txt += "Water Only<br>"
                 break
             mls = i[1]
             pot = self.db.execute_one_row(

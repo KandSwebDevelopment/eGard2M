@@ -530,7 +530,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                         flush_start = self.db.execute_single(
                             "SELECT start FROM {} WHERE item = {}".format(DB_FLUSHING, x))
                         if flush_start is not None:
-                            w = 4
+                            w = 444
                         if x in self.area_controller.get_area_items(3):
                             w = -10
                         if w == -10:  # Item removed
@@ -559,14 +559,14 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                                                           "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
                                                           .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
                             ctrl.setToolTip("{} Due plus {} days".format(name, w))
-                        elif 7 < w < 999:
+                        elif 7 < w < 444:
                             ctrl.setEnabled(True)
                             ctrl.setStyleSheet("background-color: Orange;")
                             name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
                                                           "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
                                                           .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
                             ctrl.setToolTip("{} Over Due by {} days".format(name, w))
-                        elif w == 4:  # Item is flushing
+                        elif w == 444:  # Item is flushing
                             ctrl.setEnabled(True)
                             ctrl.setStyleSheet("background-color: DodgerBlue;")
                             name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
@@ -661,7 +661,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             dt = datetime.strftime(datetime.now(), '%d/%m/%y %H:%M')
             p.journal_write("{}  Number {} started flush. Day {} flowering".format(dt, item, p.stage_days_elapsed))
 
-            # self.feed_control.check_flushes(2)
+            self.main_window.feed_controller.feeds[2].load_mixes()
             self.check_stage(2)
             self.coms_interface.relay_send(NWC_CHANGE_TO_FLUSHING)
         else:

@@ -243,10 +243,22 @@ class FeedClass(QObject):
         :return: None
         :rtype: None
         """
-        rows = self.db.execute("SELECT item, start FROM {}".format(DB_FLUSHING))
         self.items_flushing.clear()
-        for row in rows:
-            self.items_flushing.append(row)
+        if self.area == 2:
+            rows = self.db.execute("SELECT item, start FROM {}".format(DB_FLUSHING))
+            self.items_flushing.clear()
+            for row in rows:
+                self.items_flushing.append(row[0])
+            if len(self.items_flushing) > 0:
+                self.area_data["mixes"][1] = {}
+                self.area_data["mixes"][1]["items"] = self.items_flushing
+                self.area_data["mixes"][1]["lpp"] = self.feed_litres
+                self.area_data["mixes"][1]["base id"] = WATER_ONLY_IDX
+                self.area_data["mixes"][1]["cycles"] = 7
+                # self.area_data["mixes"][0]["recipe"] = {}
+                self.area_data["mixes"][1]["water total"] = self.feed_litres * len(
+                    self.area_data["mixes"][1]['items'])
+                self.area_data["mixes"][1]["recipe"] = WATER_ONLY_IDX
 
         count = self.db.execute_single('SELECT COUNT(mix_num) as count FROM {} WHERE `area` = {}'.
                                        format(DB_PROCESS_FEED_ADJUSTMENTS, self.area))
@@ -273,7 +285,7 @@ class FeedClass(QObject):
         rows = self.db.execute(
             'SELECT mix_num, freq, lpp, `items`, cycles, base_id FROM {} WHERE `area` = {} ORDER BY mix_num'.
             format(DB_PROCESS_FEED_ADJUSTMENTS, area))
-        mix_num = 1
+        mix_num = 1 if len(self.items_flushing) == 0 else 2
         for row in rows:
             if mix_num not in self.area_data['mixes']:
                 self.area_data["mixes"][mix_num] = {}
