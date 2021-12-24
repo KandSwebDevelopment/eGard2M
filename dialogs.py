@@ -2931,12 +2931,14 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
                 break
             mls = i[1]
             pot = self.feeder_unit.pot_from_nid(nid)
-            getattr(self, "le_ml_%i" % pot).setText(str(round(mls * string_to_float(self.le_tank_level.text()), 1)))
+            mls = round(mls * string_to_float(self.le_tank_level.text()), 1)
+            getattr(self, "le_ml_%i" % pot).setText(str(mls))
 
     def reset(self):
         self.nutrients_added = False
         self.mix_stirred = False
         self.nutrients_stirred = False
+        self.ck_level.setChecked(True)
         for i in range(1, 9):
             getattr(self, "lbl_added_{}".format(i)).setText("")
 
@@ -3131,6 +3133,13 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         """ Displays the current pot levels. This is got from the feeder unit"""
         for i in range(1, 9):
             getattr(self, "lbl_pot_amount_{}".format(i)).setText(str(int(self.feeder_unit.get_pot_level(i))))
+            pl = self.feeder_unit.check_pot_level(i)
+            if pl == 2:
+                getattr(self, "lbl_pot_amount_{}".format(i)).setStyleSheet("background-color: red;  color: white;")
+            elif pl == 1:
+                getattr(self, "lbl_pot_amount_{}".format(i)).setStyleSheet("background-color: orange;  color: black;")
+            else:
+                getattr(self, "lbl_pot_amount_{}".format(i)).setStyleSheet("")
 
     def enable_nutrients(self, state=True):
         for i in range(1, 9):

@@ -78,6 +78,17 @@ class FeederUnit(QObject):
                               format(DB_FEEDER_POTS, mls, pot))
         self.pots[pot]['level'] -= mls
 
+    def check_pot_level(self, pot):
+        """ Checks the level in a pot
+            :returns 0= ok, 1= low, 2=empty, -1= Not in use """
+        if self.pots[pot]['name'] is None:
+            return -1
+        if self.pots[pot]['level'] <= self.pots[pot]['min']:
+            return 2
+        if self.pots[pot]['level'] <= self.pots[pot]['min'] * 2:
+            return 1    # Low
+        return 0
+
     def deduct_from_stock(self, nid, mls):
         self.db.execute_write("UPDATE {} SET current_level = current_level - {} WHERE nid = {} LIMIT 1".
                               format(DB_NUTRIENT_PROPERTIES, mls, nid))

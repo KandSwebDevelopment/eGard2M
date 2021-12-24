@@ -491,118 +491,116 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
     def check_stage(self, location):
         if self.area_controller.get_area_process(location) == 0:
             return
-            # next_stage_days = None
-        else:
-            if location == 1:
-                next_stage_days = self.area_controller.get_area_process(location).stage_days_remaining
-                if next_stage_days <= self.stage_change_warning_days:
-                    self.frmstagechange_1.setEnabled(True)
-                    ctrl = self.pbstageadvance_1
-                    ctrl_le = self.lestageinfo_1
-                    ctrl_advance = self.pb_advance_1
-                    # self.process_from_location(1)
-                    ctrl_le.setText(str(next_stage_days))  # + day + str(
-                    if next_stage_days > 1:
-                        ctrl_advance.setEnabled(True)
-                        ctrl.setEnabled(False)
-                        ctrl_le.setStyleSheet("background-color: white;  color: black;")
-                    elif next_stage_days == 0:
-                        ctrl_advance.setEnabled(False)
-                        ctrl.setEnabled(True)
-                        ctrl_le.setStyleSheet("background-color: Green;  color: black;")
-                    elif next_stage_days < 0:
-                        ctrl.setEnabled(False)
-                        ctrl_le.setStyleSheet("background-color: red;  color: white;")
-                        ctrl_advance.setEnabled(False)
-                else:
-                    self.frmstagechange_1.setEnabled(False)
-                    self.lestageinfo_1.setStyleSheet("background-color: white;  color: black;")
+        if location == 1:
+            next_stage_days = self.area_controller.get_area_process(location).stage_days_remaining
+            if next_stage_days <= self.stage_change_warning_days:
+                self.frmstagechange_1.setEnabled(True)
+                ctrl = self.pbstageadvance_1
+                ctrl_le = self.lestageinfo_1
+                ctrl_advance = self.pb_advance_1
+                # self.process_from_location(1)
+                ctrl_le.setText(str(next_stage_days))  # + day + str(
+                if next_stage_days > 1:
+                    ctrl_advance.setEnabled(True)
+                    ctrl.setEnabled(False)
+                    ctrl_le.setStyleSheet("background-color: white;  color: black;")
+                elif next_stage_days == 0:
+                    ctrl_advance.setEnabled(False)
+                    ctrl.setEnabled(True)
+                    ctrl_le.setStyleSheet("background-color: Green;  color: black;")
+                elif next_stage_days < 0:
+                    ctrl.setEnabled(False)
+                    ctrl_le.setStyleSheet("background-color: red;  color: white;")
+                    ctrl_advance.setEnabled(False)
+            else:
+                self.frmstagechange_1.setEnabled(False)
+                self.lestageinfo_1.setStyleSheet("background-color: white;  color: black;")
 
-            elif location == 2:
-                p = self.area_controller.get_area_process(location)
-                if p.stage_days_elapsed >= p.strain_shortest - 7:
-                    self.frmstagechange_2.setEnabled(True)
-                    x = 1
-                    p.check_stage()
-                    for w in p.strain_window:
-                        ctrl = getattr(self, "pb_pm_%i" % x)
+        elif location == 2:
+            p = self.area_controller.get_area_process(location)
+            if p.stage_days_elapsed >= p.strain_shortest - 7:
+                self.frmstagechange_2.setEnabled(True)
+                x = 1
+                p.check_stage()
+                for w in p.strain_window:
+                    ctrl = getattr(self, "pb_pm_%i" % x)
+                    ctrl.setText(str(x))
+                    flush_start = self.db.execute_single(
+                        "SELECT start FROM {} WHERE item = {}".format(DB_FLUSHING, x))
+                    if flush_start is not None:
+                        w = 444
+                    if x in self.area_controller.get_area_items(3):
+                        w = -10
+                    if w == -10:  # Item removed
+                        ctrl.setText("")
+                        ctrl.setEnabled(False)
+                        ctrl.setToolTip("")
+                    elif w == 999:   # Not ready
                         ctrl.setText(str(x))
-                        flush_start = self.db.execute_single(
-                            "SELECT start FROM {} WHERE item = {}".format(DB_FLUSHING, x))
-                        if flush_start is not None:
-                            w = 444
-                        if x in self.area_controller.get_area_items(3):
-                            w = -10
-                        if w == -10:  # Item removed
-                            ctrl.setText("")
-                            ctrl.setEnabled(False)
-                            ctrl.setToolTip("")
-                        elif w == 999:   # Not ready
-                            ctrl.setText(str(x))
-                            ctrl.setEnabled(True)
-                            name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
-                                                          "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
-                                                          .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
-                            ctrl.setToolTip(name)
-
-                        elif w < 0:
-                            ctrl.setEnabled(True)
-                            ctrl.setStyleSheet("background-color: Yellow;")
-                            name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
-                                                          "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
-                                                          .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
-                            ctrl.setToolTip("{} Due in {} days".format(name, w))
-                        elif w < 7:
-                            ctrl.setEnabled(True)
-                            ctrl.setStyleSheet("background-color: Green;")
-                            name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
-                                                          "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
-                                                          .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
-                            ctrl.setToolTip("{} Due plus {} days".format(name, w))
-                        elif 7 < w < 444:
-                            ctrl.setEnabled(True)
-                            ctrl.setStyleSheet("background-color: Orange;")
-                            name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
-                                                          "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
-                                                          .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
-                            ctrl.setToolTip("{} Over Due by {} days".format(name, w))
-                        elif w == 444:  # Item is flushing
-                            ctrl.setEnabled(True)
-                            ctrl.setStyleSheet("background-color: DodgerBlue;")
-                            name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
-                                                          "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
-                                                          .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
-                            df = (datetime.now().date() - flush_start).days + 1
-                            ctrl.setToolTip("Day {} flushing\n\r{}".format(df, name))
-
-                        x += 1
-                    # for x in range(1, 9):
-                    #     if p.strain_window[x] != 999:
-                    #         return
-                    #     ctrl = getattr(self, "pb_pm_%i" % x)
-                    #     ctrl.setEnabled(False)
-                    #     ctrl.setText("")
-                    #     ctrl.setStyleSheet("")
-                else:
-                    self.frmstagechange_2.setEnabled(False)
-                    return None
-
-            elif location == 3:
-                if self.area_controller.area_has_process(3):
-                    self.frmstagechange_3.setEnabled(True)
-                    rows = self.db.execute('SELECT item, started FROM {}'.format(DB_PROCESS_DRYING))
-                    if len(rows) == 0:
-                        self.frmstagechange_3.setEnabled(False)
-                        return
-                    for row in rows:
-                        getattr(self, "pb_pm2_%i" % row[0]).setText(str(row[0]))
-                        getattr(self, "pb_pm2_%i" % row[0]).setEnabled(True)
-                        days = (datetime.now().date() - row[1]).days
+                        ctrl.setEnabled(True)
                         name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
                                                       "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
-                                                      .format(DB_STRAINS, DB_PROCESS_STRAINS,
-                                                              self.area_controller.areas_pid[3], row[0]))
-                        getattr(self, "pb_pm2_%i" % row[0]).setToolTip("{}\r\nDay {} drying".format(name, days))
+                                                      .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
+                        ctrl.setToolTip(name)
+
+                    elif w < 0:
+                        ctrl.setEnabled(True)
+                        ctrl.setStyleSheet("background-color: Yellow;")
+                        name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
+                                                      "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
+                                                      .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
+                        ctrl.setToolTip("{} Due in {} days".format(name, w))
+                    elif w < 7:
+                        ctrl.setEnabled(True)
+                        ctrl.setStyleSheet("background-color: Green;")
+                        name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
+                                                      "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
+                                                      .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
+                        ctrl.setToolTip("{} Due plus {} days".format(name, w))
+                    elif 7 < w < 444:
+                        ctrl.setEnabled(True)
+                        ctrl.setStyleSheet("background-color: Orange;")
+                        name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
+                                                      "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
+                                                      .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
+                        ctrl.setToolTip("{} Over Due by {} days".format(name, w))
+                    elif w == 444:  # Item is flushing
+                        ctrl.setEnabled(True)
+                        ctrl.setStyleSheet("background-color: DodgerBlue;")
+                        name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
+                                                      "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
+                                                      .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
+                        df = (datetime.now().date() - flush_start).days + 1
+                        ctrl.setToolTip("Day {} flushing\n\r{}".format(df, name))
+
+                    x += 1
+                # for x in range(1, 9):
+                #     if p.strain_window[x] != 999:
+                #         return
+                #     ctrl = getattr(self, "pb_pm_%i" % x)
+                #     ctrl.setEnabled(False)
+                #     ctrl.setText("")
+                #     ctrl.setStyleSheet("")
+            else:
+                self.frmstagechange_2.setEnabled(False)
+                return None
+
+        elif location == 3:
+            if self.area_controller.area_has_process(3):
+                self.frmstagechange_3.setEnabled(True)
+                rows = self.db.execute('SELECT item, started FROM {}'.format(DB_PROCESS_DRYING))
+                if len(rows) == 0:
+                    self.frmstagechange_3.setEnabled(False)
+                    return
+                for row in rows:
+                    getattr(self, "pb_pm2_%i" % row[0]).setText(str(row[0]))
+                    getattr(self, "pb_pm2_%i" % row[0]).setEnabled(True)
+                    days = (datetime.now().date() - row[1]).days
+                    name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
+                                                  "ps.strain_id AND ps.process_id = {} AND ps.item = {}"
+                                                  .format(DB_STRAINS, DB_PROCESS_STRAINS,
+                                                          self.area_controller.areas_pid[3], row[0]))
+                    getattr(self, "pb_pm2_%i" % row[0]).setToolTip("{}\r\nDay {} drying".format(name, days))
 
     def check_light(self):
         """ This checks both area processes to see if light should be on or off. If a change is detected it sends

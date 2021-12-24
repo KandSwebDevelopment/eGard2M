@@ -428,6 +428,13 @@ class Ui_DialogFeederManualMix(object):
         self.te_log.setReadOnly(True)
         self.te_log.setTextInteractionFlags(QtCore.Qt.NoTextInteraction)
         self.te_log.setObjectName("te_log")
+        self.ck_level = QtWidgets.QCheckBox(DialogFeederManualMix)
+        self.ck_level.setGeometry(QtCore.QRect(150, 290, 70, 17))
+        self.ck_level.setChecked(True)
+        self.ck_level.setObjectName("ck_level")
+        self.pb_recal = QtWidgets.QPushButton(DialogFeederManualMix)
+        self.pb_recal.setGeometry(QtCore.QRect(230, 290, 75, 23))
+        self.pb_recal.setObjectName("pb_recal")
 
         self.retranslateUi(DialogFeederManualMix)
         QtCore.QMetaObject.connectSlotsByName(DialogFeederManualMix)
@@ -508,6 +515,8 @@ class Ui_DialogFeederManualMix(object):
         self.label_38.setText(_translate("DialogFeederManualMix", "ml"))
         self.label_39.setText(_translate("DialogFeederManualMix", "ml"))
         self.pb_nutrients.setText(_translate("DialogFeederManualMix", "Nutrients"))
+        self.ck_level.setText(_translate("DialogFeederManualMix", "Level"))
+        self.pb_recal.setText(_translate("DialogFeederManualMix", "Re-Cal"))
 
 
 if __name__ == "__main__":
