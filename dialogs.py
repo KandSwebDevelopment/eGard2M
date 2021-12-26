@@ -1918,13 +1918,13 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         else:
             self.pb_delete.setEnabled(False)
         self.gb_nutrients.setEnabled(True)
-        if m == 0 and self.feed_control.feeds[self.area].get_has_flush():
+        if m == 0 and self.feed_control.feeds[self.area].get_has_flush():   # Flush tab
             self.gb_nutrients.setEnabled(False)
             for item in range(1, 9):
                 getattr(self, "ck_fed_%i" % (item + 10)).setEnabled(False)
             for item in self.feed_control.feeds[self.area].items_flushing:
                 getattr(self, "ck_fed_%i" % (item + 10)).setEnabled(True)
-        elif m > 0 and self.feed_control.feeds[self.area].get_has_flush():
+        elif m > 0 and self.feed_control.feeds[self.area].get_has_flush():  # Mix tab after flush tab
             for item in range(1, 9):
                 getattr(self, "ck_fed_%i" % (item + 10)).setEnabled(True)
             for item in self.feed_control.feeds[self.area].items_flushing:
@@ -2007,7 +2007,9 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
                 self.feed_control.add_item(self.area, self.mix_number, item)
                 print(item)
             else:
-                if self.mix_number < self.feed_control.get_mix_count(self.area):
+                if self.mix_number == 1 and self.feed_control.feeds[self.area].get_has_flush():
+                    self.feed_control.remove_item(self.area, item)
+                elif self.mix_number < self.feed_control.get_mix_count(self.area):
                     self.feed_control.add_item(self.area, self.mix_number + 1, item)
                 else:
                     self.feed_control.remove_item(self.area, item)
@@ -2223,7 +2225,7 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         elif cf == 2:
             getattr(self, "ck_fed_%i" % (item + 10)).setStyleSheet("background-color: Blue;")
         elif cf == 1:
-            getattr(self, "ck_fed_%i" % (item + 10)).setStyleSheet(None)
+            getattr(self, "ck_fed_%i" % (item + 10)).setStyleSheet(BACKGROUND_DEFAULT)
 
     def change_use_for(self):
         self.feed_control.feeds[self.area].change_cycles(self.mix_number, self.cb_feeds.currentData())
@@ -2706,6 +2708,7 @@ class DialogWaterTank(QDialog, Ui_DialogWaterTank):
 
 
 class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
+
     def __init__(self, parent):
         """
 

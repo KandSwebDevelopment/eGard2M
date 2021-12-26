@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1434, 945)
+        MainWindow.resize(1434, 845)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
         self.horizontalLayout = QtWidgets.QHBoxLayout(self.centralwidget)
@@ -126,6 +126,8 @@ class Ui_MainWindow(object):
         self.actionWater_Tanks.setObjectName("actionWater_Tanks")
         self.actionMix_Tank = QtWidgets.QAction(MainWindow)
         self.actionMix_Tank.setObjectName("actionMix_Tank")
+        self.actionReload = QtWidgets.QAction(MainWindow)
+        self.actionReload.setObjectName("actionReload")
         self.menuEngineer.addAction(self.actionI_O_Data)
         self.menuEngineer.addAction(self.actionSend_Command)
         self.menuEngineer.addSeparator()
@@ -157,6 +159,8 @@ class Ui_MainWindow(object):
         self.menuProcess.addSeparator()
         self.menuProcess.addAction(self.menuReports.menuAction())
         self.menuProcess.addAction(self.actionPatterns)
+        self.menuProcess.addSeparator()
+        self.menuProcess.addAction(self.actionReload)
         self.menuFeeder_Calibration.addAction(self.actionNutrient_Pumps)
         self.menuFeeder_Calibration.addAction(self.actionWater_Tanks)
         self.menuFeeder_Calibration.addAction(self.actionMix_Tank)
@@ -241,6 +245,7 @@ class Ui_MainWindow(object):
         self.actionNutrient_Pumps.setText(_translate("MainWindow", "Nutrient Pumps"))
         self.actionWater_Tanks.setText(_translate("MainWindow", "Water Tanks"))
         self.actionMix_Tank.setText(_translate("MainWindow", "Mix Tank"))
+        self.actionReload.setText(_translate("MainWindow", "Reload"))
 
 
 if __name__ == "__main__":

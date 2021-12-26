@@ -254,7 +254,7 @@ class FeedClass(QObject):
                 self.items_flushing.append(row[0])
             if len(self.items_flushing) > 0:
                 self.area_data["mixes"][1] = {}
-                self.area_data["mixes"][1]["items"] = self.items_flushing
+                self.area_data["mixes"][1]["items"] = self.items_flushing.copy()
                 self.area_data["mixes"][1]["lpp"] = self.feed_litres
                 self.area_data["mixes"][1]["base id"] = WATER_ONLY_IDX
                 self.area_data["mixes"][1]["cycles"] = 7

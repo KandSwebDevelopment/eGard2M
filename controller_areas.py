@@ -136,9 +136,7 @@ class AreaController(QObject):
                     self.main_window.coms_interface.send_switch(OUT_LIGHT_1 - 1 + area, 0, MODULE_IO)
 
         self.reload_process(area)
-
         self.load_sensors(area)
-
         self.output_controller.load_outputs(area)
 
     def load_processes(self):

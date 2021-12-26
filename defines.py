@@ -68,6 +68,7 @@ WARNING_BG = "orange"
 WARNING_FG = "black"
 INFO_BG = "limegreen"
 INFO_FG = "black"
+BACKGROUND_DEFAULT = "background-color: #f0f0f0;"
 CRITICAL_FG_QT = QColor(CRITICAL_FG)
 CRITICAL_BG_QT = QColor(CRITICAL_BG)    # .lighter(130)
 ERROR_FG_QT = QColor(ERROR_FG)

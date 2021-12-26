@@ -128,6 +128,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionManager.triggered.connect(lambda: self.wc.show(DialogProcessManager(self.main_panel)))
         self.actionJournals.triggered.connect(lambda: self.wc.show(DialogProcessLogs(self)))
         self.actionPatterns.triggered.connect(lambda: self.wc.show(DialogPatternMaker(self)))
+        self.actionReload.triggered.connect(self.reload_processes)
 
         # Feeding
         self.actionNutrient_Pumps.triggered.connect(lambda: self.wc.show(DialogNutrientPumpCalibrate(self)))
@@ -151,6 +152,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def reconnect(self):
         self.db.reconnect()
         self.coms_interface.reconnect()
+
+    def reload_processes(self):
+        self.area_controller.reload_area(1)
+        self.area_controller.reload_area(2)
 
     @pyqtSlot(int, int, int, int, name="updateQueStatus")
     def update_que(self, pri, relay, norm, lock_status):

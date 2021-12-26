@@ -286,9 +286,6 @@ class Ui_DialogFeederManualMix(object):
         self.frame_2.setFrameShape(QtWidgets.QFrame.Box)
         self.frame_2.setFrameShadow(QtWidgets.QFrame.Raised)
         self.frame_2.setObjectName("frame_2")
-        self.pb_feed_continue = QtWidgets.QPushButton(self.frame_2)
-        self.pb_feed_continue.setGeometry(QtCore.QRect(360, 70, 75, 23))
-        self.pb_feed_continue.setObjectName("pb_feed_continue")
         self.pb_feed = QtWidgets.QPushButton(self.frame_2)
         self.pb_feed.setGeometry(QtCore.QRect(360, 40, 75, 23))
         self.pb_feed.setObjectName("pb_feed")
@@ -435,6 +432,9 @@ class Ui_DialogFeederManualMix(object):
         self.pb_recal = QtWidgets.QPushButton(DialogFeederManualMix)
         self.pb_recal.setGeometry(QtCore.QRect(230, 290, 75, 23))
         self.pb_recal.setObjectName("pb_recal")
+        self.pb_dump = QtWidgets.QPushButton(DialogFeederManualMix)
+        self.pb_dump.setGeometry(QtCore.QRect(470, 540, 75, 23))
+        self.pb_dump.setObjectName("pb_dump")
 
         self.retranslateUi(DialogFeederManualMix)
         QtCore.QMetaObject.connectSlotsByName(DialogFeederManualMix)
@@ -496,7 +496,6 @@ class Ui_DialogFeederManualMix(object):
         self.label_30.setText(_translate("DialogFeederManualMix", "L"))
         self.pb_flush_2.setText(_translate("DialogFeederManualMix", "Area 2"))
         self.pb_flush_1.setText(_translate("DialogFeederManualMix", "Area 1"))
-        self.pb_feed_continue.setText(_translate("DialogFeederManualMix", "Continue"))
         self.pb_feed.setText(_translate("DialogFeederManualMix", "Feed"))
         self.label_31.setText(_translate("DialogFeederManualMix", "S"))
         self.label_29.setText(_translate("DialogFeederManualMix", "L"))
@@ -517,6 +516,7 @@ class Ui_DialogFeederManualMix(object):
         self.pb_nutrients.setText(_translate("DialogFeederManualMix", "Nutrients"))
         self.ck_level.setText(_translate("DialogFeederManualMix", "Level"))
         self.pb_recal.setText(_translate("DialogFeederManualMix", "Re-Cal"))
+        self.pb_dump.setText(_translate("DialogFeederManualMix", "Dump"))
 
 
 if __name__ == "__main__":
