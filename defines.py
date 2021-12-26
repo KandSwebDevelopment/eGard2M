@@ -384,6 +384,7 @@ NWC_CONFIG = "config"               # A generic command to get the other unit to
 NWC_FEED = "feed"                   # Manual feed done (location)
 NWC_FEED_DATE = "feed date"                 # A feed has been changed, send location
 NWC_FEED_ADJUST = "feed adjust"     # Nutrient changes This covers both nutrient change and litres change, Send location
+NWC_FEED_ITEMS = "feed items"            # Mix feed items changed, send area
 NWC_FEEDER_POT_TOP_UP = "pot top up"     # Changes are in db so just reload section
 NWC_FEEDER_NUT_TOP_UP = "nut top up"     # Changes are in db so just reload section
 NWC_FEEDER_STATUS = "feeder status"

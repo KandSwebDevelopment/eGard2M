@@ -1871,9 +1871,13 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         self.cb_mute.addItem("1 Hour", 60)
         self.cb_mute.addItem("1.5 Hours", 90)
         self.cb_mute.currentIndexChanged.connect(self.change_mute)
+        self.change_mix_tab()
 
     def eventFilter(self, source, event):
         print("Event ", event.type())
+        if source is self.lbl_next and self.feed_control.feeds[self.area].get_has_flush():
+            return QWidget.eventFilter(self, source, event)
+
         if event.type() == QtCore.QEvent.Enter and source is self.lbl_next:
             self.holding = self.lw_recipe_1.styleSheet()
             self.holding_1 = self.te_water_1.styleSheet()
@@ -1913,6 +1917,21 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
             self.pb_delete.setEnabled(True)
         else:
             self.pb_delete.setEnabled(False)
+        self.gb_nutrients.setEnabled(True)
+        if m == 0 and self.feed_control.feeds[self.area].get_has_flush():
+            self.gb_nutrients.setEnabled(False)
+            for item in range(1, 9):
+                getattr(self, "ck_fed_%i" % (item + 10)).setEnabled(False)
+            for item in self.feed_control.feeds[self.area].items_flushing:
+                getattr(self, "ck_fed_%i" % (item + 10)).setEnabled(True)
+        elif m > 0 and self.feed_control.feeds[self.area].get_has_flush():
+            for item in range(1, 9):
+                getattr(self, "ck_fed_%i" % (item + 10)).setEnabled(True)
+            for item in self.feed_control.feeds[self.area].items_flushing:
+                getattr(self, "ck_fed_%i" % (item + 10)).setEnabled(False)
+        else:
+            for item in range(1, 9):
+                getattr(self, "ck_fed_%i" % (item + 10)).setEnabled(True)
 
     def add_mix_tab(self):
         count = self.feed_control.get_mix_count(self.area)
@@ -1944,12 +1963,8 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         self.feed_control.feeds[self.area].delete_mix(self.mix_number)
         self.feed_control.feeds[self.area].load_mixes()
         self.load(self.area)
-        # m = self.tw_mixes.currentIndex()
-        # self.tw_mixes.setCurrentIndex(0)
-        # self.tw_mixes.removeTab(m)
-        # for i in range(self.mix_number, self.feed_control.feeds[self.area].get_mix_count()):
-        #     self.tw_mixes.setTabText(i, "Feed {}".format(i))
         self.is_changed = True
+        self.main_panel.update_next_feeds()
 
     def store_nutrient(self):
         nid = self.cb_nutrients_1.currentData()
@@ -2036,7 +2051,10 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         count = self.feed_control.get_mix_count(location)
         self.tw_mixes.clear()
         for t in range(1, count + 1):
-            self.tw_mixes.addTab(QWidget(), "Feed {}".format(t))
+            if t == 1 and self.feed_control.feeds[self.area].get_has_flush() > 0:
+                self.tw_mixes.addTab(QWidget(), "Flush")
+            else:
+                self.tw_mixes.addTab(QWidget(), "Feed {}".format(t))
 
         self.display_mix(self.mix_number)
 
@@ -2743,6 +2761,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.pb_fill_2.pressed.connect(lambda: self.fill_mix(2))  # Fill mix from tank 2
         self.pb_drain.pressed.connect(self.drain)
         self.pb_feed.clicked.connect(self.start_feed)
+        self.pb_recal.clicked.connect(self.calculate_nutrients)
 
         self.main_window.coms_interface.update_feeder_unit.connect(self.fu_update)
         self.has_focus = True
@@ -2924,6 +2943,10 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
     def calculate_nutrients(self):
         if self.recipe == WATER_ONLY_IDX or self.recipe is None:
             return
+        if self.ck_level.isChecked():
+            level = string_to_float(self.le_tank_level.text())
+        else:
+            level = string_to_float(self.le_fill_to.text())
         for i in self.recipe:   # i=[nid, mls]
             # print(i)
             nid = i[0]
@@ -2931,7 +2954,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
                 break
             mls = i[1]
             pot = self.feeder_unit.pot_from_nid(nid)
-            mls = round(mls * string_to_float(self.le_tank_level.text()), 1)
+            mls = round(mls * level, 1)
             getattr(self, "le_ml_%i" % pot).setText(str(mls))
 
     def reset(self):

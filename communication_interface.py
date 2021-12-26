@@ -391,6 +391,7 @@ class CommunicationInterface(QObject):
         elif command == NWC_FEED_DATE or \
                 command == NWC_FAN_PID or \
                 command == NWC_FEED or \
+                command == NWC_FEED_ITEMS or \
                 command == NWC_PROCESS_MIX_CHANGE or \
                 command == NWC_PROCESS_FEED_MODE or \
                 command == NWC_SWITCH_REQUEST or \
@@ -625,6 +626,7 @@ class CommunicationInterface(QObject):
                 self.thread_udp_client.start()
 
     def relay_command(self, command):
+        """ Relays a preformatted command"""
         if command == "":
             return
         self.stack_relay(command)

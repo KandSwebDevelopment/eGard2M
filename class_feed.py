@@ -237,9 +237,12 @@ class FeedClass(QObject):
                     self.feed_litres_next = self.feed_litres
         return self.recipe_next
 
+    def get_has_flush(self):
+        return len(self.items_flushing)
+
     def load_mixes(self):
-        """
-        This loads all mixes (different feeds) for the current area
+        """ This loads all mixes (different feeds) for the current area.
+            If any items are flushing to builds feed 1 as flush
         :return: None
         :rtype: None
         """
@@ -497,7 +500,11 @@ class FeedClass(QObject):
         """ This saves the following for an area mix
             Freq, lpp, cycles, items and base id
             This is either inserted or updated in the process feed adjustments table"""
+        if len(self.items_flushing) > 0 and mix_num == 1:
+            return      # Flush is not saved to db
         data = self.area_data['mixes'][mix_num]
+        if len(self.items_flushing) > 0:    # If flushing mix 1 is the flush which is not stored in db so -1 the mix_num
+            mix_num -= 1
         count = self.db.execute_single('SELECT COUNT(area) FROM {} WHERE area = {} AND mix_num = {}'.
                                        format(DB_PROCESS_FEED_ADJUSTMENTS, self.area, mix_num))
         if count > 1:
@@ -505,9 +512,10 @@ class FeedClass(QObject):
         items = dict2str(data['items'])
         if count == 0:
             # Insert into db
-            sql = 'INSERT INTO {} (area, mix_num, freq, lpp, cycles, items, base_id) VALUES ({}, {}, {}, {}, {}, "{}", {})'.\
-                format(DB_PROCESS_FEED_ADJUSTMENTS, self.area, mix_num, self.frequency, data['lpp'],
-                       data['cycles'], items, data['base id'])
+            sql = 'INSERT INTO {} (area, mix_num, freq, lpp, cycles, items, base_id) VALUES ' \
+                  '({}, {}, {}, {}, {}, "{}", {})'.format(
+                   DB_PROCESS_FEED_ADJUSTMENTS, self.area, mix_num, self.frequency, data['lpp'],
+                   data['cycles'], items, data['base id'])
         else:
             # Update db
             sql = 'UPDATE {} SET freq = {}, lpp = {}, cycles = {}, items = "{}", base_id = {} WHERE area = {} AND mix_num = {} LIMIT 1'.\
@@ -517,18 +525,22 @@ class FeedClass(QObject):
 
     def save_mix_adjustment(self, mix_num):
         """ This saves the recipe for a mix in the mixes table"""
+        if len(self.items_flushing) > 0:    # If flushing mix 1 is the flush which is not stored in db so -1 the mix_num
+            mix_num_db = mix_num - 1
+        else:
+            mix_num_db = mix_num
         # Delete any entries for this. Trust me this is best way
         self.db.execute_write('DELETE FROM {} WHERE area = {} AND mix_num = {}'.
-                              format(DB_PROCESS_MIXES, self.area, mix_num))
+                              format(DB_PROCESS_MIXES, self.area, mix_num_db))
         # Insert into db
         if self.area_data['mixes'][mix_num]['recipe'] == WATER_ONLY_IDX:
             sql = 'INSERT INTO {} (area, mix_num, nid, ml) VALUES ({}, {}, {}, {})'. \
-                format(DB_PROCESS_MIXES, self.area, mix_num, WATER_ONLY_IDX, 0)
+                format(DB_PROCESS_MIXES, self.area, mix_num_db, WATER_ONLY_IDX, 0)
             self.db.execute_write(sql)
             return
         for r in self.area_data['mixes'][mix_num]['recipe']:
             sql = 'INSERT INTO {} (area, mix_num, nid, ml) VALUES ({}, {}, {}, {})'. \
-                format(DB_PROCESS_MIXES, self.area, mix_num, r[0], r[1])
+                format(DB_PROCESS_MIXES, self.area, mix_num_db, r[0], r[1])
             self.db.execute_write(sql)
 
     def get_recipe_status(self):
@@ -651,13 +663,9 @@ class FeedClass(QObject):
         if len(mixes) == 1:
             # Only 1 mix left so make sure all items are selected
             self.area_data["mixes"][1]['items'] = self.get_items(1)
-        # if mix_num < self.get_mix_count():
-        #     # Its not the last one so move rest up
-        #     for mix_n in mixes.copy():
-        #         if mix_n == mix_num:
-        #             self.copy_mix_to_mix(mix_n + 1 if mix_n + 1 <= self.get_mix_count() else self.get_mix_count(),
-        #                                  mix_n)
-        #     mixes.pop(self.get_mix_count())
+
+        if len(self.items_flushing) > 0:    # If flushing mix 1 is the flush which is not stored in db so -1 the mix_num
+            mix_num -= 1
         self.db.execute_write('DELETE FROM {} WHERE area = {} AND mix_num ={}'.
                               format(DB_PROCESS_MIXES, self.area, mix_num))
         self.db.execute_write('DELETE FROM {} WHERE area = {} AND mix_num ={}'.

@@ -1,7 +1,7 @@
 import collections
 from datetime import datetime, timedelta
 
-from PyQt5.QtCore import QThread, pyqtSignal, QTimer
+from PyQt5.QtCore import QThread, pyqtSignal, QTimer, QObject
 from PyQt5.QtWidgets import QMessageBox
 
 from class_feed import FeedClass
@@ -15,7 +15,7 @@ def list_to_str(items) -> str:
     return i[:len(i) - 1]      # Remove last comma
 
 
-class FeedControl(QThread):
+class FeedControl(QObject):
     area_days = ...  # type: list[int]
     update_status_feeder = pyqtSignal(int)
     update_status_nutrients = pyqtSignal(int)
@@ -23,7 +23,7 @@ class FeedControl(QThread):
     fault = pyqtSignal(int, int, int)  # Fault source code, Fault code, tank number
 
     def __init__(self, parent):
-        QThread.__init__(self, parent)
+        QObject.__init__(self, parent)
         self.main_window = parent
         self.db = self.main_window.db
         self.feeds = collections.defaultdict(FeedClass)
@@ -41,9 +41,9 @@ class FeedControl(QThread):
         for row in rows:
             self.nutrients[row[0]] = row[1]
 
-        self.start_up()
+        self.load()
 
-    def start_up(self):
+    def load(self):
         for area in range(1, 3):
             p = self.main_window.area_controller.get_area_process(area)
             if p != 0:
@@ -221,6 +221,7 @@ class FeedControl(QThread):
     def add_item(self, area, mix_num, item):
         """ This adds an item to mix num. It removes the item from any other mixes"""
         self.feeds[area].add_item(mix_num, item)
+        self.main_window.coms_interface.relay_send(NWC_FEED_ITEMS, area)
 
     def remove_item(self, area, item):
         """ This removes an item from all mixes"""
@@ -247,7 +248,7 @@ class FeedControl(QThread):
                 dt = dtt.replace(hour=int(ft[0]), minute=int(ft[1]))
             else:
                 dt = f_date
-            if datetime.now() > (dt + timedelta(hours=self.feed_time_tolerance)):
+            if datetime.now().day > dt.day:
                 action_flag = 1  # 0= On time , 2 = Early, 1 = Late
             elif datetime.now() < (dt - timedelta(hours=self.feed_time_tolerance)):
                 action_flag = 2

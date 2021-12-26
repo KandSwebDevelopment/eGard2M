@@ -1239,6 +1239,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.main_window.feed_controller.reload_area(data[0])
         elif cmd == NWC_FEED_DATE:
             self.area_controller.output_controller.water_heater_update_info()
+        elif cmd == NWC_FEED_ITEMS:
+            self.feed_controller.feeds[data[0]].load_mixes()
         elif cmd == NWC_FEED:
             self.feed_controller.feeds[data[0]].load_feed_date()
             self.area_controller.output_controller.water_heater_update_info()
