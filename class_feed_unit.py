@@ -111,21 +111,21 @@ class FeederUnit(QObject):
             else for area 1 and 2 feed_flush, 1 = Feed, 2 = Flush
             state will be either ON or OFF """
         if area == 0:   # Manual
-            self.coms.send_data(CMD_VALVE, True, MODULE_FU, 5, VALVE_OPEN)
+            self.coms.send_data(CMD_VALVE, True, MODULE_FU, 5, state)
             self.valve_open = 5
         elif area == 1:
             if feed_flush == 1:
-                self.coms.send_data(CMD_VALVE, True, MODULE_FU, 6, VALVE_OPEN)
+                self.coms.send_data(CMD_VALVE, True, MODULE_FU, 6, state)
                 self.valve_open = 6
-            else:
-                self.coms.send_data(CMD_VALVE, True, MODULE_FU, 8, VALVE_OPEN)
+            elif feed_flush == 2:
+                self.coms.send_data(CMD_VALVE, True, MODULE_FU, 8, state)
                 self.valve_open = 8
         elif area == 2:
-            if feed_flush == 1:
-                self.coms.send_data(CMD_VALVE, True, MODULE_FU, 7, VALVE_OPEN)
+            if feed_flush == 1:     # Feed
+                self.coms.send_data(CMD_VALVE, True, MODULE_FU, 7, state)
                 self.valve_open = 7
-            else:
-                self.coms.send_data(CMD_VALVE, True, MODULE_FU, 9, VALVE_OPEN)
+            elif feed_flush == 2:
+                self.coms.send_data(CMD_VALVE, True, MODULE_FU, 9, state)
                 self.valve_open = 9
 
     def set_feed_valves(self, area, feed_flush, state):

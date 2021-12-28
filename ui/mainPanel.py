@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainPanel(object):
     def setupUi(self, MainPanel):
         MainPanel.setObjectName("MainPanel")
-        MainPanel.resize(971, 1046)
+        MainPanel.resize(900, 1046)
         self.pushButton = QtWidgets.QPushButton(MainPanel)
         self.pushButton.setGeometry(QtCore.QRect(670, 954, 75, 23))
         self.pushButton.setObjectName("pushButton")

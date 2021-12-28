@@ -28,7 +28,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.sub = self.main_window.mdiArea.addSubWindow(self)
         self.wc = self.main_window.wc
         self.master_mode = self.main_window.master_mode
-        self.sub.setMinimumSize(1100, 850)
+        self.sub.setMinimumSize(970, 500)
         self.sub.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint | QtCore.Qt.FramelessWindowHint)
         self.setGeometry(0, 0, self.width(), self.height())
         # self.main_window.resize(self.width(), 1000)
@@ -46,6 +46,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.lbl_soil_2.installEventFilter(self)
         self.lbl_fill_tank_1.installEventFilter(self)
         self.lbl_fill_tank_2.installEventFilter(self)
+        self.lbl_feed_mode_1.installEventFilter(self)
+        self.lbl_feed_mode_2.installEventFilter(self)
 
         self.tesstatus_2.viewport().installEventFilter(self)
         self.tesstatus_3.viewport().installEventFilter(self)
@@ -131,6 +133,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 self.wc.show(DialogSensorSettings(self, 1, 11))
             elif source is self.lbl_soil_1:
                 self.wc.show(DialogSoilSensors(self, 1))
+            elif source is self.lbl_feed_mode_1:
+                pass
 
             # Area 2
             elif source is self.lbl_fan_2:
@@ -150,6 +154,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 self.wc.show(DialogSensorSettings(self, 2, 13))
             elif source is self.lbl_soil_2:
                 self.wc.show(DialogSoilSensors(self, 2))
+            elif source is self.lbl_feed_mode_2:
+                pass
 
             # Area 3, drying
             elif source is self.le_stage_3:

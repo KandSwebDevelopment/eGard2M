@@ -155,16 +155,12 @@ CMD_GET_FAN_SENSOR = "get fan"       # Get sensor number for fan current set in 
 CMD_FAN_SPEED = "speed"                 # Set fan speed  fan number, speed
 
 # Feeder Unit
-CMD_FU_BOOT = "BOOT_FU"          # IO Unit has rebooted
-CMD_SWITCH_TIMED = "sw_timed"
 CMD_CANCEL_SW = "cancel_sw"
+COM_DRAIN_END = "drain_end"
+CMD_FU_BOOT = "BOOT_FU"          # IO Unit has rebooted
 COM_FU_RESTART = "reboot"
 COM_FEEDER_STATUS = "feeder status"
-CMD_VALVE = "valve"                 # Operate servo valve
-COM_SERVO_POS = "servo_pos"             # Get servo pos, send servo number
-COM_SERVO_REPORT = "report_servos"      # Get position of all 9 servo valves
-COM_SERVOS_CLOSE = "close_all"          # Closes All servos
-CMD_VALVE_CLUSTER = "cluster"
+COM_FILL_END = "fill_end"
 COM_MIX_READ_LEVEL = "read_scale"
 COM_MIX_FILL = "mix_fill"               # Fill mix tank to required level. Send required level in millilitres
 COM_MIX_TARE = "tare_1"
@@ -180,13 +176,18 @@ COM_MIX_DISPENSE = "mix_dispense"       # Pumps out from mix tank required amoun
 COM_MIX_DISPENSE_END = "mix_dispense_end"       # Received only, indicates mix dispense is finished
 COM_MIX_DISPENSE_STOP = "stop_dispense"
 COM_MIX_EMPTY = "empty_mix"             # Empty's mix tank
+COM_SERVO_POS = "servo_pos"             # Get servo pos, send servo number
+COM_SERVO_REPORT = "report_servos"      # Get position of all 9 servo valves
+COM_SERVOS_CLOSE = "close_all"          # Closes All servos
+COM_STOP_DRAIN = "stop_drain"
+COM_STOP_FILL = "stop_fill"
+CMD_SWITCH_TIMED = "sw_timed"
 COM_TANK_LEVEL = "tank_level"           # Request water tank level, send tank number
 COM_TANK_FILL = "fill_tank"             # Fill water tank to required level. Send tank number and required Reading
-COM_STOP_FILL = "stop_fill"
-COM_FILL_END = "fill_end"
 COM_TANK_DRAIN = "tank_drain"           # Drain tank, send tank number and required reading
-COM_STOP_DRAIN = "stop_drain"
-COM_DRAIN_END = "drain_end"
+COM_TRAY_POS = "tray_pos"               # Tray positions
+CMD_VALVE_CLUSTER = "cluster"
+CMD_VALVE = "valve"                 # Operate servo valve
 
 # DE Module
 COM_WATTS = "watts"
