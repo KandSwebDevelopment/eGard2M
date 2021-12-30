@@ -2751,6 +2751,8 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.soak_time_remaining = 0
         self.log_text = ""
         self.fill_from_tank = 0     # The water tank being used to fill mix tank
+        self.fill_from_both = False     # The mix tank will be filled using both water tanks
+        self.fill_to = 0            # The level required in mix tank
         self.dispense_level = 0     # The last leve sent to mix dispense. Used by pause to resume
 
         self.feed_controller = self.main_window.feed_controller
@@ -2791,7 +2793,9 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.pb_pump_8.pressed.connect(lambda: self.dispense(8))
         self.pb_add_all.pressed.connect(self.add_all)
         self.pb_read_water.clicked.connect(self.read_water)
-        self.le_fill_to.editingFinished.connect(self.check_tanks)
+        self.le_fill_to.editingFinished.connect(self.check_levels)
+        self.ck_tank_1.clicked.connect(self.check_tanks)
+        self.ck_tank_2.clicked.connect(self.check_tanks)
 
         #         self.my_parent.coms_interface.send_data(COM_SCALES_POWER, True, MODULE_IO, 1)
 
@@ -2883,13 +2887,49 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
             # self.controls_update(False)
 
     def check_tanks(self):
-        req = string_to_float(self.le_fill_to.text())
-        if self.water_control.get_current_level(2) >= req:
-            self.rb_use_tank_2.setChecked(True)
-            self.fill_from_tank = 2
-        else:
+        self.ck_tank_1.blockSignals(True)
+        self.ck_tank_2.blockSignals(True)
+        self.fill_from_both = False
+        if self.ck_tank_1.isChecked():
             self.fill_from_tank = 1
-            self.rb_use_tank_1.setChecked(True)
+        if self.ck_tank_2.isChecked():
+            self.fill_from_tank = 2
+            if self.ck_tank_1.isChecked():
+                self.fill_from_both = True
+        self.ck_tank_1.blockSignals(False)
+        self.ck_tank_2.blockSignals(False)
+
+    def check_levels(self):
+        self.ck_tank_1.blockSignals(True)
+        self.ck_tank_2.blockSignals(True)
+        req = string_to_float(self.le_fill_to.text())
+        if self.water_control.get_current_level(2) >= req:  # Has tank 2 enough
+            self.ck_tank_1.setChecked(False)
+            self.ck_tank_2.setChecked(True)
+            self.fill_from_both = False
+            self.fill_from_tank = 2
+        elif self.water_control.get_current_level(1) >= req:  # Has tank 1 enough
+            self.fill_from_tank = 1
+            self.fill_from_both = False
+            self.ck_tank_1.setChecked(True)
+            self.ck_tank_2.setChecked(False)
+        elif self.water_control.get_current_level(1) + self.water_control.get_current_level(2) < req:   # Not enough in both
+            self.msg.setText("There is insufficient water in the two tanks to fill to {}".format(
+               self.le_fill_to.text()))
+            self.msg.setWindowTitle("Error")
+            self.msg.setStandardButtons(QMessageBox.Cancel)
+            self.msg.exec_()
+        else:
+            self.msg.setText("Both tanks will be used")
+            self.msg.setWindowTitle("Information")
+            self.msg.setStandardButtons(QMessageBox.Ok)
+            self.msg.exec_()
+            self.fill_from_tank = 2
+            self.fill_from_both = True
+            self.ck_tank_1.setChecked(True)
+            self.ck_tank_2.setChecked(True)
+        self.ck_tank_1.blockSignals(False)
+        self.ck_tank_2.blockSignals(False)
 
     def fill_mix(self):
         if string_to_float(self.le_tank_level.text()) < 0:
@@ -2898,7 +2938,8 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
             self.msg.setStandardButtons(QMessageBox.Ok)
             self.msg.exec_()
             return
-        if string_to_float(self.le_water_tank_level_1.text()) < string_to_float(self.le_fill_to.text()):
+        if string_to_float(self.le_water_tank_level_1.text()) < string_to_float(self.le_fill_to.text()) -  \
+                string_to_float(self.le_tank_level.text()) and not self.fill_from_both:
             available = getattr(self, "le_water_tank_level_{}".format(self.fill_from_tank)).text()
             self.msg.setText("The water tank {} has only {}L\rDo you wish to use this".format(
                 self.fill_from_tank, available))
@@ -2913,6 +2954,17 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
             self.main_window.coms_interface.send_data(COM_MIX_FILL, True, MODULE_FU, required, self.fill_from_tank)
             self.lbl_status.setText("Filling mix to " + self.le_fill_to.text() + "L from tank {}".format(self.fill_from_tank))
             self.fill_from_tank = self.fill_from_tank
+        elif required == string_to_float(self.le_tank_level.text()):
+            self.msg.setText("The Mix tank has {}L".format(self.le_tank_level.text()))
+            self.msg.setWindowTitle("Correct Level")
+            self.msg.setStandardButtons(QMessageBox.Ok)
+            self.msg.exec_()
+        elif required < string_to_float(self.le_tank_level.text()):
+            self.msg.setText("The Mix tank has {}L when only {}L\r\nDrain to get required amount".
+                             format(self.le_tank_level.text(), required))
+            self.msg.setWindowTitle("Over Filled")
+            self.msg.setStandardButtons(QMessageBox.Ok)
+            self.msg.exec_()
 
     def flush(self):
         self.set_area()
@@ -3179,7 +3231,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
 
     def load_mix(self, num):
         self.clear()
-        txt = "<b>Mix {} of {}</b><br>".format(num, self.mix_count)
+        txt = "<b>Area {}<br>Mix {} of {}</b><br>".format(self.location, num, self.mix_count)
         self.current_mix = num
         items = self.feed_controller.get_items(self.area, num)
         lpp = self.feed_controller.get_lpp(self.area, num)
@@ -3189,7 +3241,9 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         if len(items) < 8:
             txt += "<b>Auto Feeding Unavailable</b><br>"
         self.le_fill_to.setText(str(water_total))
+        self.fill_to = water_total
         self.recipe = self.feed_controller.get_recipe(self.area, num)
+        self.check_levels()
         if self.recipe == WATER_ONLY_IDX:
             txt += "Water Only<br>"
             self.te_recipe.setHtml(txt)
@@ -3209,7 +3263,6 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
             txt += "{}mls of {}<br>".format(int(mls * water_total), name)
         self.te_recipe.setHtml(txt)
         self.calculate_nutrients()
-        self.check_tanks()
 
     def clear(self):
         self.action = 0
@@ -3228,6 +3281,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.rb_area_0.setChecked(True)
         self.pb_pause.setEnabled(False)
         self.lbl_flush.clear()
+        self.fill_from_both = False
 
     def pot_levels_update(self):
         """ Displays the current pot levels. This is got from the feeder unit"""
@@ -3356,6 +3410,9 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         elif command == COM_TANK_LEVEL:
             getattr(self, "le_water_tank_level_{}".format(data[0])).\
                 setText(str(self.water_control.get_current_level(int(data[0]))))
+
+        elif command == COM_MIX_FILL_STALL:
+            self.lbl_status.setText("Check water tank {} level.")
 
         # elif command == COM_SERVO_POS:
         #     if int(data[0]) < 4 or int(data[0]) > 7:

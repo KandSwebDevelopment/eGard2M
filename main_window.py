@@ -102,6 +102,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         #     self.coms_interface.send_switch(SW_DRY_FAN, OFF_RELAY, MODULE_IO)
 
     def window_activated(self):
+        if self.mdiArea.activeSubWindow() is None:
+            return
         self.window_change.emit(self.mdiArea.activeSubWindow().windowTitle())
         print(self.mdiArea.activeSubWindow().windowTitle())
 
