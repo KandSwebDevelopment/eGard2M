@@ -382,7 +382,6 @@ class CommunicationInterface(QObject):
                 command == NWC_SLAVE_START or \
                 command == NWC_STAGE_ADJUST or \
                 command == NWC_STOCK_TOTAL or \
-                command == NWC_WH_DURATION or \
                 command == NWC_WORKSHOP_DURATION or \
                 command == NWC_WORKSHOP_RANGES or \
                 command == NWC_SOIL_LOAD:

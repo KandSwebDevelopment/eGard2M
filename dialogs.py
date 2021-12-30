@@ -3412,7 +3412,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
                 setText(str(self.water_control.get_current_level(int(data[0]))))
 
         elif command == COM_MIX_FILL_STALL:
-            self.lbl_status.setText("Check water tank {} level.")
+            self.lbl_status.setText("Not filling...Check water tank {} level.".format(data[1]))
 
         # elif command == COM_SERVO_POS:
         #     if int(data[0]) < 4 or int(data[0]) > 7:
