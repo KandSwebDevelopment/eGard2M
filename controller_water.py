@@ -37,6 +37,8 @@ class WaterController(QObject):
         return req
 
     def set_current_level(self, tank, reading):
+        if tank < 1 or tank > 2:
+            return
         self.tanks[tank].update_level(reading)
 
     def get_current_level(self, tank):

@@ -28,7 +28,10 @@ def list_to_str(items) -> str:
 
 
 def str_to_list(items) -> list:
-    return [int(n) for n in items.split(",")]
+    try:
+        return [int(n) for n in items.split(",")]
+    except:
+        return []
 
 
 class FeedClass(QObject):
@@ -74,6 +77,7 @@ class FeedClass(QObject):
         self.recipe_next = []
         self.items = []
         self.items_flushing = []
+        self.flush_only = False     # Set True when all items are flushing
         self.flush_mix = 0  # The mix number that is the flush mix
         self.water_total = 0  # Total water required for all mixes
         self.area_data = {"mixes": {1: {"items": [],  # Plant numbers
@@ -265,10 +269,15 @@ class FeedClass(QObject):
 
         count = self.db.execute_single('SELECT COUNT(mix_num) as count FROM {} WHERE `area` = {}'.
                                        format(DB_PROCESS_FEED_ADJUSTMENTS, self.area))
-        if count == 0:
-            self.load_org_recipe(1)
+        d = self.feed_controller.main_window.area_controller.get_items_drying()
+        if len(self.items_flushing) + len(d) < self.qty_org:
+            self.flush_only = False
+            if count == 0:
+                self.load_org_recipe(1)
+            else:
+                self._load_mixes(self.area)
         else:
-            self._load_mixes(self.area)
+            self.flush_only = True
         self._refresh_water_total()
         self.load_feed_date()
         self.get_future_feeds()

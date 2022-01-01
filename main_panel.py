@@ -443,29 +443,38 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
 
             getattr(self, "lbl_feed_mixes_%i" % loc).setText(str(self.feed_controller.feeds[loc].get_mix_count()))
 
+            # Recipe status
             ctrl = getattr(self, "lbl_feed_status_%i" % loc)
-            rs = self.feed_controller.get_recipe_status(loc)
-            if rs == 2:
-                rs = 0
-            if rs == -1:
-                ctrl.setPixmap(QtGui.QPixmap(":/normal/last_feed_1.png"))
-                ctrl.setToolTip("Next feed will be last with this recipe")
-            elif rs == 1:
-                ctrl.setPixmap(QPixmap(":/normal/next_feed_new.png"))
-                ctrl.setToolTip("Next feed will be new recipe")
-            elif rs == 2:
-                ctrl.setPixmap(QtGui.QPixmap(":/normal/new_feed_today.png"))
-                ctrl.setToolTip("Today's feed is a new recipe")
+            if loc == 2 and self.feed_controller.feeds[loc].flush_only:
+                ctrl.clear()
             else:
-                ctrl.setPixmap(QtGui.QPixmap())
+                rs = self.feed_controller.get_recipe_status(loc)
+                if rs == 2:
+                    rs = 0
+                if rs == -1:
+                    ctrl.setPixmap(QtGui.QPixmap(":/normal/last_feed_1.png"))
+                    ctrl.setToolTip("Next feed will be last with this recipe")
+                elif rs == 1:
+                    ctrl.setPixmap(QPixmap(":/normal/next_feed_new.png"))
+                    ctrl.setToolTip("Next feed will be new recipe")
+                elif rs == 2:
+                    ctrl.setPixmap(QtGui.QPixmap(":/normal/new_feed_today.png"))
+                    ctrl.setToolTip("Today's feed is a new recipe")
+                else:
+                    ctrl.setPixmap(QtGui.QPixmap())
 
+            # Feed frequency and number of days remaining
             ctrl = getattr(self, 'lbl_feed_days_%i' % loc)
             ctrl.setText("{}".format(self.feed_controller.feeds[loc].frequency))
             ctrl = getattr(self, 'lbl_feed_remaining_%i' % loc)
-            ctrl.setText("{}".format(self.feed_controller.feeds[loc].get_recipe_days_remaining()))
-            ctrl.setToolTip("Number of days the current recipe will be used for<br>Or {} feeds".
-                            format(self.feed_controller.feeds[loc].get_feeds_remaining()))
+            if loc == 2 and self.feed_controller.feeds[loc].flush_only:
+                ctrl.clear()
+            else:
+                ctrl.setText("{}".format(self.feed_controller.feeds[loc].get_recipe_days_remaining()))
+                ctrl.setToolTip("Number of days the current recipe will be used for<br>Or {} feeds".
+                                format(self.feed_controller.feeds[loc].get_feeds_remaining()))
 
+            # Feed mode icon
             ctrl = getattr(self, "lbl_feed_mode_%i" % loc)
             if self.feed_controller.get_feed_mode(loc) == 1:
                 ctrl.setPixmap(QtGui.QPixmap(":/normal/001-hand.png"))
@@ -629,9 +638,9 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 if self.master_mode == MASTER:
                     self.coms_interface.send_switch(SW_LIGHT_2, status)
                 else:
-                    self.coms_interface.relay_send(NWC_SWITCH_REQUEST, SW_LIGHT_2)
-                if self.area_controller.light_relay_2 == -1:
-                    self.area_controller.light_relay_2 = -2
+                    if self.area_controller.light_relay_2 == -1:
+                        self.coms_interface.relay_send(NWC_SWITCH_REQUEST, SW_LIGHT_2)
+                        self.area_controller.light_relay_2 = -2
         else:
             if self.area_controller.light_relay_2 != OFF:
                 self.coms_interface.send_switch(SW_LIGHT_2, OFF)

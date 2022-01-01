@@ -299,6 +299,14 @@ class AreaController(QObject):
             print("get_area_process", e)
             return 0
 
+    def get_items_drying(self):
+        """ Returns a list of the items drying"""
+        rows = self.db.execute("SELECT item FROM {}".format(DB_PROCESS_DRYING))
+        i = []
+        for row in rows:
+            i.append(row[0])
+        return i
+
     def get_light_status(self, area):
         if area == 3:
             return -1    # Area 3 will always be in manual
