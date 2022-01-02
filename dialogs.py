@@ -2583,6 +2583,7 @@ class DialogMixTankCalibrate(QDialog, Ui_DialogMixTankCalibrate):
         self.main_window.coms_interface.send_switch(SW_FEED_PUMP, OFF, MODULE_FU)
 
     def pump(self):
+        self.main_window.feeder_unit.set_servo_feed_valves(2, 2, VALVE_OPEN)    # Area 2 Flush
         self.main_window.coms_interface.send_switch(SW_FEED_PUMP, ON, MODULE_FU)
 
     def calibrate(self):
@@ -2624,6 +2625,7 @@ class DialogMixTankCalibrate(QDialog, Ui_DialogMixTankCalibrate):
             if int(data[0]) == SW_FEED_PUMP:
                 if int(data[1]) == OFF:
                     self.lbl_status.clear()
+                    self.main_window.feeder_unit.set_servo_feed_valves(2, 2, VALVE_CLOSED)  # Area 2 Flush
                 else:
                     self.lbl_status.setText("Feed Pump On")
         elif command == CMD_VALVE:
@@ -2663,6 +2665,7 @@ class DialogWaterTank(QDialog, Ui_DialogWaterTank):
         self.main_window.coms_interface.send_data(CMD_VALVE, True, MODULE_FU, 3, VALVE_CLOSED)
         self.main_window.coms_interface.send_data(CMD_VALVE, True, MODULE_FU, 4, VALVE_OPEN)
         self.main_window.coms_interface.send_data(CMD_VALVE, True, MODULE_FU, self.tank_id, VALVE_OPEN)
+        self.lbl_status.setText("Emptying Tank")
         self.action = 3
 
     def read(self):
@@ -2674,6 +2677,13 @@ class DialogWaterTank(QDialog, Ui_DialogWaterTank):
         self.refresh()
 
     def stop(self):
+        modifiers = QtWidgets.QApplication.keyboardModifiers()
+        if modifiers == QtCore.Qt.ShiftModifier:
+            self.water_controller.stop_drain()
+            self.water_controller.stop_fill()
+            self.main_window.coms_interface.send_data(CMD_VALVE, True, MODULE_FU, self.tank_id, VALVE_CLOSED)
+            self.main_window.coms_interface.send_data(CMD_VALVE, True, MODULE_FU, 4, VALVE_CLOSED)
+            return
         if self.action == 1:
             self.water_controller.stop_fill()
         elif self.action == 2:
@@ -2851,6 +2861,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.read_water()
         self.le_water_tank_level_1.setText(str(self.water_control.get_current_level(1)))
         self.le_water_tank_level_2.setText(str(self.water_control.get_current_level(2)))
+        self.main_window.coms_interface.send_data(COM_SERVOS_CLOSE, True, MODULE_FU)
 
     def window_change(self, win_name):
         if win_name == self.windowTitle():
@@ -2899,14 +2910,14 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         if self.msg.exec_() == QMessageBox.No:
             return
         self.lbl_status.setText("Dumping contents of mix tank")
-        self.feeder_unit.set_servo_feed_valves(2, 2, VALVE_OPEN)
+        self.action = 5
+        self.feeder_unit.set_servo_feed_valves(2, 2, VALVE_OPEN)    # Area 2 Flush
         self.main_window.coms_interface.send_data(COM_MIX_EMPTY, True, MODULE_FU)
 
     def drain(self):
         required = string_to_float(self.le_fill_to.text())
         if required < string_to_float(self.le_tank_level.text()):
             required = (required * 1000) + self.correction_mix_empty
-            # @ Todo Add code to set valves necessary to drain
             self.main_window.coms_interface.send_data(COM_MIX_DISPENSE, True, MODULE_FU, required)
             self.action = 3
             self.lbl_status.setText("Draining mix tank to " + self.le_fill_to.text() + "L")
@@ -3000,6 +3011,13 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
 
     def flush(self):
         self.set_area()
+        if string_to_float(self.le_tank_level.text()) < 0:
+            self.msg.setText("The Mix tank is reading {}<br>Zero the tank to proceed".format(self.le_tank_level.text()))
+            self.msg.setWindowTitle("Zero Tank")
+            self.msg.setStandardButtons(QMessageBox.Cancel)
+            self.msg.exec_()
+            return
+
         self.msg.setText("Proceed with {} {} flushing".format(
             "Area" if self.area > 0 else "Manual", self.area if self.area > 0 else ""))
         self.msg.setWindowTitle("Confirm")
@@ -3014,8 +3032,9 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
             self.lbl_status.setText("Filling {}L from tank {} for flushing".format(
                 self.le_flush_litres.text(), fill_tank))
             self.main_window.coms_interface.send_data(
-                COM_MIX_FILL, True, MODULE_FU, fill_tank, int(string_to_float(self.le_flush_litres.text()) * 1000))
+                COM_MIX_FILL, True, MODULE_FU, int(string_to_float(self.le_flush_litres.text()) * 1000), fill_tank)
         else:
+            self.feeder_unit.set_servo_feed_valves(self.area, 2, VALVE_OPEN)
             self.main_window.coms_interface.send_data(COM_MIX_DISPENSE, True, MODULE_FU, 0)
             self.lbl_status.setText("Flushing")
             self.pb_flush.setEnabled(False)
@@ -3348,7 +3367,6 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
 
     def enable_water(self, state=True):
         self.pb_fill_1.setEnabled(state)
-        self.pb_fill_2.setEnabled(state)
         self.pb_zero.setEnabled(state)
         self.pb_drain.setEnabled(state)
 
@@ -3445,7 +3463,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
 
         elif command == COM_MIX_FILL_STALL:
             if self.fill_from_both:
-                if int(data[1]) == 2:
+                if int(data[0]) == 2:
                     self.lbl_status.setText("Tank 2 empty, switching to tank 1 for remainder")
                     self.fill_from_tank = 1
                     required = string_to_float(self.le_fill_to.text())
@@ -3454,9 +3472,9 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
                         self.main_window.coms_interface.send_data(
                             COM_MIX_FILL, True, MODULE_FU, required, self.fill_from_tank)
                 else:
-                    self.lbl_status.setText("Not filling...Check water tank {} level.".format(data[1]))
+                    self.lbl_status.setText("Not filling...Check water tank {} level.".format(data[0]))
             else:
-                self.lbl_status.setText("Not filling...Check water tank {} level.".format(data[1]))
+                self.lbl_status.setText("Not filling...Check water tank {} level.".format(data[0]))
 
         # elif command == COM_SERVO_POS:
         #     if int(data[0]) < 4 or int(data[0]) > 7:
@@ -3481,8 +3499,8 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
 
         elif command == COM_MIX_FILL_END:
             if self.action == 1:    # Fill for flush
-                self.log("{}L Added to mix tank for flush".format(self.le_flush_litres))
-                self.feeder_unit.set_feed_valves(self.area, 2, VALVE_OPEN)
+                self.log("{}L Added to mix tank for flush".format(self.le_flush_litres.text()))
+                self.feeder_unit.set_servo_feed_valves(self.area, 2, VALVE_OPEN)
                 self.main_window.coms_interface.send_data(COM_MIX_DISPENSE, True, MODULE_FU, 0)
                 self.lbl_status.setText("Flushing")
             else:
@@ -3529,6 +3547,11 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
                 self.log("Flushing complete\r\nFeed Complete")
                 self.lbl_status.setText("Finished")
                 self.enable_water(True)
+
+            elif self.action == 5:  # Dump mix
+                self.feeder_unit.set_servo_feed_valves(2, 2, VALVE_CLOSED)
+                self.lbl_status.clear()
+
             else:
                 self.lbl_status.clear()
     #     def close(self):
@@ -3925,7 +3948,8 @@ class DialogEngineerIo(QDialog, Ui_DialogMessage):
                 else:
                     colour = "background-color: #999966;"
                 self.te_message.append(
-                    "<p style='" + colour + "'>" + str(data) + " <b>from</b> " + str(sender) + "</p>")
+                    "<p style='" + colour + "'>" + str(data) + " <b>from</b> " + str(sender)
+                    + datetime.now().strftime("%a %H:%M:%S") + "</p>")
 
     @pyqtSlot(str, tuple)
     def outgoing(self, data, destination):

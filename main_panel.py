@@ -546,10 +546,11 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                         w = 444
                     if x in self.area_controller.get_area_items(3):
                         w = -10
-                    if w == -10:  # Item removed
+                    if w == -10 or w == -100:  # Item removed or in drying
                         ctrl.setText("")
                         ctrl.setEnabled(False)
                         ctrl.setToolTip("")
+                        ctrl.setStyleSheet(None)
                     elif w == 999:   # Not ready
                         ctrl.setText(str(x))
                         ctrl.setEnabled(True)
@@ -558,7 +559,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                                                       .format(DB_STRAINS, DB_PROCESS_STRAINS, p.id, x))
                         ctrl.setToolTip(name)
 
-                    elif w < 0:
+                    elif 0 > w > -7:
                         ctrl.setEnabled(True)
                         ctrl.setStyleSheet("background-color: Yellow;")
                         name = self.db.execute_single("SELECT s.name FROM {} s INNER JOIN {} ps ON s.id = "
@@ -731,7 +732,9 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             p.current_stage += 1
         self.area_controller.reload_area(2)
         self.area_controller.reload_area(3)
+        self.check_stage(2)
         self.check_stage(3)
+        self.feed_controller.reload_area(2)
         self.coms_interface.relay_send(NWC_MOVE_TO_FINISHING)
 
     def finish_item(self, item, amount=None, show_warn=True):
@@ -1268,6 +1271,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.area_controller.reload_area(3)
             self.check_stage(2)
             self.check_stage(3)
+            self.feed_controller.reload_area(2)
         elif cmd == NWC_RELOAD_PROCESSES:
             self.area_controller.load_processes()
             self.update_duration_texts()

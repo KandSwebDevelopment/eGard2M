@@ -110,7 +110,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def connect_signals(self):
         # System
         self.actionSettings.triggered.connect(lambda: self.wc.show(DialogSettings(self)))
-        self.actionI_O_Data.triggered.connect(lambda: self.wc.show(DialogEngineerIo(self)))
+        self.actionI_O_Data.triggered.connect(lambda: self.wc.show(DialogEngineerIo(self), resize=True))
         self.actionSend_Command.triggered.connect(lambda: self.wc.show(DialogEngineerCommandSender(self), multi=True))
         self.actionReconnect.triggered.connect(self.reconnect)
         self.actionSystem_Info.triggered.connect(lambda: self.wc.show(DialogSysInfo(self)))

@@ -635,7 +635,9 @@ class FeedClass(QObject):
         pprint(self.feeds_till_end)
 
     def set_last_feed_date(self, f_date):
-        """ Sets the last feed date and the next feed date and the also updates the db"""
+        """ Sets the last feed date and the next feed date and the also updates the db
+        :type f_date: datetime
+        """
         t = self.feed_time.split(":")
         f_date = datetime(f_date.year, f_date.month, f_date.day, int(t[0]), int(t[1]))
         self.lfd = f_date

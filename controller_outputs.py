@@ -110,8 +110,8 @@ class OutputController(QObject):
             self.outputs[op_id].switch_hard(state)
         sound_click()
 
-    def set_last_feed_date(self, lfd):
-        self.area_controller.main_window.feed_controller.set_last_feed_date(lfd)
+    # def set_last_feed_date(self, lfd):
+    #     self.area_controller.main_window.feed_controller.set_last_feed_date(lfd)
 
     def set_limits(self, op_id, low, high):
         self.outputs[op_id].set_limits(low, high)

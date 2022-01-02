@@ -725,7 +725,13 @@ class ProcessClass(QObject):
                 # Update the processes current stage
                 self.db.execute_write(
                     "UPDATE " + DB_PROCESS + " SET stage = " + str(self.current_stage) + ", location = " + str(
-                        self.stage_next_location) + " WHERE id = " + str(self.id))
+                        self.stage_location) + " WHERE id = " + str(self.id))
+            msg.setIcon(QMessageBox.Question)
+            msg.setText("Was a feed completed")
+            msg.setWindowTitle("Confirm Feeding")
+            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+            if ret_val == QMessageBox.Yes:
+                self.area_controller.main_window.feed_controller.set_last_feed_date(self.stage_location, datetime.now())
             self.process_load_stage_info()
 
     def change_location(self, from_loc, new_loc):
@@ -838,7 +844,9 @@ class ProcessClass(QObject):
         self.days_total += 1
 
     def check_stage(self):
-        # Checks for stage end. Returns None until 7 days before stage end and then it returns the number of days remaining
+        """ Checks for stage end. Returns None until 7 days before stage end.
+            Then it returns a list with the number of days remaining for each item
+            -10 = Removed, 999 = Not in window yet, -100 = In drying"""
         if self.current_stage != 3:
             if not self.running:
                 return
@@ -872,6 +880,9 @@ class ProcessClass(QObject):
             # 0 = Not ready, 1 = ready in 7 days, 2 = ready, 3 = beyond window
             if row[4] == 0:
                 self.strain_window.append(-10)      # removed
+                continue
+            if row[4] == 3:
+                self.strain_window.append(-100)      # in drying
                 continue
             if self.stage_days_elapsed > row[3]:
                 self.strain_window.append(self.stage_days_elapsed - row[2])
