@@ -70,6 +70,7 @@ from ui.dialogWaterTank import Ui_DialogWaterTank
 from ui.dialogMixTankCalibration import Ui_DialogMixTankCalibrate
 from ui.dialogNutrients import Ui_DialogNutrients
 from ui.dialogNutrientPumpCalibrate import Ui_dialogNutrientPumpCalibrate
+from ui.dialogValveTest import Ui_dialogValveTest
 
 
 class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
@@ -2731,6 +2732,48 @@ class DialogWaterTank(QDialog, Ui_DialogWaterTank):
             self.lbl_status.clear()
 
 
+class DialogValveTest(QDialog, Ui_dialogValveTest):
+
+    def __init__(self, parent):
+        """
+
+        """
+        super(DialogValveTest, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.main_window = parent
+        self.db = parent.db
+        self.sub = None
+        self.pb_close.pressed.connect(lambda: self.sub.close())
+
+        self.pb_close_all.clicked.connect(lambda:
+                                          self.main_window.coms_interface.send_data(COM_SERVOS_CLOSE, True, MODULE_FU))
+        # self.ck_valve_1.clicked.connect(self.valve_change)
+        self.main_window.coms_interface.update_feeder_unit.connect(self.fu_update)
+        for i in range(1, 9):
+            self.main_window.coms_interface.send_data(COM_SERVO_POS, True, MODULE_FU, i)
+            getattr(self, "ck_valve_{}".format(i)).valve_id = i
+            getattr(self, "ck_valve_{}".format(i)).clicked.connect(self.valve_change)
+
+    def fu_update(self, command, data):
+        if command == COM_SERVO_POS:
+            if data[1] == '0':
+                getattr(self, "ck_valve_{}".format(data[0])).setChecked(True)
+            else:
+                getattr(self, "ck_valve_{}".format(data[0])).setChecked(False)
+
+        elif command == COM_SERVOS_CLOSE:
+            for i in range(1, 9):
+                getattr(self, "ck_valve_{}".format(i)).setChecked(False)
+
+    def valve_change(self):
+        valve = self.sender().valve_id
+        if self.sender().isChecked():
+            self.main_window.coms_interface.send_data(CMD_VALVE, True, MODULE_FU, valve, VALVE_OPEN)
+        else:
+            self.main_window.coms_interface.send_data(CMD_VALVE, True, MODULE_FU, valve, VALVE_CLOSED)
+
+
 class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
 
     def __init__(self, parent):
@@ -3003,7 +3046,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
             self.msg.setStandardButtons(QMessageBox.Ok)
             self.msg.exec_()
         elif required < string_to_float(self.le_tank_level.text()):
-            self.msg.setText("The Mix tank has {}L when only {}L\r\nDrain to get required amount".
+            self.msg.setText("The Mix tank has {}L when only {}L is required<br>Drain to get required amount".
                              format(self.le_tank_level.text(), required))
             self.msg.setWindowTitle("Over Filled")
             self.msg.setStandardButtons(QMessageBox.Ok)
@@ -3040,6 +3083,12 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
             self.pb_flush.setEnabled(False)
 
     def zero(self):
+        if string_to_float(self.le_tank_level.text()) > 1:
+            self.msg.setText("Do you wish to zero when the mix tank has {}L".format(self.le_tank_level.text()))
+            self.msg.setWindowTitle("Confirm Zero")
+            self.msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+            if self.msg.exec_() == QMessageBox.Cancel:
+                return
         self.main_window.coms_interface.send_data(COM_MIX_TARE, True, MODULE_FU)
         self.main_window.coms_interface.send_data(COM_MIX_READ_LEVEL, True, MODULE_FU)
 
@@ -3316,6 +3365,11 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.calculate_nutrients()
 
     def clear(self):
+        self.msg.setText("Do you wish to clear the feeder")
+        self.msg.setWindowTitle("Confirm Clear")
+        self.msg.setStandardButtons(QMessageBox.Ok | QMessageBox.Cancel)
+        if self.msg.exec_() == QMessageBox.Cancel:
+            return
         self.action = 0
         self.pumped = 0
         self.pump_times = 0
@@ -3411,6 +3465,14 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
 
     def fu_update(self, command, data):
         if command == CMD_SWITCH or command == CMD_SWITCH_TIMED:
+            if data[0] == "busy":
+                self.msg.setText(
+                    "The feeder unit is busy<br>Wait until it is finished or use Stop")
+                self.msg.setWindowTitle("Feeder Unit Busy")
+                self.msg.setStandardButtons(QMessageBox.Ok)
+                self.msg.exec_()
+                return
+
             sw = int(data[0])
             state = int(data[1])
             if sw == SW_NUTRIENT_STIR:

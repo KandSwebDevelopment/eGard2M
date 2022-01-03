@@ -180,13 +180,16 @@ class FeedControl(QObject):
             return self.get_area_water_total(1)
         return self.get_area_water_total(2)
 
+    def get_all_water_required(self):
+        """ Get the total water required for all feeds"""
+        return self.get_area_water_total(1) + self.get_area_water_total(2)
+
     def get_area_water_total(self, area):
         """ Calculates the total amount of water required for the area for all mixes for said area """
         t = 0.0
         mixes = self.feeds[area].area_data['mixes']
         for m in mixes:
             t += mixes[m]['water total']
-        # self.feeds[area].area_data['water total'] = t
         return t
 
     def set_last_feed_date(self, area, feed_date):

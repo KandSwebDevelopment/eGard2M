@@ -128,8 +128,13 @@ class Ui_MainWindow(object):
         self.actionMix_Tank.setObjectName("actionMix_Tank")
         self.actionReload = QtWidgets.QAction(MainWindow)
         self.actionReload.setObjectName("actionReload")
+        self.actionValve_Test = QtWidgets.QAction(MainWindow)
+        self.actionValve_Test.setObjectName("actionValve_Test")
+        self.actionValve_Test_2 = QtWidgets.QAction(MainWindow)
+        self.actionValve_Test_2.setObjectName("actionValve_Test_2")
         self.menuEngineer.addAction(self.actionI_O_Data)
         self.menuEngineer.addAction(self.actionSend_Command)
+        self.menuEngineer.addAction(self.actionValve_Test)
         self.menuEngineer.addSeparator()
         self.menuEngineer.addAction(self.actionReboot_DHT_s)
         self.menuEngineer.addAction(self.actionI_O_VC)
@@ -164,6 +169,7 @@ class Ui_MainWindow(object):
         self.menuFeeder_Calibration.addAction(self.actionNutrient_Pumps)
         self.menuFeeder_Calibration.addAction(self.actionWater_Tanks)
         self.menuFeeder_Calibration.addAction(self.actionMix_Tank)
+        self.menuFeeder_Calibration.addAction(self.actionValve_Test_2)
         self.menuFeeding.addAction(self.actionStock)
         self.menuFeeding.addAction(self.actionLow_Stock)
         self.menuFeeding.addAction(self.actionCalculator)
@@ -246,6 +252,8 @@ class Ui_MainWindow(object):
         self.actionWater_Tanks.setText(_translate("MainWindow", "Water Tanks"))
         self.actionMix_Tank.setText(_translate("MainWindow", "Mix Tank"))
         self.actionReload.setText(_translate("MainWindow", "Reload"))
+        self.actionValve_Test.setText(_translate("MainWindow", "Valve Test"))
+        self.actionValve_Test_2.setText(_translate("MainWindow", "Valve Test"))
 
 
 if __name__ == "__main__":
