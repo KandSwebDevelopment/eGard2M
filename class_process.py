@@ -878,8 +878,8 @@ class ProcessClass(QObject):
         # self.strain_window.append(0)
         for row in rows:
             # 0 = Not ready, 1 = ready in 7 days, 2 = ready, 3 = beyond window
-            if row[4] == 0:
-                self.strain_window.append(-10)      # removed
+            if row[4] == 0 or row[4] == 50:
+                self.strain_window.append(-10)      # removed or finished
                 continue
             if row[4] == 3:
                 self.strain_window.append(-100)      # in drying

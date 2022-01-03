@@ -31,6 +31,7 @@ class FeedControl(QObject):
         self.feed_mode = int(self.db.get_config(CFT_FEEDER, "mode", 1))  # 1=Manual, 2=Semi auto, 3=Full auto
         self.feed_time = self.db.get_config(CFT_FEEDER, "feed time", "21:00")
         self.feed_time_tolerance = int(self.db.get_config(CFT_PROCESS, "feed time tolerance", 4))
+        self.water_req_cal_mode = 1     # 1 = Next 2 feeds
         self.log_txt = ""
         self.mute = False
 
@@ -172,6 +173,8 @@ class FeedControl(QObject):
 
     def get_next_water_required(self):
         """ Get the total water required for next feed date"""
+        if self.water_req_cal_mode == 1:
+            return self.get_all_water_required()
         a1 = self.days_till_feed(1)
         a2 = self.days_till_feed(2)
         if a1 == a2:
@@ -313,7 +316,7 @@ class FeedControl(QObject):
         self.feeds[area].cycles_reduce()
         self.feeds[area].get_recipe_status()
         # self._check_feed_due_today()
-        self.main_window.main_panel.lbl_water_required.setText(str(self.get_next_water_required()))
+        self.main_window.main_panel.lbl_water_required.setText(str(self.main_window.water_controller.get_total_required()))
         self.main_window.main_panel.update_next_feeds()
 
     def deduct_fed_feed(self, area):

@@ -28,6 +28,8 @@ class WaterController(QObject):
 
     def get_tank_require_level(self, tank):
         req = self.main_window.feed_controller.get_next_water_required()
+        req += self.main_window.feeder_unit.flush_litres
+        req += self.main_window.feeder_unit.spillage_litres
         if tank == 2 and req <= self.tanks[1].max:
             return 0        # 2nd tank and tank 1 is able to hold required
         if req < self.tanks[1].min:
@@ -35,6 +37,9 @@ class WaterController(QObject):
         if req > self.tanks[1].max:
             return math.ceil(req / 2)   # This will be same for both tanks as they will hold equal amounts
         return req
+
+    def get_total_required(self):
+        return self.get_tank_require_level(1) + self.get_tank_require_level(2)
 
     def set_current_level(self, tank, reading):
         if tank < 1 or tank > 2:

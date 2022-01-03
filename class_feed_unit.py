@@ -16,7 +16,8 @@ class FeederUnit(QObject):
 
         self.nutrient_stir_time = int(self.db.get_config(CFT_FEEDER, "nutrient stir time", 30)) * 1000
         self.soak_time = int(self.db.get_config(CFT_FEEDER, "soak time", 10))
-        self.flush_litres = int(self.db.get_config(CFT_FEEDER, "flush litres", 4))
+        self.flush_litres = int(self.db.get_config(CFT_FEEDER, "flush litres", 2))
+        self.spillage_litres = int(self.db.get_config(CFT_FEEDER, "spillage", 1))
         self.max_mix_litres = int(self.db.get_config(CFT_FEEDER, "max mix litres", 6))
         self.mix_stir_time = int(self.db.get_config(CFT_FEEDER, "mix stir time", 30)) * 1000
         self.feed_litres = int(self.db.get_config(CFT_FEEDER, "feed L", 10))

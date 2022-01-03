@@ -274,7 +274,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.update_duration_texts()
         self.area_controller.output_controller.water_heater_update_info()  # Required here it init things
         self.loop_15()  # Instant feed due check
-        self.lbl_water_required.setText(str(self.main_window.feed_controller.get_next_water_required()))
+        self.lbl_water_required.setText(str(self.main_window.water_controller.get_total_required()))
         self.check_upcoming_starts()
 
     def connect_signals(self):
@@ -617,6 +617,11 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                                                   .format(DB_STRAINS, DB_PROCESS_STRAINS,
                                                           self.area_controller.areas_pid[3], row[0]))
                     getattr(self, "pb_pm2_%i" % row[0]).setToolTip("{}\r\nDay {} drying".format(name, days))
+                # Show buttons disabled for all in flushing as they will be here next
+                rows = self.db.execute('SELECT item, start FROM {}'.format(DB_FLUSHING))
+                for row in rows:
+                    getattr(self, "pb_pm2_%i" % row[0]).setText(str(row[0]))
+                    getattr(self, "pb_pm2_%i" % row[0]).setEnabled(False)
 
     def check_light(self):
         """ This checks both area processes to see if light should be on or off. If a change is detected it sends
@@ -1263,7 +1268,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.feed_controller.feeds[data[0]].load_feed_date()
             self.area_controller.output_controller.water_heater_update_info()
             self.update_next_feeds()
-            self.lbl_water_required.setText(str(self.feed_controller.get_next_water_required()))
+            self.lbl_water_required.setText(str(self.water_controller.get_total_required()))
         elif cmd == NWC_CHANGE_TO_FLUSHING:
             self.check_stage(2)
         elif cmd == NWC_MOVE_TO_FINISHING:

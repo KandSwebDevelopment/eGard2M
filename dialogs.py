@@ -71,6 +71,7 @@ from ui.dialogMixTankCalibration import Ui_DialogMixTankCalibrate
 from ui.dialogNutrients import Ui_DialogNutrients
 from ui.dialogNutrientPumpCalibrate import Ui_dialogNutrientPumpCalibrate
 from ui.dialogValveTest import Ui_dialogValveTest
+from ui.dialogSettingsAll import Ui_dialogSettingsAll
 
 
 class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
@@ -1989,7 +1990,7 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         self.le_total_1.clear()
         self.is_changed = True
         self.main_panel.lbl_water_required.setText(
-            str(self.main_panel.main_window.feed_controller.get_next_water_required()))
+            str(self.main_panel.main_window.water_controller.get_total_required()))
 
     def change_qty(self):
         item = self.sender().item
@@ -2249,6 +2250,8 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         self.feed_control.feeds[self.area].reset_water(self.mix_number)
         self._load()
         self.is_changed = True
+        self.main_panel.lbl_water_required.setText(
+            str(self.main_panel.main_window.water_controller.get_total_required()))
 
     def calculate_each(self):
         if self.le_total_1.text() == "":
@@ -6376,7 +6379,7 @@ class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
         # self.main_panel.coms_interface.relay_send(NWC_OUTPUT_RANGE, self.pin_id) --- sent by above
 
 
-class DialogSettings(QDialog, Ui_DialogSettings):
+class DialogSettings(QDialog, Ui_dialogSettingsAll):
     my_parent = ...  # type: MainWindow
 
     def __init__(self, parent):
@@ -6390,26 +6393,14 @@ class DialogSettings(QDialog, Ui_DialogSettings):
         self.running = False  # True when running an action
         self.us_tank = 1  # Tank number to operate us sensor
         self.servo_valve = 0
-        self.rbustank_1.setChecked(True)
+        # self.rbustank_1.setChecked(True)
 
         self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.toolBox.currentChanged.connect(self.tab_change)
 
-        # self.pbusoperate.clicked.connect(self.us_test)
-        # self.rbustank_1.clicked.connect(self.us_set_tank)
-        # self.rbustank_2.clicked.connect(self.us_set_tank)
-        # self.rbustank_3.clicked.connect(self.us_set_tank)
-        #
-        # self.rsservovalve_1.clicked.connect(self.sv_set_valve)
-        # self.rsservovalve_2.clicked.connect(self.sv_set_valve)
-        # self.rsservovalve_3.clicked.connect(self.sv_set_valve)
-        # self.rsservovalve_4.clicked.connect(self.sv_set_valve)
-        # self.rsservovalve_5.clicked.connect(self.sv_set_valve)
-        # self.rsservovalve_6.clicked.connect(self.sv_set_valve)
-        # self.pbsvmove.clicked.connect(self.sv_move)
-
-        self.pbsoilread.clicked.connect(self.soil_read)
-        # self.main_panel.water_control.new_data.connect(self.update_us_display)
-        self.main_panel.coms_interface.update_soil_reading.connect(self.update_soil)
+        # self.pbsoilread.clicked.connect(self.soil_read)
+        # # self.main_panel.water_control.new_data.connect(self.update_us_display)
+        # self.main_panel.coms_interface.update_soil_reading.connect(self.update_soil)
 
         # Mode
         self.cb_system_mode.addItem("Master", 1)
@@ -6466,6 +6457,9 @@ class DialogSettings(QDialog, Ui_DialogSettings):
         self.leusliters.setText(str(litres))
         self.leusreading.setText(str(reading))
         self.lblusoperate.setStyleSheet("background-color: light gray;  color: white;")
+
+    def tab_change(self):
+        print(self.toolBox.currentIndex())
 
     def get_ports(self):
         self.te_ports.clear()
