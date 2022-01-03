@@ -1271,6 +1271,9 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.lbl_water_required.setText(str(self.water_controller.get_total_required()))
         elif cmd == NWC_CHANGE_TO_FLUSHING:
             self.check_stage(2)
+        elif cmd == NWC_FINISH_ITEM:
+            self.area_controller.reload_area(3)
+            self.check_stage(3)
         elif cmd == NWC_MOVE_TO_FINISHING:
             self.area_controller.reload_area(2)
             self.area_controller.reload_area(3)
