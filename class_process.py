@@ -353,6 +353,11 @@ class ProcessClass(QObject):
         row = self.db.execute_one_row("SELECT name FROM " + DB_PATTERN_NAMES + " WHERE id = " + str(self.pattern_id))
         return row[0]
 
+    def get_current_quantity(self):
+        return self.db.execute_single(
+            "SELECT COUNT(id) AS qty FROM {} WHERE process_id = {} AND location > 0 AND location < 50".
+            format(DB_PROCESS_STRAINS, self.id))
+
     def get_future_feeds(self):
         # if self.get_next_feed_date() is None:
         #     day_offset = 0

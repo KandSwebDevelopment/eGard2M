@@ -274,7 +274,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.update_duration_texts()
         self.area_controller.output_controller.water_heater_update_info()  # Required here it init things
         self.loop_15()  # Instant feed due check
-        self.lbl_water_required.setText(str(self.main_window.water_controller.get_total_required()))
+        self.update_water_required()
         self.check_upcoming_starts()
 
     def connect_signals(self):
@@ -1090,6 +1090,9 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             else:
                 self.lbl_transition_2.setStyleSheet("")
 
+    def update_water_required(self):
+        self.lbl_water_required.setText(str(self.main_window.water_controller.get_total_required()))
+
     @pyqtSlot(str, float, name="updatePower")
     def update_power(self, action, val):
         if action == COM_KWH:
@@ -1268,7 +1271,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.feed_controller.feeds[data[0]].load_feed_date()
             self.area_controller.output_controller.water_heater_update_info()
             self.update_next_feeds()
-            self.lbl_water_required.setText(str(self.water_controller.get_total_required()))
+            self.update_water_required()
         elif cmd == NWC_CHANGE_TO_FLUSHING:
             self.check_stage(2)
         elif cmd == NWC_FINISH_ITEM:
@@ -1291,6 +1294,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.get_switch_position(data[0])
         elif cmd == NWC_MESSAGE:
             self.main_window.msg_sys.load()
+        elif cmd == NWC_WATER_REQUIRED:
+            pass
         elif cmd == NWC_WH_DURATION:
             self.area_controller.output_controller.outputs[data[0]].set_duration(data[1])
         elif cmd == NWC_WH_FREQUENCY:

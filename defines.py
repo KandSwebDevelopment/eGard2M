@@ -379,6 +379,7 @@ NWC_WORKSHOP_RANGES = "workshop_ranges"     # Reload workshop max, mix and frost
 NWC_WH_DURATION = "water heater duration"   # The water heater duration has changed, heater pin id, new duration in minutes
 NWC_WH_FREQUENCY = "water heater frequency"  # The water heater frequency has changed, heater pin id, new freq in days
 NWC_WH_FLOAT_USE = "water heater float use"  # The water heater float use has changed, heater pin id, in use
+NWC_WATER_REQUIRED = "water required"       # The water requried has been changed
 NWC_WATER_LEVELS = "water levels"           # Request water levels from master
 
 NWC_ACCESS_DURATION = "access_duration"     # The Access cover duration relay to other pc

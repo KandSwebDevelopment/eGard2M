@@ -109,6 +109,8 @@ class FeedClass(QObject):
         :rtype: None
         """
         self.area = area
+        p = self.feed_controller.main_window.area_controller.get_area_process(area)
+        self.qty_current = p.get_current_quantity()
         self.pattern_id = pattern_id
         self.pattern_name = self.db.execute_single(
             'SELECT name FROM {} WHERE id = {}'.format(DB_PATTERN_NAMES, self.pattern_id))
@@ -270,7 +272,7 @@ class FeedClass(QObject):
         count = self.db.execute_single('SELECT COUNT(mix_num) as count FROM {} WHERE `area` = {}'.
                                        format(DB_PROCESS_FEED_ADJUSTMENTS, self.area))
         d = self.feed_controller.main_window.area_controller.get_items_drying()
-        if len(self.items_flushing) + len(d) < self.qty_org:
+        if len(self.items_flushing) + len(d) < self.qty_current:
             self.flush_only = False
             if count == 0:
                 self.load_org_recipe(1)

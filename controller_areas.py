@@ -283,6 +283,14 @@ class AreaController(QObject):
         """
         return self.areas_items[area]
 
+    def get_area_items_finished(self, area):
+        rows = self.db.execute("SELECT item FROM {} WHERE  process_id = {} AND (location = 0 OR location = 50)".
+                               format(DB_PROCESS_STRAINS, self.get_area_pid(area)))
+        result = []
+        for row in rows:
+            result.append(row[0])
+        return result
+
     def get_area_trans(self, area):
         return self.cool_warm[area]
 

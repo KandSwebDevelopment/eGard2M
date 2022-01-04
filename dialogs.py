@@ -1850,6 +1850,8 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         for n in self.feed_control.nutrients:
             self.cb_nutrients_1.addItem(self.feed_control.nutrients[n], n)
 
+        self.items_finished = self.main_panel.area_controller.get_area_items_finished(self.area)
+
         self.tw_mixes.setStyleSheet("""QTabBar::tab:selected {background: green}""")
         # self.lbl_info.setToolTip("Next")
         self.lbl_next.installEventFilter(self)
@@ -1989,8 +1991,7 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
         self.le_each_1.clear()
         self.le_total_1.clear()
         self.is_changed = True
-        self.main_panel.lbl_water_required.setText(
-            str(self.main_panel.main_window.water_controller.get_total_required()))
+        self.main_panel.update_water_required()
 
     def change_qty(self):
         item = self.sender().item
@@ -2230,7 +2231,7 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
 
     def check_included(self, item):
         cf = self.main_panel.feed_controller.check_item_included(self.area, item)
-        if cf == 0:
+        if cf == 0 and item not in self.items_finished:
             getattr(self, "ck_fed_%i" % (item + 10)).setStyleSheet("background-color: Yellow;")
         elif cf == 2:
             getattr(self, "ck_fed_%i" % (item + 10)).setStyleSheet("background-color: Blue;")
@@ -6873,6 +6874,8 @@ class DialogSoilLimits(QDialog, Ui_DialogSoilLimits):
         self.pb_close.clicked.connect(lambda: self.sub.close())
         self.area = area
         self.soil_sensors = self.dialog_soil_sensors.soil_sensors
+        self.lbl_name.setText("Soil Sensor Limits Area {}".format(self.area))
+        self.setWindowTitle("Soil Limits - Area {}".format(self.area))
 
         for s in range(1, 5):
             w, d = self.soil_sensors.get_wet_dry(self.area, s)
@@ -6884,11 +6887,21 @@ class DialogSoilLimits(QDialog, Ui_DialogSoilLimits):
         self.pb_save_2.clicked.connect(lambda: self.save(2))
         self.pb_save_3.clicked.connect(lambda: self.save(3))
         self.pb_save_4.clicked.connect(lambda: self.save(4))
+        self.dialog_soil_sensors.main_panel.coms_interface.update_soil_reading.connect(self.readings_update)
 
     def save(self, sensor):
         wet = int(getattr(self, "le_wet_{}".format(sensor)).text())
         dry = int(getattr(self, "le_dry_{}".format(sensor)).text())
         self.soil_sensors.set_wet_dry(self.area, sensor, wet, dry)
+
+    def readings_update(self, data):
+        raw = []
+        for r in data:
+            r = int(r)
+            raw.append(r)
+        offset = 4 * (self.area - 1)
+        for x in range(0, 4):
+            getattr(self, "le_raw_{}".format(x + 1)).setText(str(raw[offset + x]))
 
 
 class DialogSoilSensors(QDialog, Ui_DialogSoilSensors):
@@ -6899,8 +6912,9 @@ class DialogSoilSensors(QDialog, Ui_DialogSoilSensors):
         self.main_panel = parent
         self.db = self.main_panel.db
         self.pb_close.clicked.connect(lambda: self.sub.close())
+
         self.area = area
-        self.all_active = int(self.db.get_config(CFT_SOIL_SENSORS, "area {}".format(self.area), 0) == "True")
+        self.setWindowTitle("Soil Sensors - Area {}".format(self.area))
         self.lbl_name.setText("Soil Sensors Area" + str(self.area))
         items = self.main_panel.area_controller.get_area_items(self.area)
         self.cb_plant_1.addItem("Off", 0)
