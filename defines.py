@@ -180,6 +180,7 @@ COM_MIX_EMPTY = "empty_mix"                 # Empty's mix tank
 COM_SERVO_POS = "servo_pos"                 # Get servo pos, send servo number
 COM_SERVO_REPORT = "report_servos"          # Get position of all 9 servo valves
 COM_SERVOS_CLOSE = "close_all"              # Closes All servos
+COM_SIGNAL_INPUT = "signal_input"           # Read the input signal pin, send signal number 1 or 2
 COM_STOP_DRAIN = "stop_drain"
 COM_STOP_FILL = "stop_fill"
 CMD_SWITCH_TIMED = "sw_timed"

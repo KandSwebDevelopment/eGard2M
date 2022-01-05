@@ -1217,7 +1217,6 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.area_controller.max_min_reset_clock()  # Reset max min's that are on clock
         # # Reset feeder for new day
         # self.water_control.new_day()
-        # self.water_control.start()
 
     def new_mid_day(self):
         print("*********** Mid day ***********")

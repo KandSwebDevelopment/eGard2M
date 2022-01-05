@@ -27,7 +27,7 @@ class MaxMin(QObject):
 
     def check(self, value):
         if value < self.min:
-            self.min = value
+            self.min = round(value, 1)
             self.min_time = datetime.now()
             self.update_display()
             if self.day_night == DAY:
@@ -36,7 +36,7 @@ class MaxMin(QObject):
                 self.log_data[2] = self.min
             # self.save()
         if value > self.max:
-            self.max = value
+            self.max = round(value, 1)
             self.max_time = datetime.now()
             self.update_display()
             if self.day_night == DAY:
