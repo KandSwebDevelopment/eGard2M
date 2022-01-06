@@ -329,6 +329,7 @@ MSG_FLOAT_FEEDING = 15  # Tank 1 float down during feed time
 MSG_FLOAT_FEEDING_2 = 16
 MSG_FEED_DATE = 18  #
 MSG_IO_BOOT = 30
+MSG_FU_BOOT = 40
 
 # To locations - For the client so correct ip address can be connected to, to send
 MODULE_IO = 0

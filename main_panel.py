@@ -377,6 +377,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.coms_interface.update_float_switch.connect(self.update_float)
         self.coms_interface.update_from_relay.connect(self.process_relay_command)
         self.coms_interface.update_received.connect(self.coms_indicator)
+        self.coms_interface.update_feeder_unit.connect(self.update_from_fu)
         self.area_controller.fan_controller.update_fans_mode.connect(self.update_fan_mode)
 
     def test(self):
@@ -1109,6 +1110,11 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.lefanspeed_1.setText(str(speed))
         elif fan == 2:
             self.lefanspeed_2.setText(str(speed))
+
+    @pyqtSlot(str, list, name="updateFeeder_unit")
+    def update_from_fu(self, command, data):
+        if command == CMD_FU_BOOT:
+            self.msg_sys.add("FU Reboot", MSG_FU_BOOT, WARNING)
 
     @pyqtSlot(int, int, name="updateFloat")
     def update_float(self, tank, pos):
