@@ -72,6 +72,7 @@ from ui.dialogNutrients import Ui_DialogNutrients
 from ui.dialogNutrientPumpCalibrate import Ui_dialogNutrientPumpCalibrate
 from ui.dialogValveTest import Ui_dialogValveTest
 from ui.dialogSettingsAll import Ui_dialogSettingsAll
+from ui.dialogDispatchReconcilation import Ui_DialogDispatchReconcilation
 
 
 class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
@@ -1821,6 +1822,154 @@ class DialogDispatchOverview(QDialog, Ui_DialogLogistics):
         if strain[12] != "":
             txt += '<tr><td><b>Info</b><br>{}</td></tr>'.format(strain[12])
         self.te_stock_summary.setHtml(txt)
+
+
+class DialogDispatchReconciliation(QDialog, Ui_DialogDispatchReconcilation):
+    my_parent = ...  # type: MainPanel
+
+    def __init__(self, parent):
+        """
+        :type parent: MainWindow
+        """
+        super(DialogDispatchReconciliation, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.main_panel = parent
+        self.sub = None
+        self.db = parent.db
+        self.scales = parent.scales
+        # self.logger = parent.logger
+        self.jars = []
+        self.jar = None
+        self.reading = 0
+        self.opening_bal = round(self.db.execute_single(
+            "SELECT SUM(weight - nett - hum_pac) FROM {} WHERE weight > nett".format(DB_JARS)), 1)
+        self.le_start_amount.setText(str(self.opening_bal))
+        self.jar_count = self.db.execute_single(
+            'SELECT COUNT(jar) FROM {} WHERE weight - nett - hum_pac > 1'.format(DB_JARS))
+        self.lbl_count.setText(str(self.jar_count))
+
+        self.scales.new_reading.connect(self.new_reading)
+        self.scales.new_uid.connect(self.new_uid)
+        self.pb_tare.clicked.connect(lambda: self.scales.tare())
+        self.pb_store.clicked.connect(self.store)
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.lw_jars.doubleClicked.connect(self.manual_load)
+
+        self.load_jars_list()
+        self.display_jars()
+
+        self.le_start_amount.setText(str(round(
+            self.db.execute_single("SELECT SUM(weight - nett - hum_pac) FROM {} WHERE weight > nett".format(DB_JARS)),
+            1)))
+        self.get_current_bal()
+
+    @pyqtSlot(str, name='updateReading')
+    def new_reading(self, value):
+        val = string_to_float(value)
+        self.reading = val
+        self.le_weight.setText(value)
+        if self.jar is None:
+            return
+        self.le_error_w.setText(str(round(val - self.jar[1], 1)))
+        self.le_current_g.setText(str(round(val - self.jar[2], 1)))
+        if val < self.jar[2]:
+            # Jar removed
+            self.jar = None
+            self.clear()
+            self.scales.tare()
+            self.le_weight.setText("Wait")
+            self.pb_store.setEnabled(False)
+
+    @pyqtSlot(str, name='newUID')
+    def new_uid(self, uid):
+        if not self.check_uid(uid):
+            return
+        try:
+            self.jars.index(self.jar[0])
+        except ValueError:
+            self.lbl_jar.setText("Jar has been done")
+            return
+        self.load_jar()
+
+    def manual_load(self):
+        jar = self.lw_jars.currentItem().data(Qt.UserRole)
+        if jar is None:
+            return
+        self.jar = self.db.execute_one_row("SELECT jar, weight, nett, UID, strain, hum_pac, last_recon, last_nett FROM "
+                                           "{} WHERE jar = '{}'".format(DB_JARS, jar))
+        self.load_jar()
+
+    def store(self):
+        if self.jar[0] not in self.jars:
+            return
+        if string_to_float(self.le_error_w.text()) > 0.4 or string_to_float(self.le_error_w.text()) < -0.4:
+            # Adjust bal
+            self.db.execute_write('UPDATE {} SET weight = {}, last_recon = "{}" WHERE jar = "{}" LIMIT 1'.
+                                  format(DB_JARS, self.reading, datetime.strftime(datetime.now(), "%Y-%m-%d %H:%M:%S"),
+                                         self.jar[0]))
+            self.get_current_bal()
+        self.jar_count -= 1
+        self.lbl_count.setText(str(self.jar_count))
+        idx = self.jars.index(self.jar[0])
+        self.jars.pop(idx)
+        self.display_jars()
+        self.clear()
+        self.pb_store.setEnabled(False)
+        self.main_panel.main_window.update_stock()
+
+    def get_current_bal(self):
+        v = round(self.db.execute_single(
+            "SELECT SUM(weight - nett - hum_pac) FROM {} WHERE weight > nett".format(DB_JARS)), 1)
+        self.le_current_amount.setText(str(v))
+        self.le_amount_diff.setText(str(round(v - self.opening_bal, 1)))
+
+    def load_jars_list(self):
+        self.jars.clear()
+        sql = "SELECT jar FROM {} WHERE weight - nett - hum_pac > 2 ORDER BY jar".format(DB_JARS)
+        rows = self.db.execute(sql)
+        for row in rows:
+            self.jars.append(row[0])
+
+    def load_jar(self):
+        if self.jar is None:
+            return
+        self.pb_store.setEnabled(True)
+        self.lbl_jar.setText(self.jar[0])
+        self.le_opening_w.setText(str(self.jar[1]))
+        self.le_opening_g.setText(str(round(self.jar[1] - self.jar[2], 1)))
+
+    def display_jars(self):
+        self.lw_jars.clear()
+        for jar in self.jars:
+            strain = self.db.execute_single(
+                'SELECT s.name FROM {} s INNER JOIN {} j ON s.id = j.strain AND j.jar = "{}"'.format(DB_STRAINS,
+                                                                                                     DB_JARS, jar))
+            lw_item = QListWidgetItem("{} - {}".format(jar, strain))
+            v_item = QVariant(jar)
+            lw_item.setData(Qt.UserRole, v_item)
+            self.lw_jars.addItem(lw_item)
+
+    def check_uid(self, uid) -> bool:
+        self.jar = self.db.execute_one_row(
+            "SELECT jar, weight, nett, UID, strain, hum_pac, last_recon, last_nett FROM {} WHERE UID = '{}'".format(
+                DB_JARS, uid))
+        if self.jar is None:
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("This tag has not been registered {}".format(uid))
+            msg.setWindowTitle("Unregistered UID")
+            msg.setStandardButtons(QMessageBox.Cancel)
+            msg.exec_()
+            return False
+        return True
+
+    def clear(self):
+        self.le_opening_w.setText("")
+        self.le_opening_g.setText("")
+        self.le_current_g.setText("")
+        self.le_error_w.setText("")
+        self.lbl_jar.setText("")
 
 
 class DialogFeedMix(QWidget, Ui_DialogFeedMix):

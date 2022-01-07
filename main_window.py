@@ -17,7 +17,7 @@ from dialogs import DialogEngineerCommandSender, DialogEngineerIo, DialogDispatc
     DialogSettings, DialogProcessPerformance, DialogDispatchLoadingBay, DialogProcessManager, DialogStrains, \
     DialogSeedPicker, DialogProcessLogs, DialogPatternMaker, DialogIOVC, DialogGraphEnv, DialogStrainPerformance, \
     DialogNutrientPumpCalibrate, DialogWaterTanksCalibrate, DialogFeederManualMix, DialogMixTankCalibrate, \
-    DialogNutrients, DialogValveTest
+    DialogNutrients, DialogValveTest, DialogDispatchReconciliation
 from functions import multi_status_bar, get_last_friday
 from functions_colors import get_css_colours
 from status_codes import *
@@ -116,6 +116,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionSystem_Info.triggered.connect(lambda: self.wc.show(DialogSysInfo(self)))
         self.actionSync_IO.triggered.connect(lambda: self.main_panel.io_reboot())
         self.actionI_O_VC.triggered.connect(lambda: self.wc.show(DialogIOVC(self)))
+        self.actionDTH_s.triggered.connect(lambda: self.reboot(1))
+        self.actionFeeder_Unit.triggered.connect(lambda: self.reboot(2))
+        self.actionDE_Module.triggered.connect(lambda: self.reboot(3))
+        self.actionIO_Unit.triggered.connect(lambda: self.reboot(4))
 
         # Dispatch
         self.actionCounter.triggered.connect(lambda: self.wc.show(DialogDispatchCounter(self.main_panel)))
@@ -124,6 +128,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionStorage.triggered.connect(lambda: self.wc.show(DialogDispatchStorage(self.main_panel)))
         self.actionOverview.triggered.connect(lambda: self.wc.show(DialogDispatchOverview(self.main_panel)))
         self.actionLoading.triggered.connect(lambda: self.wc.show(DialogDispatchLoadingBay(self.main_panel)))
+        self.actionReconcilation.triggered.connect(lambda: self.wc.show(DialogDispatchReconciliation(self.main_panel)))
 
         # Process
         self.actionPreformance_2.triggered.connect(lambda: self.wc.show(DialogProcessPerformance(self.main_panel)))
@@ -159,6 +164,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def reload_processes(self):
         self.area_controller.reload_area(1)
         self.area_controller.reload_area(2)
+
+    def reboot(self, unit):
+        units = ["DTH's", "Feeder Unit", "DE Module", "IO Unit"]
+        name = units[unit - 1]
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Question)
+        msg.setText("Confirm you wish to reboot the " + name)
+        msg.setWindowTitle("Confirm Reboot")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        msg.setDefaultButton(QMessageBox.Cancel)
+        if msg.exec_() == QMessageBox.Cancel:
+            return
+        if unit == 1:
+            self.coms_interface.send_switch(SW_DHT_POWER, ON)
+        elif unit == 2:
+            self.coms_interface.send_data(CMD_REBOOT, True, MODULE_FU)
+        elif unit == 3:
+            self.coms_interface.send_data(CMD_REBOOT, True, MODULE_DE)
+        elif unit == 4:
+            self.coms_interface.send_data(CMD_REBOOT, True, MODULE_IO)
 
     @pyqtSlot(int, int, int, int, name="updateQueStatus")
     def update_que(self, pri, relay, norm, lock_status):

@@ -31,6 +31,10 @@ def play_sound(sound):
         winsound.Beep(sound[s], sound[s + 1])
 
 
+def check_for_sound():
+    pass
+
+
 def sound_click():
     winsound.PlaySound(get_wave_path("sound55.wav"), winsound.SND_FILENAME)
 

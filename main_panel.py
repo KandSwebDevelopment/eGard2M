@@ -604,6 +604,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
 
         elif location == 3:
             if self.area_controller.area_has_process(3):
+                for x in range(1, 9):
+                    getattr(self, "pb_pm2_%i" % x).setText("")
                 self.frmstagechange_3.setEnabled(True)
                 rows = self.db.execute('SELECT item, started FROM {}'.format(DB_PROCESS_DRYING))
                 if len(rows) == 0:
@@ -727,6 +729,9 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         #                 + str(p.stage_days_elapsed) + "  ^")
         p.journal_write("{}    Number {} Cut and moved to drying. Days Veging {}   Days flowering {}  Total days {}"
                         .format(dt, item, p.days_total - p.stage_days_elapsed, p.stage_days_elapsed, p.days_total))
+
+        self.area_controller.reload_area(2)
+        # Breakpoint here as last time final item still failed below if, line above added to fix ??
         if len(self.area_controller.get_area_items(2)) == 0:  # If no items left in area 2
             # Update the processes current stage
             self.db.execute_write(
@@ -736,7 +741,6 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.db.execute_write("DELETE FROM {} WHERE area = 2".format(DB_PROCESS_MIXES))
 
             p.current_stage += 1
-        self.area_controller.reload_area(2)
         self.area_controller.reload_area(3)
         self.check_stage(2)
         self.check_stage(3)
