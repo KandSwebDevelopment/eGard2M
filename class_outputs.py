@@ -253,10 +253,11 @@ class OutputClass(QObject):
         self.relay_position = state
         if state != self.status_last:
             if state == 1:
-                # play_sound(SND_ON)
-                sound_on()
+                if self.output_controller.area_controller.main_window.mute == 0:
+                    sound_on()
             else:
-                sound_off()
+                if self.output_controller.area_controller.main_window.mute == 0:
+                    sound_off()
                 # play_sound(SND_OFF)
         self.status_last = state
 
@@ -268,7 +269,8 @@ class OutputClass(QObject):
         self.status = state
         if state == ON:
             if self.status_last is not None:
-                sound_on()
+                if self.output_controller.area_controller.main_window.mute == 0:
+                    sound_on()
                 # play_sound(SND_ON)
             if self.detection & DET_TIMER == DET_TIMER and self.type != 5:
                 if self.duration > 0:
@@ -281,7 +283,8 @@ class OutputClass(QObject):
                 self.timer.stop()
                 self.output_controller.lbl_workshop_timer.setText("")
             if self.status_last is not None:
-                sound_off()
+                if self.output_controller.area_controller.main_window.mute == 0:
+                    sound_off()
                 # play_sound(SND_OFF)
 
     def timer_event(self):

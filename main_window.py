@@ -1,7 +1,7 @@
 import sys
 from datetime import *
 
-from PyQt5.QtCore import QSettings, pyqtSlot, pyqtSignal
+from PyQt5.QtCore import QSettings, pyqtSlot, pyqtSignal, QTimer
 from PyQt5.QtWidgets import QMainWindow, QApplication, QMessageBox, QMdiArea
 
 from class_access import Access
@@ -38,7 +38,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.setupUi(Application)
         # self.resize(1250, 875)
-        self.db = MysqlDB()
+        self.db = MysqlDB(self)
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Warning)
         if not self.db.connect_db():
@@ -68,6 +68,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.update_status_bar(SBP_MODE, "Slave", OK)
 
         self.update_status_bar(SBP_BOOT_TIME, datetime.now().strftime("%a %d  %H:%M"), OK, datetime.now().strftime("%b %Y"))
+
+        self.mute = 1
+        self.mute_timer = QTimer(self)
+        self.mute_timer.timeout.connect(self.mute_toggle)
+        self.mute_timer.start(60000)
 
         self.msg_sys = MessageSystem(self, self.main_panel.listWidget)
         self.logger = Logger(self)
@@ -106,6 +111,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             return
         self.window_change.emit(self.mdiArea.activeSubWindow().windowTitle())
         print(self.mdiArea.activeSubWindow().windowTitle())
+
+    def mute_toggle(self):
+        self.mute = int(not self.mute)
 
     def connect_signals(self):
         # System

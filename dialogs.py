@@ -25,7 +25,7 @@ from class_process import ProcessClass
 from defines import *
 from plotter import *
 from functions import string_to_float, m_box, auto_capital, sound_click, minutes_to_hhmm, sound_check_out, \
-    sound_error, sound_ok
+    sound_error, sound_ok, string_to_int
 from ui.dialogDispatchCounter import Ui_DialogDispatchCounter
 from ui.dialogDispatchInternal import Ui_DialogDispatchInternal
 from ui.dialogAccess import Ui_DialogDEmodule
@@ -5268,9 +5268,13 @@ class DialogStrainPerformance(QDialog, Ui_DialogStrainPreformance):
         self.tw_item.setColumnCount(4)
         self.tw_item.setHorizontalHeaderLabels(["Process", "Ending", "Days", "Yield"])
 
-        sql = 'SELECT strain_id, ROUND(SUM(yield),2), COUNT(strain_id), ' \
-              '(ROUND(SUM(yield)/ COUNT(strain_id),2)) AS AVG ' \
-              'FROM process_strains GROUP BY strain_id  ORDER BY AVG DESC'
+        sql = 'SELECT ps.strain_id, ROUND(SUM(ps.yield),2), COUNT(ps.strain_id), ' \
+              '(ROUND(SUM(ps.yield)/ COUNT(ps.strain_id),2)) AS AVG, ps.process_id ' \
+              'FROM process_strains ps INNER JOIN processes p ON p.id = ps.process_id ' \
+              'WHERE p.end < NOW() AND ps.total_days > 50 GROUP BY ps.strain_id  ORDER BY AVG DESC'
+        # sql = 'SELECT strain_id, ROUND(SUM(yield),2), COUNT(strain_id), ' \
+        #       '(ROUND(SUM(yield)/ COUNT(strain_id),2)) AS AVG ' \
+        #       'FROM process_strains GROUP BY strain_id  ORDER BY AVG DESC'
         rows = self.db.execute(sql)
         self.tw_all.setRowCount(len(rows))
 
@@ -6536,10 +6540,10 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         super(DialogSettings, self).__init__()
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
         self.setupUi(self)
-        self.main_panel = parent
+        self.main_window = parent
         self.db = parent.db
         self.sub = None
-        self.mode = self.main_panel.master_mode  # 1=Master, arduino and server  2=Slave, client only
+        self.mode = self.main_window.master_mode  # 1=Master, arduino and server  2=Slave, client only
         self.running = False  # True when running an action
         self.us_tank = 1  # Tank number to operate us sensor
         self.servo_valve = 0
@@ -6548,14 +6552,14 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         self.pb_close.clicked.connect(lambda: self.sub.close())
         self.toolBox.currentChanged.connect(self.tab_change)
 
-        # self.pbsoilread.clicked.connect(self.soil_read)
-        # # self.main_panel.water_control.new_data.connect(self.update_us_display)
-        # self.main_panel.coms_interface.update_soil_reading.connect(self.update_soil)
+        self.msg = QMessageBox()
+        self.msg.setIcon(QMessageBox.Warning)
 
+        # ------------ General --------------
         # Mode
         self.cb_system_mode.addItem("Master", 1)
         self.cb_system_mode.addItem("Slave", 2)
-        self.cb_system_mode.setCurrentIndex(self.main_panel.master_mode - 1)
+        self.cb_system_mode.setCurrentIndex(self.main_window.master_mode - 1)
         self.cb_system_mode.currentIndexChanged.connect(self.system_mode_change)
 
         # Database
@@ -6567,20 +6571,26 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         self.db_name = self.settings.value("Database/database")
         self.pb_back_up.clicked.connect(self.db_backup)
         # else:
-        #     self.host = "192.168.0.20"  # self.main_panel.server.remote_ip_str
+        #     self.host = "192.168.0.20"  # self.main_window.server.remote_ip_str
         self.le_db_host.setText(self.host)
         self.le_db_user_name.setText(self.db_user)
         self.le_db_password.setText(self.db_password)
         self.le_db_name.setText(self.db_name)
 
-        # Com ports
+        # ----------- Areas --------------------
+        self.pb_area_save.clicked.connect(self.save_area)
+
+        # ----------- Com ports -----------------
         self.pb_rescan_ports.clicked.connect(self.get_ports)
         self.le_ss_port.setText(self.db.get_config(CFT_SS_UNIT, "com", ""))
         self.pb_ss_update.clicked.connect(self.save_ss_port)
         self.le_ss_port.textChanged.connect(lambda: auto_capital(self.le_ss_port))
         self.get_ports()
 
-        # Fans
+        # ----------- Dispatch -----------------
+        self.pb_save_dispatch.clicked.connect(self.save_dispatch)
+
+        # ------------ Fans ------------------
         row = self.db.execute_one_row("SELECT sensor, mode, Kp, Ki, Kd FROM {} WHERE id = {}".format(DB_FANS, 1))
         self._sensor_1 = row[0]
         self.le_kp_1.setText(str(row[2]))
@@ -6593,14 +6603,13 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         self.le_kd_2.setText(str(row[4]))
 
         self.pb_save_fans_1.clicked.connect(lambda: self.save_fans(1))
-        self.pb_reset_fan_1.clicked.connect(lambda: self.main_panel.area_controller.fan_controller.fans[1].reset())
+        self.pb_reset_fan_1.clicked.connect(lambda: self.main_window.area_controller.fan_controller.fans[1].reset())
         self.pb_save_fans_2.clicked.connect(lambda: self.save_fans(2))
-        self.pb_reset_fan_2.clicked.connect(lambda: self.main_panel.area_controller.fan_controller.fans[2].reset())
-        # self.pb_show_log_1.clicked.connect(lambda: self.main_panel.dialog_control("Fan 1 Log", DialogFanLog, 1))
-        # self.pb_show_log_2.clicked.connect(lambda: self.main_panel.dialog_control("Fan 2 Log", DialogFanLog, 2))
-
+        self.pb_reset_fan_2.clicked.connect(lambda: self.main_window.area_controller.fan_controller.fans[2].reset())
         self.ck_test.clicked.connect(lambda: self.logging(1))
         self.ck_test_2.clicked.connect(lambda: self.logging(2))
+
+        self.toolBox.setCurrentIndex(0)
 
     @pyqtSlot(int, int, int)
     def update_us_display(self, tank, litres, reading):
@@ -6609,7 +6618,42 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         self.lblusoperate.setStyleSheet("background-color: light gray;  color: white;")
 
     def tab_change(self):
-        print(self.toolBox.currentIndex())
+        tab = self.toolBox.currentIndex()
+        if tab == 0:
+            pass
+
+        # ----------------- Areas
+        elif tab == 1:
+            self.le_area_trans_cool_1.setText(self.db.get_config(CFT_AREA, "trans cool 1", "NS"))
+            self.le_area_trans_cool_2.setText(self.db.get_config(CFT_AREA, "trans cool 2", "NS"))
+            self.le_area_trans_warm_1.setText(self.db.get_config(CFT_AREA, "trans warm 1", "NS"))
+            self.le_area_trans_warm_2.setText(self.db.get_config(CFT_AREA, "trans warm 2", "NS"))
+
+        # ----------------- Areas
+        elif tab == 3:
+            self.le_dispatch_ppg.setText(self.db.get_config(CFT_DISPATCH, "ppg", "NS"))
+            self.le_dispatch_empty.setText(self.db.get_config(CFT_DISPATCH, "empty grams", "NS"))
+            self.le_dispatch_per_item.setText(self.db.get_config(CFT_DISPATCH, "estimate per plant", "NS"))
+
+    # ============= Area
+    def save_area(self):
+        self.db.set_config_both(CFT_AREA, "trans cool 1", string_to_int(self.le_area_trans_cool_1.text()))
+        self.db.set_config_both(CFT_AREA, "trans cool 2", string_to_int(self.le_area_trans_cool_2.text()))
+        self.db.set_config_both(CFT_AREA, "trans warm 1", string_to_int(self.le_area_trans_warm_1.text()))
+        self.db.set_config_both(CFT_AREA, "trans warm 2", string_to_int(self.le_area_trans_warm_2.text()))
+        p = self.main_window.area_controller.get_area_process(1)
+        if p != 0:
+            p.warm_time = string_to_int(self.le_area_trans_warm_1.text())
+            p.cool_time = string_to_int(self.le_area_trans_cool_1.text())
+        p = self.main_window.area_controller.get_area_process(2)
+        if p != 0:
+            p.warm_time = string_to_int(self.le_area_trans_warm_2.text())
+            p.cool_time = string_to_int(self.le_area_trans_cool_2.text())
+
+    def save_dispatch(self):
+        self.db.set_config_both(CFT_DISPATCH, "ppg", string_to_int(self.le_dispatch_ppg.text()))
+        self.db.set_config_both(CFT_DISPATCH, "empty grams", string_to_int(self.le_dispatch_empty.text()))
+        self.db.set_config_both(CFT_DISPATCH, "estimate per plant", string_to_int(self.le_dispatch_per_item.text()))
 
     def get_ports(self):
         self.te_ports.clear()
@@ -6620,75 +6664,20 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
 
     def save_ss_port(self):
         self.db.set_config(CFT_SS_UNIT, "com", self.le_ss_port.text())
-        self.main_panel.scales.get_port()
-        self.main_panel.scales.coms_disconnect()
-        self.main_panel.scales.connect()
+        self.main_window.scales.get_port()
+        self.main_window.scales.coms_disconnect()
+        self.main_window.scales.connect()
         # play_sound(SND_OK)
         sound_ok()
 
-    def us_set_tank(self):
-        rb = self.sender()
-        if rb.text().find("1") != -1:
-            self.us_tank = 1
-        elif rb.text().find("2") != -1:
-            self.us_tank = 2
-        else:
-            self.us_tank = 3
-
-    def us_test(self):
-        if self.running:
-            return
-        self.lblusoperate.setStyleSheet("background-color: red;  color: white;")
-        self.main_panel.coms_interface.send_command(COM_US_READ, self.us_tank, None, True)
-
-    def sv_set_valve(self):
-        rb = self.sender()
-        if rb.text().find("Tank 1") != -1:
-            self.servo_valve = SV_TANK_1
-        elif rb.text().find("Tank 2") != -1:
-            self.servo_valve = SV_TANK_2
-        elif rb.text().find("Feed 1") != -1:
-            self.servo_valve = SV_FEED_1
-        elif rb.text().find("Feed 2") != -1:
-            self.servo_valve = SV_FEED_2
-        elif rb.text().find("Drain 1") != -1:
-            self.servo_valve = SV_DRAIN_1
-        elif rb.text().find("Drain 2") != -1:
-            self.servo_valve = SV_DRAIN_2
-
-    def sv_move(self):
-        pos = int(self.lesvposition.text())
-        self.main_panel.coms_interface.send_data(CMD_VALVE, True, MODULE_IO, self.servo_valve, pos)
-
-    def soil_read(self):
-        self.main_panel.coms_interface.send_command(COM_SOIL_READ)
-        self.running = True
-        self.lblsoiloperate.setStyleSheet("background-color: red;  color: white;")
-
-    @pyqtSlot(list)
-    def update_soil(self, data):
-        if not self.running:
-            return
-        try:
-            for x in range(2, len(data)):
-                var_name = "lesoil_%i" % (x - 1)
-                ctrl = getattr(self, var_name)
-                ctrl.setText(str(data[x]))
-                self.running = False
-                self.lblsoiloperate.setStyleSheet("background-color: light gray;  color: white;")
-        except Exception as e:
-            print(e.args)
-
     # System
     def system_mode_change(self):
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Warning)
-        msg.setText("Confirm you wish to change the mode of operation for this computer")
-        msg.setInformativeText("The program will restart")
-        msg.setWindowTitle("Confirm Mode Change")
-        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
-        msg.setDefaultButton(QMessageBox.Cancel)
-        if msg.exec_() == QMessageBox.Cancel:
+        self.msg.setText("Confirm you wish to change the mode of operation for this computer")
+        self.msg.setInformativeText("The program will restart")
+        self.msg.setWindowTitle("Confirm Mode Change")
+        self.msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        self.msg.setDefaultButton(QMessageBox.Cancel)
+        if self.msg.exec_() == QMessageBox.Cancel:
             return
         self.settings.setValue('mode', str(self.cb_system_mode.currentData()))
         self.settings.sync()
@@ -6703,14 +6692,14 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         s.close()
 
     def db_backup(self):
-        self.main_panel.db.backup()
+        self.main_window.db.backup()
 
     # Fans
     def logging(self, fan):
         if fan == 1:
-            self.main_panel.fans[fan].logging = self.ck_test.isChecked()
+            self.main_window.fans[fan].logging = self.ck_test.isChecked()
         else:
-            self.main_panel.fans[fan].logging = self.ck_test_2.isChecked()
+            self.main_window.fans[fan].logging = self.ck_test_2.isChecked()
 
     def save_fans(self, fan):
         kp = string_to_float(getattr(self, "le_kp_{}".format(fan)).text())
@@ -6718,9 +6707,9 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         kd = string_to_float(getattr(self, "le_kd_{}".format(fan)).text())
         self.db.execute_write("UPDATE {} set Kp = {}, Ki = {}, Kd = {} WHERE id = {} LIMIT 1".
                               format(DB_FANS, kp, ki, kd, fan))
-        self.main_panel.area_controller.fan_controller.fans[fan].set_pid(kp, ki, kd)
-        self.main_panel.area_controller.fan_controller.fans[fan].reset()
-        self.main_panel.coms_interface.relay_send(NWC_FAN_PID, fan)
+        self.main_window.area_controller.fan_controller.fans[fan].set_pid(kp, ki, kd)
+        self.main_window.area_controller.fan_controller.fans[fan].reset()
+        self.main_window.coms_interface.relay_send(NWC_FAN_PID, fan)
 
 
 class DialogProcessPerformance(QDialog, Ui_DialogProcessPreformance):

@@ -30,6 +30,7 @@ class Logger(QObject):
             self.system_path = self.doc_folder + "\\System"
             self.feeding_path = self.doc_folder + "\\Feeding"
             self.dispatch_path = self.doc_folder + "\\Dispatch"
+            self.backup_path = self.doc_folder + "\\DB Backups"
 
             if not os.path.exists(self.log_path):
                 os.makedirs(self.log_path)
@@ -43,6 +44,10 @@ class Logger(QObject):
                 os.makedirs(self.dispatch_path)
             if not os.path.exists(self.system_path):
                 os.makedirs(self.system_path)
+            if not os.path.exists(self.system_path):
+                os.makedirs(self.system_path)
+            if not os.path.exists(self.backup_path):
+                os.makedirs(self.backup_path)
             # self.my_parent.msg_sys.remove(MSG_1 * -1)
         except Exception as e:  # OSError
             self.available = False

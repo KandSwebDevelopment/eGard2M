@@ -159,6 +159,10 @@ def string_to_float(s) -> float:
         return 0.00
 
 
+def string_to_int(s):
+    return int(string_to_float(s))
+
+
 def multi_status_bar(self):
     # Do multipart status bar
     self.panel_1 = QLabel("1", self)

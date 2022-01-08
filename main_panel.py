@@ -779,6 +779,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             dt = datetime.strftime(datetime.now(), '%d/%m/%Y %H:%M')
             p.journal_write(dt + "    Number " + str(item) + " Dried and finished.")
 
+        self.area_controller.load_areas()
         if len(self.area_controller.get_area_items(3)) == 0:
             # None left, so finish stage
             self.area_controller.get_area_process(3).end_process()
@@ -786,7 +787,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.area_controller.load_sensors(3)
             self.area_controller.load_outputs(3)
         else:
-            self.area_controller.load_areas()
+            # self.area_controller.load_areas()
             self.check_stage(3)
             self.coms_interface.relay_send(NWC_FINISH_ITEM, item)
 
@@ -868,6 +869,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         rsd = datetime.strftime(datetime.now(), "%Y-%m-%d")
         # rsd = self.db.reverse_date(sd)
         # Update processes table
+
+        # Breakpoint is set so you can check the date, it seems to get put in reverse
         sql = 'UPDATE {} SET running = 1, start = "{}", location = 1, stage = 1, feed_mode = 1 WHERE id = {}'.format(
             DB_PROCESS, rsd, pid)
         self.db.execute_write(sql)

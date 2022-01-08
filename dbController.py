@@ -11,12 +11,13 @@ from PyQt5.QtWidgets import QMessageBox, QComboBox
 from datetime import datetime
 import mysql.connector
 from defines import *
+from subprocess import Popen, PIPE
 
 
 class MysqlDB:
     def __init__(self, parent=None):
         super(MysqlDB, self).__init__()
-        self.my_parent = parent
+        self.main_window = parent
         self.settings = QSettings(FN_SETTINGS, QSettings.IniFormat)
         self.master_mode = int(self.settings.value("mode"))  # 1=Master  2=Slave
         if self.master_mode == MASTER:
@@ -281,15 +282,36 @@ class MysqlDB:
 
     def backup(self):
         self.disconnect()
+        backup_path = self.main_window.logger.backup_path
         file_stamp = datetime.now().strftime('%Y-%m-%d-%I:%M')
-        # os.popen("mysqldump -u %s -p%s -h %s -e --opt -c %s | gzip -c > %s.gz" % (
-        #     self.user, self.password, self.host, self.database, self.database + "_" + file_stamp))
+        # file = backup_path + self.database + "_" + file_stamp + ".sql"
+        # sql = "BACKUP DATABASE {} TO DISK = '{}'".format(self.database, file)
 
+        BACKUP_PATH = backup_path
+        DATETIME = datetime.now().strftime('%Y%m%d-%H%M%S')
+        TODAYBACKUPPATH = BACKUP_PATH + '/' + DATETIME
+        try:
+            os.stat(TODAYBACKUPPATH)
+        except:
+            os.makedirs(TODAYBACKUPPATH)
+
+        db = self.database
+        dumpcmd = "mysqldump -h " + "localhost" + " -u " + self.user + " -p" + \
+                  self.password + " " + db + " > " + pipes.quote(TODAYBACKUPPATH) + "/" + db + ".sql"
+        os.system(dumpcmd)
+        # gzipcmd = "gzip " + pipes.quote(TODAYBACKUPPATH) + "/" + db + ".sql"
+        # os.system(gzipcmd)
+
+        # Checking if backup folder already exists or not. If not exists will create it.
+        # p = Popen("mysqldump -u %s -p %s -h %s -e --opt -c %s | gzip -c > %s.gz" % (self.user, self.password, self.host, self.database, self.database + "_" + file_stamp))
+        # p = Popen(["mysqldump", "--login-path=" + db["loginPath"], db["dbName"]], stdout=PIPE, stderr=PIPE)
+        # out, err = p.communicate()
         exe_path = "\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqldump.exe\""
-        dump_cmd = exe_path + " -h " + self.host + " -u " + self.user + " -p " + self.password + " " + \
-            self.database + " > " + self.backup_path + self.database + "_" + file_stamp + ".sql"
+        dump_cmd = exe_path + " -h " + self.host + " -u " + self.user + " -p" + self.password + " " + \
+            self.database + " > " + TODAYBACKUPPATH + self.database + "_" + file_stamp + ".sql"
         print(dump_cmd)
-        os.system(dump_cmd)
+        # os.system(dump_cmd)
+
         print("Done")
         self.connect_db()
 
