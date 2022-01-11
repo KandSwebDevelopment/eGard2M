@@ -75,7 +75,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.soil_sensors = None
         self.msg_sys = None
         self.stage_change_warning_days = int(self.db.get_config(CFT_PROCESS, "stage change days", 7))
-        self.unit_price = float(self.db.get_config(CFT_ACCESS, "unit price", 20)) / 100
+        self.unit_price = self.db.execute_single("SELECT ppu FROM {} ORDER BY date_from DESC LIMIT 1".
+                                                 format(DB_ELECTRIC)) / 100
 
         self.slave_counter = 0
         self.coms_counter = 0
@@ -379,6 +380,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.coms_interface.update_received.connect(self.coms_indicator)
         self.coms_interface.update_feeder_unit.connect(self.update_from_fu)
         self.area_controller.fan_controller.update_fans_mode.connect(self.update_fan_mode)
+        # self.db.backup_finished.connect(self.notify_backup_finished)
 
     def test(self):
         self.main_window.logger.save_output_log(self.area_controller.output_controller.get_output_log_values())
@@ -394,6 +396,11 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         #                                   ' VALUES ({}, -2, {}, "{}", 20)'.format(DB_PROCESS_TEMPERATURE, a, i, s[se]))
         # self.area_controller.output_controller.outputs[OUT_HEATER_ROOM].boost_start()
 
+    # def notify_backup_finished(self):
+    #     msg = QMessageBox(QMessageBox.Information, "Complete", "The database backup has finished", QMessageBox.Ok)
+    #     msg.exec_()
+    #     self.msg_sys.add("Database backup complete", MSG_DATABASE_BACKUP, INFO)
+    #
     def update_next_feeds(self):
         """
         This updates the all feeding information for both areas
@@ -1276,6 +1283,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         elif cmd == NWC_PROCESS_MIX_CHANGE:
             self.main_window.feed_controller.reload_area(data[0])
         elif cmd == NWC_FEED_DATE:
+            self.feed_controller.feeds[data[0]].load_feed_date()
+            self.update_next_feeds()
             self.area_controller.output_controller.water_heater_update_info()
         elif cmd == NWC_FEED_ITEMS:
             self.feed_controller.feeds[data[0]].load_mixes()

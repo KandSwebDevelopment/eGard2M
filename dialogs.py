@@ -4770,9 +4770,9 @@ class DialogPatternMaker(QDialog, Ui_DialogPatterns):
     def eventFilter(self, source, event):
         # Remember to install event filter for control first
         # print("Event ", event.type())
-        if event.type() == QtCore.QEvent.FocusOut:
-            if source is self.cb_patterns:
-                self.add_pattern()
+        # if event.type() == QtCore.QEvent.FocusOut:
+        #     if source is self.cb_patterns:
+        #         self.add_pattern()
         return QWidget.eventFilter(self, source, event)
 
     def load_patterns(self):
@@ -6556,6 +6556,7 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         self.msg.setIcon(QMessageBox.Warning)
 
         # ------------ General --------------
+
         # Mode
         self.cb_system_mode.addItem("Master", 1)
         self.cb_system_mode.addItem("Slave", 2)
@@ -6576,6 +6577,10 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         self.le_db_user_name.setText(self.db_user)
         self.le_db_password.setText(self.db_password)
         self.le_db_name.setText(self.db_name)
+        # Electric
+        self.le_ppu.setText(str(self.db.execute_single("SELECT ppu FROM {} ORDER BY date_from DESC LIMIT 1".
+                                                       format(DB_ELECTRIC))))
+        self.pb_electeric_update.clicked.connect(self.electric_update)
 
         # ----------- Areas --------------------
         self.pb_area_save.clicked.connect(self.save_area)
@@ -6655,6 +6660,17 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         self.db.set_config_both(CFT_DISPATCH, "empty grams", string_to_int(self.le_dispatch_empty.text()))
         self.db.set_config_both(CFT_DISPATCH, "estimate per plant", string_to_int(self.le_dispatch_per_item.text()))
 
+    def electric_update(self):
+        self.msg.setText("Confirm you wish update the price per unit")
+        self.msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        self.msg.setDefaultButton(QMessageBox.Cancel)
+        if self.msg.exec_() == QMessageBox.Cancel:
+            return
+        sql = 'INSERT INTO {} (date_from, ppu, units) VALUES ("{}", {}, {})'\
+            .format(DB_ELECTRIC, datetime.now(), string_to_float(self.le_ppu.text()),
+                    self.main_window.main_panel.le_pwr_total_1.text())
+        self.db.execute_write(sql)
+
     def get_ports(self):
         self.te_ports.clear()
         port_list = serial.tools.list_ports.comports()
@@ -6692,7 +6708,7 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         s.close()
 
     def db_backup(self):
-        self.main_window.db.backup()
+        self.main_window.db.backup(self.ck_db_compress.isChecked())
 
     # Fans
     def logging(self, fan):

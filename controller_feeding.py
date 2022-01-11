@@ -16,7 +16,7 @@ def list_to_str(items) -> str:
 
 
 class FeedControl(QObject):
-    area_days = ...  # type: list[int]
+    # area_days = ...  # type: list[int]
     update_status_feeder = pyqtSignal(int)
     update_status_nutrients = pyqtSignal(int)
     sig1 = pyqtSignal(str)

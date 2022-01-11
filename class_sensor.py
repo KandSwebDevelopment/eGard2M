@@ -237,6 +237,11 @@ class SensorClass(object):
                             # Switch relay on to break power, when sw on is received back it will switch it off
                             if self.area_controller.master_mode == MASTER:
                                 self.area_controller.main_window.coms_interface.send_switch(SW_DHT_POWER, ON)
+                                colour_offset = 0
+                                r, g, b, rt, gt, bt = self.get_colour(colour_offset)
+                                self.display_ctrl.setStyleSheet(
+                                    "background-color: rgb(" + str(r) + ", " + str(g) + ", " + str(b) +
+                                    ");  color: rgb(" + str(rt) + ", " + str(gt) + ", " + str(bt) + ");")
                     return
                 else:
                     self.value = new_value

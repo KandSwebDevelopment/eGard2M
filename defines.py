@@ -220,6 +220,7 @@ DB_FEED_SCHEDULES = "feed_schedules"
 DB_FEED_SCHEDULE_NAMES = "feed_schedule_names"
 DB_FEEDER_POTS = "feeder_pots"
 DB_FLUSHING = "flushing"
+DB_ELECTRIC = "electrict_price"
 DB_JARS = "storage"
 DB_LIGHT = "lightschedules"
 DB_LIGHT_NAMES = "light_schedule_names"
@@ -318,7 +319,7 @@ MSG_1 = 1
 MSG_DATA_LINK = 2   # Master/Slave Data link lost
 MSG_DATABASE = 3    # Master db unavailable using localhost
 MSG_DATABASE_DEBUG = 4    # Using localhost debug db
-MSG_LOGGING = 5
+MSG_DATABASE_BACKUP = 5     # Db has been backed up
 MSG_FAN_START = 6
 MSG_UPCOMING = 7   # Upcoming start
 MSG_FLOAT = 11   # Tank 1
@@ -330,6 +331,7 @@ MSG_FLOAT_FEEDING_2 = 16
 MSG_FEED_DATE = 18  #
 MSG_IO_BOOT = 30
 MSG_FU_BOOT = 40
+MSG_LOGGING = 50
 
 # To locations - For the client so correct ip address can be connected to, to send
 MODULE_IO = 0

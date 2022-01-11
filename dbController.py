@@ -1,11 +1,12 @@
 import os
 import pipes
 # import sys
+import threading
 from sqlite3 import OperationalError
 
 # from win32com.shell import shell, shellcon
 
-from PyQt5.QtCore import QSettings
+from PyQt5.QtCore import QSettings, pyqtSignal, QObject
 from PyQt5.QtWidgets import QMessageBox, QComboBox
 # from mysql.connector import *
 from datetime import datetime
@@ -14,9 +15,12 @@ from defines import *
 from subprocess import Popen, PIPE
 
 
-class MysqlDB:
+class MysqlDB(QObject):
+    backup_finished = pyqtSignal(name="backupFinished")
+
     def __init__(self, parent=None):
-        super(MysqlDB, self).__init__()
+        # super(MysqlDB, self).__init__()
+        QObject.__init__(self, parent)
         self.main_window = parent
         self.settings = QSettings(FN_SETTINGS, QSettings.IniFormat)
         self.master_mode = int(self.settings.value("mode"))  # 1=Master  2=Slave
@@ -34,6 +38,8 @@ class MysqlDB:
         self.cur = None
         self.err_count = 0
         self.is_connected = False
+        self.gzip = 0   # Set 1 to zip db backup
+        self.backup_finished.connect(self.notify_finished)
 
     def reconnect(self):
         if self.is_connected:
@@ -280,41 +286,40 @@ class MysqlDB:
                 d = datetime.strptime(date_, "%d-%m-%Y")
             return datetime.strftime(d, "%Y-%m-%d")
 
-    def backup(self):
-        self.disconnect()
-        backup_path = self.main_window.logger.backup_path
-        file_stamp = datetime.now().strftime('%Y-%m-%d-%I:%M')
-        # file = backup_path + self.database + "_" + file_stamp + ".sql"
-        # sql = "BACKUP DATABASE {} TO DISK = '{}'".format(self.database, file)
+    def backup(self, gzip=0):
+        msg = QMessageBox(QMessageBox.Question, "Confirm", "Do you wish to back up the database", QMessageBox.Yes | QMessageBox.Cancel)
+        if msg.exec_() == QMessageBox.Cancel:
+            return
+        self.gzip = int(gzip)
+        th = threading.Thread(target=self._backup)
+        th.start()
 
-        BACKUP_PATH = backup_path
-        DATETIME = datetime.now().strftime('%Y%m%d-%H%M%S')
-        TODAYBACKUPPATH = BACKUP_PATH + '/' + DATETIME
+    def _backup(self):
+        backup_path = os.path.expanduser('~/Documents')
+        backup_path += "/EGardiner/Backup"
+
+        file_stamp = datetime.now().strftime('%d-%H%M')
+        path_stamp = datetime.now().strftime('%Y%m')
+        today_path = backup_path + '/' + path_stamp
+        backup_name = self.database + "-" + file_stamp + ".sql"
         try:
-            os.stat(TODAYBACKUPPATH)
+            os.stat(today_path)
         except:
-            os.makedirs(TODAYBACKUPPATH)
+            os.makedirs(today_path)
 
-        db = self.database
-        dumpcmd = "mysqldump -h " + "localhost" + " -u " + self.user + " -p" + \
-                  self.password + " " + db + " > " + pipes.quote(TODAYBACKUPPATH) + "/" + db + ".sql"
-        os.system(dumpcmd)
-        # gzipcmd = "gzip " + pipes.quote(TODAYBACKUPPATH) + "/" + db + ".sql"
-        # os.system(gzipcmd)
+        dump_cmd = "mysqldump -h " + self.host + " -u " + self.user + " -p" + self.password + " " \
+                   + self.database + " > " + today_path + "/" + backup_name
+        print(os.system(dump_cmd))
+        if self.gzip:
+            gzip_cmd = "gzip " + pipes.quote(today_path) + "/" + backup_name
+            print(os.system(gzip_cmd))
+        self.backup_finished.emit()
 
-        # Checking if backup folder already exists or not. If not exists will create it.
-        # p = Popen("mysqldump -u %s -p %s -h %s -e --opt -c %s | gzip -c > %s.gz" % (self.user, self.password, self.host, self.database, self.database + "_" + file_stamp))
-        # p = Popen(["mysqldump", "--login-path=" + db["loginPath"], db["dbName"]], stdout=PIPE, stderr=PIPE)
-        # out, err = p.communicate()
-        exe_path = "\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysqldump.exe\""
-        dump_cmd = exe_path + " -h " + self.host + " -u " + self.user + " -p" + self.password + " " + \
-            self.database + " > " + TODAYBACKUPPATH + self.database + "_" + file_stamp + ".sql"
-        print(dump_cmd)
-        # os.system(dump_cmd)
-
-        print("Done")
-        self.connect_db()
+    def notify_finished(self):
+        msg = QMessageBox(QMessageBox.Information, "Complete", "The database backup has finished", QMessageBox.Ok)
+        msg.exec_()
+        self.main_window.msg_sys.add("Database backup complete", MSG_DATABASE_BACKUP, INFO)
 
     def __del__(self):
         pass
-        # self.con.close()
+        # self.con.close()  '192.168.0.138'
