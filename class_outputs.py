@@ -312,7 +312,8 @@ class OutputClass(QObject):
             ctrl.setIcon(QIcon(":/normal/output_off.png"))
 
     def update_info(self):
-        """ Displays the output type icon, sensor icon and mode icon """
+        """ Displays the output type icon, sensor icon and mode icon
+            and the on off temperatures"""
         # Locked
         if self.locked:
             getattr(self.output_controller.main_panel, "lbl_output_number_%i" % self.ctrl_id).setText("L")

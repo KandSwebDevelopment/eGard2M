@@ -233,6 +233,7 @@ class SensorClass(object):
                     self.value = self.value_last
                     if self.error_count > 5:
                         self.display_ctrl.setText("Err")
+                        self.display_ctrl.setStyleSheet("background-color: white; color: black;")
                         if self.id < 9:     # DHT sensors so reset power to them
                             # Switch relay on to break power, when sw on is received back it will switch it off
                             if self.area_controller.master_mode == MASTER:

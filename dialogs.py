@@ -4761,11 +4761,15 @@ class DialogPatternMaker(QDialog, Ui_DialogPatterns):
         self.load_patterns()
         self.cb_patterns.editTextChanged.connect(self.check_pattern)
         self.cb_patterns.installEventFilter(self)
+        self.cb_patterns.currentIndexChanged.connect(self.change_pattern)
 
-        self.tw_pattern_stages.resizeColumnsToContents()
+        self.header_labels = ["Stg", "Days", "Lighting", "Temperature", "Feeding", "Area"]
+        self.tw_pattern_stages.setColumnCount(6)
         self.tw_pattern_stages.resizeRowsToContents()
-        self.tw_pattern_stages.setHorizontalHeaderLabels(
-            ["Stage", "Duration", "Lighting", "Temperature", "Feeding", "Location"])
+        self.tw_pattern_stages.setHorizontalHeaderLabels(self.header_labels)
+        self.tw_pattern_stages.resizeColumnsToContents()
+        self.tw_pattern_stages.activated.connect(self.show_item)
+        self.tw_pattern_stages.clicked.connect(self.show_item)
 
     def eventFilter(self, source, event):
         # Remember to install event filter for control first
@@ -4774,6 +4778,16 @@ class DialogPatternMaker(QDialog, Ui_DialogPatterns):
         #     if source is self.cb_patterns:
         #         self.add_pattern()
         return QWidget.eventFilter(self, source, event)
+
+    def show_item(self):
+        stage = self.tw_pattern_stages.item(self.tw_pattern_stages.currentRow(), 0).text()
+        item = self.header_labels[self.tw_pattern_stages.currentColumn()]
+        print(stage, "   ", item)
+
+    def change_pattern(self):
+        self.pattern_id = self.cb_patterns.currentData()
+        self.load_stages()
+        self.le_id.setText(str(self.pattern_id))
 
     def load_patterns(self):
         self.cb_patterns.blockSignals(True)
@@ -4803,12 +4817,24 @@ class DialogPatternMaker(QDialog, Ui_DialogPatterns):
 
     def load_stages(self):
         rows = self.db.execute('SELECT stage, duration, lighting, temperature, feeding, location FROM {}'
-                               ' WHERE pid = {}'.format(DB_STAGE_PATTERNS, self.pattern_id))
+                               ' WHERE pid = {} ORDER BY stage'.format(DB_STAGE_PATTERNS, self.pattern_id))
         r = 0
+        self.tw_pattern_stages.setRowCount(len(rows))
         for row in rows:
-            for c in range(0, 7):
-                ti = QTableWidgetItem(row[c])
+            for c in range(0, 6):
+                data = str(row[c])
+                if c == 2:  # Lighting
+                    data = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_LIGHT_NAMES, row[2]))
+                if c == 3:  # Temperature
+                    data = self.db.execute_single("SELECT name FROM {} WHERE id = {}".
+                                                  format(DB_TEMPERATURE_NAMES, row[3]))
+                if c == 4:  # Feeding
+                    data = self.db.execute_single("SELECT name FROM {} WHERE id = {}".
+                                                  format(DB_FEED_SCHEDULE_NAMES, row[4]))
+                ti = QTableWidgetItem(data)
                 self.tw_pattern_stages.setItem(r, c, ti)
+            r += 1
+        self.tw_pattern_stages.resizeColumnsToContents()
 
 
 class DialogAccessModule(QDialog, Ui_DialogDEmodule):

@@ -599,7 +599,7 @@ class ProcessClass(QObject):
                         # No adjustment so set it to original value
                         # temperature_ranges_ [item][setting] = value
                         self.temperature_ranges_active[row[1]][row[2]] = row[0]
-                        pass
+                        # pass
                     else:
                         self.temperature_ranges_active[row[1]][row[2]] = row[0]
         sql = 'SELECT value, item, setting FROM {} WHERE `area` = {} and `day` = {}'.\
