@@ -24,8 +24,8 @@ class ProcessClass(QObject):
         self.end = None  # Date due to finish with adjustments
         self.running = False
         self.location = 0
-        self.adjusted = False  # Set if user has adjusted the process
-        self.quantity = 0  # The quantity currently in the process
+        # self.adjusted = False  # Set if user has adjusted the process
+        self.quantity = 0  # The quantity currently in the process. Died or finished removed
         self.quantity_org = 0  # The quantity the process started with
         self.pattern_id = None  # The feed pattern for the process
         self.pattern_name = ""  # The pattern name
@@ -67,11 +67,17 @@ class ProcessClass(QObject):
         self.light_name = ""
 
         self.current_temperature_id = 0  # The current stage temperature schedule id
-        self.temperature_ranges = collections.defaultdict()  # hold range values for temperature ranges for current stage
-        self.temperature_ranges_active = collections.defaultdict()  # The final in use with any adjustments applied
-        self.temperature_ranges_active_org = collections.defaultdict()  # The original temp range currently active
-        self.temperature_ranges_inactive = collections.defaultdict()  # The final in use with any adjustments applied
-        self.temperature_ranges_inactive_org = collections.defaultdict()  # The original temp range currently active
+
+        # holds default range values for temperature ranges for current stage
+        # temperature_ranges_default / adjusted[DAY or NIGHT][item 1 to 4][low, set or high]
+        self.temperature_ranges_default = collections.defaultdict(dict)
+        self.temperature_ranges_adjusted = collections.defaultdict(dict)    # The default ranges adjusted for this process
+
+        # self.temperature_ranges = collections.defaultdict()  # hold range values for temperature ranges for current stage
+        # self.temperature_ranges_active = collections.defaultdict()  # The final in use with any adjustments applied
+        # self.temperature_ranges_active_org = collections.defaultdict()  # The original temp range currently active
+        # self.temperature_ranges_inactive = collections.defaultdict()  # The final in use with any adjustments applied
+        # self.temperature_ranges_inactive_org = collections.defaultdict()  # The original temp range currently active
         self.temperature_name = ""
 
         self.strains = collections.defaultdict()    # id, shortest, longest, name, plant number -> id: min: max: name
@@ -80,42 +86,41 @@ class ProcessClass(QObject):
         self.strain_window = []         # 0 = Not ready, 1 = ready in 7 days, 2 = ready, 3 = beyond window
         self.strain_location = []       # Location of each strain
 
-        self.water_on = None  # The water heater on time
-        self.water_hrs = 0  # Hours water heater is on for
+        # self.water_on = None  # The water heater on time
+        # self.water_hrs = 0  # Hours water heater is on for
         self.recipe_id = 0              # Current recipe id
-        self.recipe_original = []       # Array of recipe_item's which makes the complete feed    0=nid, 1=ml, 2=L, 3=rid, 4=freq, 5=adj ml, 6=adj remaining
-        self.recipe_final = []          # Array with changed feed, a manual change to a feed
-        self.recipe_changes = []        # Array of changes to current feed   0=nid, 1=ml, 2=remaining
-        self.recipe_extended = 0        # Indicates the number of days the recipe is extended by due to the stage being delayed
-        self.recipe_next = []           # Next recipe to be used
         self.recipe_name = ""           # The name of recipe in use
-        self.recipe_next_id = None      # Next recipe id
-        self.recipe_score = 0           # Used by feeder to determine which area to do first. It is the sum of all the nutrients in the feed, lower score goes first
-        self.recipe_status = 0          # 0 = Same recipe in use, -1 = Recipe will change next feed, 1 = Recipe has changed and next feed will be first
-        self.recipe_is_change = True    # True if recipe has been modified
-        self.recipe_expires_day = 0     # The day number which current recipe expires, used with stage_days_elapsed
-        self.recipe_starts_day = 0      # The day number which current recipe started on
-        self.recipe_next_replaced = False  # True if next recipe does not exist so current will be used
-        self.new_recipe_due = None      # The number of days until a different recipe is used
-        # self.feed_schedule = []       # The feed schedule for current stage
         self.feed_mode = 1              # 1= Manual, 2 = Semi Auto, 3 = Full auto use feeder
+        # self.recipe_original = []       # Array of recipe_item's which makes the complete feed    0=nid, 1=ml, 2=L, 3=rid, 4=freq, 5=adj ml, 6=adj remaining
+        # self.recipe_final = []          # Array with changed feed, a manual change to a feed
+        # self.recipe_changes = []        # Array of changes to current feed   0=nid, 1=ml, 2=remaining
+        # self.recipe_extended = 0        # Indicates the number of days the recipe is extended by due to the stage being delayed
+        # self.recipe_next = []           # Next recipe to be used
+        # self.recipe_next_id = None      # Next recipe id
+        # self.recipe_score = 0           # Used by feeder to determine which area to do first. It is the sum of all the nutrients in the feed, lower score goes first
+        # self.recipe_status = 0          # 0 = Same recipe in use, -1 = Recipe will change next feed, 1 = Recipe has changed and next feed will be first
+        # self.recipe_is_change = True    # True if recipe has been modified
+        # self.recipe_expires_day = 0     # The day number which current recipe expires, used with stage_days_elapsed
+        # self.recipe_starts_day = 0      # The day number which current recipe started on
+        # self.recipe_next_replaced = False  # True if next recipe does not exist so current will be used
+        # self.new_recipe_due = None      # The number of days until a different recipe is used
+        # self.feed_schedule = []       # The feed schedule for current stage
         # self.feed_time = ""             # Default feed time, loaded from the db
-        self.feed_litres = 0            # Litres per plant per feed (each)
-        self.feed_litres_next = 0       # Litres per plant per feed (each) for the next recipe
-        self.feed_litres_adj = 0        # Litres to add to feed_liters (total not each), allows manual change
-        self.feed_litres_adj_remaining = 0  # Number of feed to use above adjustment
-        self.feed_schedule_item_num = 0  # The row number currently in use in the feed schedule
-        self.feed_quantity_array = []   # Array with 1 = plant feed, 0 = not feed
-        self.feed_quantity = 0          # The number that feed will be made for which may be different than the quantity
-        self.feed_frequency = 0
-        self.feed_frequency_next = 0
+        # self.feed_litres = 0            # Litres per plant per feed (each)
+        # self.feed_litres_next = 0       # Litres per plant per feed (each) for the next recipe
+        # self.feed_litres_adj = 0        # Litres to add to feed_liters (total not each), allows manual change
+        # self.feed_litres_adj_remaining = 0  # Number of feed to use above adjustment
+        # self.feed_schedule_item_num = 0  # The row number currently in use in the feed schedule
+        # self.feed_quantity_array = []   # Array with 1 = plant feed, 0 = not feed
+        # self.feed_quantity = 0          # The number that feed will be made for which may be different than the quantity
+        # self.feed_frequency = 0
+        # self.feed_frequency_next = 0
         self.feeds_till_end = []
         self.last_feed_date = None      # Datetime of last feed
         self.cool_time = 0
         self.warm_time = 0
 
         self.settings = None
-        # self.feed_pack = FeedClass(self)
 
         self.startup()
 
@@ -141,11 +146,8 @@ class ProcessClass(QObject):
         self.pattern_id = row[5]  # Pattern ID of the process
         self.current_stage = row[6]
         self.quantity_org = row[7]
-        # sql = "SELECT COUNT(item) FROM {} WHERE process_id = {} AND area != 3".format(DB_AREAS, self.id)
-        # self.feed_quantity = self.db.execute_single(sql)
-        # for x in range(0, row[7]):
-        #     self.feed_quantity_array.append(1)
-        self.quantity = row[7]
+        sql = "SELECT COUNT(item) FROM {} WHERE process_id = {}".format(DB_AREAS, self.id)
+        self.quantity = self.db.execute_single(sql)
         self.feed_mode = row[8]
         self.pattern_name = self.db.execute_single(
             "SELECT name FROM " + DB_PATTERN_NAMES + " WHERE id = " + str(self.pattern_id))
@@ -183,12 +185,11 @@ class ProcessClass(QObject):
         # Get transition times from db. Has to be here as it need location
         self.cool_time = int(self.db.get_config(CFT_AREA, "trans cool {}".format(self.location), 60)) * 60
         self.warm_time = int(self.db.get_config(CFT_AREA, "trans warm {}".format(self.location), 60)) * 60
+
         self.process_load_stage_info()
 
         self.load_lighting_schedule()
         self.get_light_status()
-        self.load_temperature_schedule()
-        self.load_active_temperature_ranges()
 
     def process_load_stage_info(self):
         # load the the stages for the process
@@ -572,8 +573,6 @@ class ProcessClass(QObject):
         rows = self.db.execute_one_row(
             "SELECT * FROM " + DB_TEMPERATURE_NAMES + " WHERE id = " + str(self.current_temperature_id))
         self.temperature_name = rows[1]
-        # print("Temperature schedule name ", self.temperature_name)
-        self.temperature_ranges.clear()
         rows = self.db.execute(
             "SELECT day_night, item, low, set_point, high FROM " + DB_TEMPERATURES + " WHERE trid = " + str(
                 self.current_temperature_id))
@@ -583,59 +582,109 @@ class ProcessClass(QObject):
             #                             FC_P_TEMPERATURE_SCHEDULE_MISSING, add_info)
 
         for row in rows:
-            if row[0] not in self.temperature_ranges.keys():
-                self.temperature_ranges[row[0]] = {}
-            self.temperature_ranges[row[0]][row[1]] = {'low': row[2], 'set': row[3], 'high': row[4]}
+            # if row[0] not in self.temperature_ranges.keys():
+            #     self.temperature_ranges[row[0]] = {}
+            # self.temperature_ranges[row[0]][row[1]] = {'low': row[2], 'set': row[3], 'high': row[4]}
+            self.temperature_ranges_default[row[0]][row[1]] = {'low': row[2], 'set': row[3], 'high': row[4]}
         # print(self.temperature_ranges)
-
-    def load_temperature_adjustments(self):
-        sql = 'SELECT value, item, setting FROM {} WHERE `area` = {} and `day` = {}'.\
-            format(DB_PROCESS_TEMPERATURE, self.location, self.light_status)
-        rows = self.db.execute(sql)
-        for row in rows:
-            if row[0] > 0:
-                if row[1] in self.temperature_ranges_active:
-                    if row[0] == 0:
-                        # No adjustment so set it to original value
-                        # temperature_ranges_ [item][setting] = value
-                        self.temperature_ranges_active[row[1]][row[2]] = row[0]
-                        # pass
-                    else:
-                        self.temperature_ranges_active[row[1]][row[2]] = row[0]
-        sql = 'SELECT value, item, setting FROM {} WHERE `area` = {} and `day` = {}'.\
-            format(DB_PROCESS_TEMPERATURE, self.location, int(not self.light_status))
-        rows = self.db.execute(sql)
-        for row in rows:
-            if row[0] > 0:
-                if row[1] in self.temperature_ranges_inactive:
-                    self.temperature_ranges_inactive[row[1]][row[2]] = row[0]
-
-    def load_active_temperature_ranges(self):
-        """
-        produces two arrays of temperature settings, one for day and one for night,
-        process.active_temperature_ranges for current light state
-        process.inactive_temperature_ranges for the alt light state
-        These will be altered by load_temperature_adjustments to add any user setting
-        It also creates two arrays of the original default values which can be compared with to detect user changes
-        DO NOT USE this to get the temp range use the variable process.temperature_ranges_active
-        @return: Will only have a return list if current is False
-        @rtype: list
-        """
-        if len(self.temperature_ranges) == 0:
-            return
-        for dn in self.temperature_ranges:
-            if dn == self.light_status:
-                self.temperature_ranges_active_org = self.temperature_ranges[1].copy()
-                self.temperature_ranges_active = copy.deepcopy(self.temperature_ranges_active_org)
-                self.temperature_ranges_inactive_org = self.temperature_ranges[2].copy()
-                self.temperature_ranges_inactive = copy.deepcopy(self.temperature_ranges_inactive_org)
-            elif dn == 2 and self.light_status == 0:
-                self.temperature_ranges_active_org = self.temperature_ranges[2].copy()
-                self.temperature_ranges_active = copy.deepcopy(self.temperature_ranges_active_org)
-                self.temperature_ranges_inactive_org = self.temperature_ranges[1].copy()
-                self.temperature_ranges_inactive = copy.deepcopy(self.temperature_ranges_inactive_org)
         self.load_temperature_adjustments()
 
+    def load_temperature_adjustments(self):
+        """ This creates the temperature_ranges_adjusted values which is the current working values
+            Call this to update the process of any changes to the temperature ranges"""
+        self.temperature_ranges_adjusted = copy.deepcopy(self.temperature_ranges_default)
+
+        sql = "SELECT `day`, item, setting, value FROM {} WHERE `area` = {} AND `day` >= 0 ORDER BY `day`, item".\
+            format(DB_PROCESS_TEMPERATURE, self.location)
+        rows = self.db.execute(sql)
+        for row in rows:
+            if row[3] != 0:     # value is not zero
+                dn = DAY if row[0] == 1 else NIGHT
+                self.temperature_ranges_adjusted[dn][row[1]][row[2]] = row[3]
+
+        sql = 'SELECT value, item, setting FROM {} WHERE `area` = {} and `day` = {}'.\
+            format(DB_PROCESS_TEMPERATURE, self.location, self.light_status)
+        # rows = self.db.execute(sql)
+        # for row in rows:
+        #     if row[0] > 0:
+        #         if row[1] in self.temperature_ranges_active:
+        #             if row[0] == 0:
+        #                 # No adjustment so set it to original value
+        #                 # temperature_ranges_ [item][setting] = value
+        #                 self.temperature_ranges_active[row[1]][row[2]] = row[0]
+        #                 # pass
+        #             else:
+        #                 self.temperature_ranges_active[row[1]][row[2]] = row[0]
+        # sql = 'SELECT value, item, setting FROM {} WHERE `area` = {} and `day` = {}'.\
+        #     format(DB_PROCESS_TEMPERATURE, self.location, int(not self.light_status))
+        # rows = self.db.execute(sql)
+        # for row in rows:
+        #     if row[0] > 0:
+        #         if row[1] in self.temperature_ranges_inactive:
+        #             self.temperature_ranges_inactive[row[1]][row[2]] = row[0]
+
+    def get_temperature_ranges(self, current=True):
+        """ Returns a dict of the current adjusted temperature ranges
+            Set current to False to returns range not currently in use"""
+        if current:
+            dn = DAY if self.check_light() == 1 else NIGHT
+        else:
+            dn = DAY if self.check_light() == 0 else NIGHT
+        return self.temperature_ranges_adjusted[dn]
+
+    def get_temperature_range_item(self, item, current=True):
+        """ Returns a dict of the current adjusted temperature range for item
+            Set current to False to returns range not currently in use"""
+        if current:
+            dn = DAY if self.check_light() == 1 else NIGHT
+        else:
+            dn = DAY if self.check_light() == 0 else NIGHT
+        return self.temperature_ranges_adjusted[dn][item]
+
+    def get_temperature_ranges_default(self, current=True):
+        """ Returns a dict of the current default temperature ranges
+            Set current to False to returns range not currently in use"""
+        if current:
+            dn = DAY if self.check_light() == 1 else NIGHT
+        else:
+            dn = DAY if self.check_light() == 0 else NIGHT
+        return self.temperature_ranges_default[dn]
+
+    def get_temperature_range_item_default(self, item, current=True):
+        """ Returns a dict of the current default temperature ranges for item
+            Set current to False to returns range not currently in use"""
+        if current:
+            dn = DAY if self.check_light() == 1 else NIGHT
+        else:
+            dn = DAY if self.check_light() == 0 else NIGHT
+        return self.temperature_ranges_default[dn][item]
+
+    # def load_active_temperature_ranges(self):
+    #     """
+    #     produces two arrays of temperature settings, one for day and one for night,
+    #     process.active_temperature_ranges for current light state
+    #     process.inactive_temperature_ranges for the alt light state
+    #     These will be altered by load_temperature_adjustments to add any user setting
+    #     It also creates two arrays of the original default values which can be compared with to detect user changes
+    #     DO NOT USE this to get the temp range use the variable process.temperature_ranges_active
+    #     @return: Will only have a return list if current is False
+    #     @rtype: list
+    #     """
+    #     if len(self.temperature_ranges) == 0:
+    #         return
+    #     for dn in self.temperature_ranges:
+    #         if dn == self.light_status:
+    #             self.temperature_ranges_active_org = self.temperature_ranges[1].copy()
+    #             self.temperature_ranges_active = copy.deepcopy(self.temperature_ranges_active_org)
+    #             self.temperature_ranges_inactive_org = self.temperature_ranges[2].copy()
+    #             self.temperature_ranges_inactive = copy.deepcopy(self.temperature_ranges_inactive_org)
+    #         elif dn == 2 and self.light_status == 0:
+    #             self.temperature_ranges_active_org = self.temperature_ranges[2].copy()
+    #             self.temperature_ranges_active = copy.deepcopy(self.temperature_ranges_active_org)
+    #             self.temperature_ranges_inactive_org = self.temperature_ranges[1].copy()
+    #             self.temperature_ranges_inactive = copy.deepcopy(self.temperature_ranges_inactive_org)
+    #     self.load_temperature_adjustments()
+    #
     def info(self, item):
         if not self.running:
             return
@@ -815,12 +864,14 @@ class ProcessClass(QObject):
         return self.light_status
 
     def check_light(self):
+        """ Returns 0 for light off or 1 for light on"""
         if not self.running:
             return 0
         self.get_light_status()
 
         if self.light_status != self.light_status_last:
-            self.load_active_temperature_ranges()
+            self.load_temperature_adjustments()
+            # @FixMe above line may have already been done
             if self.light_status == OFF and self.light_status_last == ON:
                 print("resetting light times from on at {} off at {}".format(self.light_on, self.light_off))
                 self.light_on = self.light_on + timedelta(days=1)

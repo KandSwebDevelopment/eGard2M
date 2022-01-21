@@ -173,10 +173,10 @@ class AreaController(QObject):
         """ This loads the day or night sensor and output settings
             The process load_active_temperature_ranges has to be called before this"""
         if self.area_has_process(1):
-            self.reload_sensor_ranges(1)
+            self.reload_area_ranges(1)
             self.fan_controller.load_req_temperature(1)
         if self.area_has_process(2):
-            self.reload_sensor_ranges(2)
+            self.reload_area_ranges(2)
             self.fan_controller.load_req_temperature(2)
 
     def load_sensors(self, area):
@@ -190,19 +190,43 @@ class AreaController(QObject):
                 self.sensors[sid].load_profile()
             self.sensors[sid].load_range()
 
-    def reload_sensor_ranges(self, area):
-        """ This is called when the light switches state, this will load in new temperature ranges for the sensors in
-            the area"""
+    def reload_area_ranges(self, area):
+        """ This is called when the light switches state, or when an area needs updated
+            this will load in new temperature ranges for the sensors
+            and outputs in the area"""
         if area == 1:
             self.sensors[3].load_range()
             self.sensors[4].load_range()
             self.sensors[10].load_range()
             self.sensors[11].load_range()
-        if area == 2:
+            self.output_controller.reload_range(8)
+            self.output_controller.reload_range(9)
+            self.output_controller.reload_range(30)
+            self.output_controller.reload_range(15)
+        elif area == 2:
             self.sensors[5].load_range()
             self.sensors[6].load_range()
             self.sensors[12].load_range()
             self.sensors[13].load_range()
+            self.output_controller.reload_range(7)
+            self.output_controller.reload_range(4)
+            self.output_controller.reload_range(31)
+            self.output_controller.reload_range(14)
+        elif area == 3:
+            self.sensors[7].load_range()
+            self.sensors[8].load_range()
+            self.output_controller.reload_range(11)
+            self.output_controller.reload_range(12)
+        elif area == 4:
+            self.sensors[9].load_range()
+            self.output_controller.reload_range(2)
+
+    def reload_area_process_ranges(self, area):
+        """ This will make the process in area, reload the it's temperature ranges
+            It then gets the sensors to reload with new values, which also reloads the output values"""
+        if self.area_has_process(area):
+            self.get_area_process(area).load_temperature_adjustments()
+        self.reload_area_ranges(area)
 
     def max_min_reset_process(self, day_night):
         if self.area_has_process(1):
@@ -222,20 +246,20 @@ class AreaController(QObject):
         self.sensors[2].max_min.reset(DAY)
         self.sensors[9].max_min.reset(DAY)
 
-    def load_sensor_ranges(self, area, sid):
-        if self.area_has_process(area):
-            p = self.areas_processes[area]
-            r = p.temperature_ranges_active
-            if r is not None:
-                r = r[self.sensors[sid].item]
-                self.sensors[sid].set_range(r)
-                ro = p.temperature_ranges_active_org[self.sensors[sid].item]
-                self.sensors[sid].set_range_org(ro)
-            else:
-                # @todo Add call to msg sys - No temperature range for process
-                pass
-        else:
-            self.sensor_load_manual_ranges(area, sid)
+    # def load_sensor_ranges(self, area, sid):
+    #     if self.area_has_process(area):
+    #         p = self.areas_processes[area]
+    #         r = p.get_temperature_ranges()
+    #         if r is not None:
+    #             r = r[self.sensors[sid].item]
+    #             self.sensors[sid].set_range(r)
+    #             ro = p.get_temperature_range_item_default(self.sensors[sid].item)
+    #             self.sensors[sid].set_range_org(ro)
+    #         else:
+    #             #  Add call to msg sys - No temperature range for process
+    #             pass
+    #     else:
+    #         self.sensor_load_manual_ranges(area, sid)
 
     def get_sensor_log_values(self):
         r = ""
@@ -322,10 +346,10 @@ class AreaController(QObject):
             return self.get_area_process(area).get_light_status()
         return -1
 
-    def get_process_active_temperature_ranges(self, area):
-        if self.area_has_process(area):
-            return self.get_area_process(area).temperature_ranges_active
-
+    # def get_process_active_temperature_ranges(self, area):
+    #     if self.area_has_process(area):
+    #         return self.get_area_process(area).get_temperature_ranges()
+    #
     def sensors_set_as_fan(self, s_id, state):
         self.sensors[s_id].is_fan(state)
 

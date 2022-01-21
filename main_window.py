@@ -17,7 +17,7 @@ from dialogs import DialogEngineerCommandSender, DialogEngineerIo, DialogDispatc
     DialogSettings, DialogProcessPerformance, DialogDispatchLoadingBay, DialogProcessManager, DialogStrains, \
     DialogSeedPicker, DialogProcessLogs, DialogPatternMaker, DialogIOVC, DialogGraphEnv, DialogStrainPerformance, \
     DialogNutrientPumpCalibrate, DialogWaterTanksCalibrate, DialogFeederManualMix, DialogMixTankCalibrate, \
-    DialogNutrients, DialogValveTest, DialogDispatchReconciliation
+    DialogNutrients, DialogValveTest, DialogDispatchReconciliation, DialogTemperatureSensorMapping
 from functions import multi_status_bar, get_last_friday
 from functions_colors import get_css_colours
 from status_codes import *
@@ -77,8 +77,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.msg_sys = MessageSystem(self, self.main_panel.listWidget)
         self.logger = Logger(self)
         self.coms_interface = CommunicationInterface(self)
-        self.access = Access(self)
         self.area_controller = AreaController(self)
+        self.access = Access(self)
         self.feed_controller = FeedControl(self)
         self.feeder_unit = FeederUnit(self)
         self.water_controller = WaterController(self)
@@ -120,6 +120,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.actionSettings.triggered.connect(lambda: self.wc.show(DialogSettings(self)))
         self.actionI_O_Data.triggered.connect(lambda: self.wc.show(DialogEngineerIo(self), resize=True))
         self.actionSend_Command.triggered.connect(lambda: self.wc.show(DialogEngineerCommandSender(self), multi=True))
+        self.actionTemperature.triggered.connect(lambda: self.wc.show(DialogTemperatureSensorMapping(self)))
         self.actionReconnect.triggered.connect(self.reconnect)
         self.actionSystem_Info.triggered.connect(lambda: self.wc.show(DialogSysInfo(self)))
         self.actionSync_IO.triggered.connect(lambda: self.main_panel.io_reboot())

@@ -29,7 +29,8 @@ class UdpServer(QObject):
                 self.mySocket.close()
                 self.mySocket = None
             self.mySocket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.mySocket.bind((self.remote_ip, self.remote_port))
+            # self.mySocket.bind((self.remote_ip, self.remote_port))
+            self.mySocket.bind(('', self.remote_port))
         except Exception as e:
             print(e)
 

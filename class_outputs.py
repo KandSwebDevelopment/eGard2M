@@ -56,35 +56,32 @@ class OutputClass(QObject):
         self.locked = 0
 
     def load_profile(self):
-        if self.output_controller.area_controller.get_light_status(self.area):
-            row = self.db.execute_one_row('SELECT `name`, `area`, `type`, `input`, `range`, `pin`, `short_name`, '
-                                          '`trigger`, locked FROM {}'
-                                          ' WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
-        else:
-            row = self.db.execute_one_row('SELECT `name`, `area`, `type`, `input`, `range_night`, `pin`, '
-                                          '`short_name`, `trigger`, locked FROM {}'
-                                          ' WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
+        row = self.db.execute_one_row('SELECT `name`, `area`, `type`, `input`, `pin`, '
+                                      '`short_name`, `trigger`, locked FROM {}'
+                                      ' WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
         if len(row) == 0:
             return
         self.name = row[0]
         self.area = row[1]
         self.mode = row[2]
         self.input_sensor = row[3]
-        self.detection = row[7]
-        self.range = (row[4]).split(",")
-        self.output_pin = row[5]
-        self.short_name = row[6]
-        self.locked = row[8]
+        self.output_pin = row[4]
+        self.short_name = row[5]
+        self.detection = row[6]
+        self.locked = row[7]
+        self.load_ranges()
         self.has_process = False
         if self.area < 4 and self.output_controller.area_controller.area_has_process(self.area):
             self.has_process = True
         self.tooltip = row[0] + "<br>Type:" + str(row[2]) + " Sensor:" + str(row[3])
         self._check()
-        self.calculate_limits()
         self.update_control(self.status)
 
     def load_ranges(self):
+        """ This loads the range by first getting its sensors range and then applying any range adjustment and
+            updates the display"""
         s, hi, lo = self.output_controller.area_controller.sensors[self.input_sensor].get_set_temperatures()
+        # @Todo Add option here to use original set temperatures
         dn = self.output_controller.area_controller.get_light_status(self.area)
         if dn == DAY or dn == MANUAL:
             range_ = self.db.execute_single('SELECT `range` FROM {} WHERE id = {}'. format(DB_OUTPUTS, self.ctrl_id))
@@ -118,20 +115,20 @@ class OutputClass(QObject):
         # Don't send this from here as is causes a loop
         # self.output_controller.coms_interface.relay_send(NWC_OUTPUT_MODE, self.id, self.mode)
 
-    def set_mode_by_state(self, state=None):
-        """ This will only be triggered as a result of a user clicking on/off """
-        if state is None:
-            state = int(not self.status)
-        if state == 1:
-            self.set_mode(1)  # Manual = On
-        elif state == 0:
-            self.set_mode(0)    # Off
-
-    def update_mode(self, mode):
-        """ Updates the outputs mode does not save it to the db but updates the outputs info control"""
-        self.mode = mode
-        self._check()
-        self.update_info()
+    # def set_mode_by_state(self, state=None):
+    #     """ This will only be triggered as a result of a user clicking on/off """
+    #     if state is None:
+    #         state = int(not self.status)
+    #     if state == 1:
+    #         self.set_mode(1)  # Manual = On
+    #     elif state == 0:
+    #         self.set_mode(0)    # Off
+    #
+    # def update_mode(self, mode):
+    #     """ Updates the outputs mode does not save it to the db but updates the outputs info control"""
+    #     self.mode = mode
+    #     self._check()
+    #     self.update_info()
 
     def set_range(self, on_dif, off_dif, tmz):
         """ Set new values for range (Difference between sensor set point and output switching values
@@ -322,6 +319,7 @@ class OutputClass(QObject):
 
         # Output type
         ctrl = getattr(self.output_controller.main_panel, "lbl_output_%i" % self.ctrl_id)
+        ctrl.setToolTip(self.tooltip)
         if self.short_name[:1] == "H":
             ctrl.setPixmap(QPixmap(":/normal/output_heater.png"))
         if self.short_name[:1] == "A":

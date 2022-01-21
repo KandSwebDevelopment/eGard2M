@@ -36,36 +36,36 @@ def check_for_sound():
 
 
 def sound_click():
-    play_wave(get_wave_path("sound55.wav"), winsound.SND_FILENAME)
+    play_wave(get_wave_path("sound55.wav"))
 
 
 def sound_check_out():
-    play_wave(get_wave_path("sound63.wav"), winsound.SND_FILENAME)
+    play_wave(get_wave_path("sound63.wav"))
 
 
 def sound_error():
-    play_wave(get_wave_path("sound78.wav"), winsound.SND_FILENAME)
+    play_wave(get_wave_path("sound78.wav"))
 
 
 def sound_on():
-    play_wave(get_wave_path("sound86.wav"), winsound.SND_FILENAME)
+    play_wave(get_wave_path("sound86.wav"))
 
 
 def sound_off():
-    play_wave(get_wave_path("sound87.wav"), winsound.SND_FILENAME)
+    play_wave(get_wave_path("sound87.wav"))
 
 
 def sound_ok():
-    play_wave(get_wave_path("sound95.wav"), winsound.SND_FILENAME)
+    play_wave(get_wave_path("sound95.wav"))
 
 
 def sound_access_warn():
-    play_wave(get_wave_path("sound74.wav"), winsound.SND_FILENAME)
+    play_wave(get_wave_path("sound74.wav"))
 
 
 def play_wave(wave):
     try:
-        winsound.PlaySound(get_wave_path(wave), winsound.SND_FILENAME)
+        winsound.PlaySound(wave, winsound.SND_FILENAME)
     except Exception as e:
         print(e)
 

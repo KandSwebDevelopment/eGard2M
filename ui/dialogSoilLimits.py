@@ -105,6 +105,9 @@ class Ui_DialogSoilLimits(object):
         self.pb_save_4 = QtWidgets.QPushButton(DialogSoilLimits)
         self.pb_save_4.setGeometry(QtCore.QRect(176, 169, 61, 23))
         self.pb_save_4.setObjectName("pb_save_4")
+        self.pb_auto_cal = QtWidgets.QPushButton(DialogSoilLimits)
+        self.pb_auto_cal.setGeometry(QtCore.QRect(100, 200, 75, 23))
+        self.pb_auto_cal.setObjectName("pb_auto_cal")
 
         self.retranslateUi(DialogSoilLimits)
         QtCore.QMetaObject.connectSlotsByName(DialogSoilLimits)
@@ -127,6 +130,7 @@ class Ui_DialogSoilLimits(object):
         self.pb_save_2.setText(_translate("DialogSoilLimits", "Save"))
         self.pb_save_3.setText(_translate("DialogSoilLimits", "Save"))
         self.pb_save_4.setText(_translate("DialogSoilLimits", "Save"))
+        self.pb_auto_cal.setText(_translate("DialogSoilLimits", "Auto Cal"))
 
 
 if __name__ == "__main__":

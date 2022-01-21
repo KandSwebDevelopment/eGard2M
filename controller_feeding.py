@@ -49,9 +49,7 @@ class FeedControl(QObject):
             p = self.main_window.area_controller.get_area_process(area)
             if p != 0:
                 self.feeds[area] = FeedClass(self)
-                self.feeds[area].load(area, p.pattern_id, p.current_stage, p.stage_days_elapsed, p.stages_max,
-                                      self.main_window.area_controller.get_area_items(area))
-                self.feeds[area].qty_org = p.quantity_org
+                self.feeds[area].load(area)
                 self.feeds[area].load_mixes()
 
     def reload_area(self, area):
@@ -146,8 +144,7 @@ class FeedControl(QObject):
         return self.feeds[area].lfd
 
     def get_next_recipe(self, area):
-        # return self.feeds[area].get_next_feed_recipe()
-        return self.feeds[area].recipe_next
+        return self.feeds[area].get_recipe_next_feed_schedule()
 
     def get_recipe_item(self, area, mix_num, nid):
         return self.feeds[area].get_recipe_item(mix_num, nid)

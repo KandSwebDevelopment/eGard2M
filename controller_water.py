@@ -6,6 +6,7 @@ from PyQt5.QtGui import QPixmap
 
 from class_water_tank import WaterTank
 from defines import *
+from functions import string_to_int
 
 
 class WaterController(QObject):
@@ -73,15 +74,15 @@ class WaterController(QObject):
     def fu_update(self, command, data):
         if command == COM_TANK_LEVEL:
             print("Water controller tank level ", data[1])
-            self.set_current_level(int(data[0]), int(data[1]))
+            self.set_current_level(string_to_int(data[0]), string_to_int(data[1]))
         elif command == CMD_SWITCH:
-            if int(data[0]) == SW_WATER_MAINS_1:
-                if int(data[1]) == ON:
+            if string_to_int(data[0]) == SW_WATER_MAINS_1:
+                if string_to_int(data[1]) == ON:
                     getattr(self.main_window.main_panel, "lbl_water_1").setPixmap(QPixmap(":/normal/valve.png"))
                 else:
                     getattr(self.main_window.main_panel, "lbl_water_1").setPixmap(QPixmap(":/normal/valve_closed.png"))
-            elif int(data[0]) == SW_WATER_MAINS_2:
-                if int(data[1]) == ON:
+            elif string_to_int(data[0]) == SW_WATER_MAINS_2:
+                if string_to_int(data[1]) == ON:
                     getattr(self.main_window.main_panel, "lbl_water_2").setPixmap(QPixmap(":/normal/valve.png"))
                 else:
                     getattr(self.main_window.main_panel, "lbl_water_2").setPixmap(QPixmap(":/normal/valve_closed.png"))

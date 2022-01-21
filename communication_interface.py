@@ -37,6 +37,7 @@ class CommunicationInterface(QObject):
     update_from_relay = pyqtSignal(str, list, name="updateForHelper")
     update_switch = pyqtSignal(int, int, int, name="updateSwitch")   # Sw No, State, From Module
     update_switch_pos = pyqtSignal(int, int, int, name="updateSwitchPos")   # Sw No, State, From Module
+    update_system = pyqtSignal(str, list, name="updateSystem")    # System related  command, data
     update_fan_speed = pyqtSignal(int, int, name="updateFanSpeed")     # Fan no, speed
     update_feeder_unit = pyqtSignal(str, list, name="updateFeeder_unit")    # A signal has been received from the FU.
     #  It is issued for all commands and will only be picked up by require dialogs. Cmd, prams
@@ -296,6 +297,8 @@ class CommunicationInterface(QObject):
         #  General
         elif command == COM_IO_REBOOT or command == CMD_IO_RESTART:
             self.main_window.main_panel.io_reboot()
+        elif command == COM_OW_COUNT or command == COM_OW_SCAN:
+            self.update_system.emit(command, prams)
         # DE Unit
         elif command == COM_DOOR_POSITION:
             self.update_access.emit(AUD_DOOR, int(prams[0]))

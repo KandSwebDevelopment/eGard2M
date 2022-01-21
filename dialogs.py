@@ -73,6 +73,7 @@ from ui.dialogNutrientPumpCalibrate import Ui_dialogNutrientPumpCalibrate
 from ui.dialogValveTest import Ui_dialogValveTest
 from ui.dialogSettingsAll import Ui_dialogSettingsAll
 from ui.dialogDispatchReconcilation import Ui_DialogDispatchReconcilation
+from ui.dialogTemperatureSensorMapping import Ui_DialogTemperatureSensorMApping
 
 
 class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
@@ -657,7 +658,7 @@ class DialogDispatchReports(QDialog, Ui_DialogDispatchReport):
 
         sql = "SELECT MONTHNAME(d.`date`) month_name, MONTH(d.date) month_number, ROUND(SUM(d.grams), 2) " \
               "total_grams, SUM((d.amount)) total_amount FROM dispatch d WHERE d.p_type = 1 " \
-              "GROUP BY month_name ORDER BY month_number DESC"
+              "GROUP BY month_name ORDER BY d.`date`, month_number DESC"
         rows = self.db.execute(sql)
         txt += '<h3>Monthly</h3><h4>Counter</h4>' \
                '<table cellspacing = "5"  border = "0">'
@@ -696,11 +697,11 @@ class DialogDispatchReports(QDialog, Ui_DialogDispatchReport):
         txt += '<tr><th>Month</th><th>Type 1</th><th>Type 2</th><th>Total</th></tr>'
         sql = "SELECT MONTHNAME(d.`date`) month_name, MONTH(d.date) month_number, ROUND(SUM(d.amount), 2) total " \
               "FROM dispatch d WHERE d.p_type = 1 " \
-              "GROUP BY month_name ORDER BY month_number DESC"
+              "GROUP BY month_name ORDER BY d.`date`, month_number DESC"
         rows = self.db.execute(sql)
         sql = "SELECT MONTHNAME(d.`date`) month_name, MONTH(d.date) month_number, ROUND(SUM(d.amount), 2) total " \
               "FROM dispatch d WHERE d.p_type = 2 " \
-              "GROUP BY month_name ORDER BY month_number DESC"
+              "GROUP BY month_name ORDER BY d.`date`, month_number DESC"
         rows2 = self.db.execute(sql)
         t1 = t2 = 0
         # r2 = 0
@@ -2197,7 +2198,7 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
                     pass  # Hasn't been feed last feed
                 else:
                     self.lw_recipe_1.setStyleSheet("background-color: orange;")
-                    self.lbl_info.setText("The next feed will be using this new recipe")
+                    self.lbl_info.setText("The next feed will be using new recipe")
                     self.show_next = True
             if rs == 2:
                 self.lw_recipe_1.setStyleSheet("background-color: springgreen;")
@@ -2325,58 +2326,58 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
                     round(self.feed_control.get_water_total(self.area, self.mix_number), 2),
                     lpp, lpp - self.feed_control.get_lpp_org(self.area)))
 
-    def display_next_mix(self):
-        """ Displays the next mix and the water """
-        feed_data = self.feed_control.feeds[self.area].get_mixes()
-        self.lw_recipe_1.clear()
-        recipe = self.feed_control.get_next_recipe(self.area)
-        # Loop through recipe
-        x = 1  # Just a counter for display
-        for nid in recipe:
-            # ri - 0=nid, 1=ml, 2=L, 3=rid, 4=freq, 5=adj ml, 6=adj remaining
-            rs, diff = self.feed_control.recipe_item_status(self.area, self.mix_number, (nid[0], nid[1]))
-            if nid[0] == WATER_ONLY_IDX:
-                lw_item = QListWidgetItem(str(x) + " Water only")
-                v_item = QVariant(WATER_ONLY_IDX)
-                lw_item.setData(Qt.UserRole, v_item)
-                self.lw_recipe_1.addItem(lw_item)
-            else:
-                if nid[1] == 0:  # mls is 0 show as a no add
-                    lw_item = QListWidgetItem(str(x) + "   " + str(nid[1]) + "ml each (" + str(0) + ") x" + str(
-                        0) + ".  A total of " + str(
-                        round(nid[1] * feed_data[self.mix_number]["water total"], 1)) + "ml of "
-                                              + self.feed_control.nutrients[nid[0]])
-                    lw_item.setBackground(Qt.darkGray)
-                elif rs == 2:
-                    # This item is not part of normal recipe
-                    lw_item = QListWidgetItem(
-                        str(x) + "   " + str(recipe[nid] + 0) + "ml each.   A total of " +
-                        str(round((recipe[nid] + 0) * feed_data['mixes'][self.mix_number]["water total"], 1))
-                        + "ml of " + self.feed_control.nutrients[nid])
-                    lw_item.setBackground(Qt.lightGray)
-                elif rs == 1 and diff != 0:
-                    # This item is part of normal recipe but has been altered
-                    lw_item = QListWidgetItem(
-                        str(x) + "   " + str(recipe[nid]) + "ml each (" + str(round(diff, 1)) +
-                        ")   A total of " + str(
-                            round((recipe[nid] + 0) * feed_data['mixes'][self.mix_number]["water total"], 1))
-                        + "ml of " + self.feed_control.nutrients[nid])
-                    lw_item.setBackground(Qt.darkCyan)
-                else:  # Normal recipe item
-                    lw_item = QListWidgetItem(str(x) + "   " + str(recipe[nid]) + "ml each.  A total of " + str(
-                        round(recipe[nid] * feed_data['mixes'][self.mix_number]["water total"], 1)) + "ml of " +
-                                              self.feed_control.nutrients[nid])
-
-            v_item = QVariant(nid)
-            lw_item.setData(Qt.UserRole, v_item)
-            self.lw_recipe_1.addItem(lw_item)
-            x += 1
-
-        lpp = feed_data['lpp_next']
-        self.te_water_1.setText(
-            "Next water " + str(
-                round(lpp * feed_data['qty actual'], 2)) + " which is " +
-            str(lpp) + "L each")
+    # def display_next_mix(self):
+    #     """ Displays the next mix and the water """
+    #     feed_data = self.feed_control.feeds[self.area].get_mixes()
+    #     self.lw_recipe_1.clear()
+    #     recipe = self.feed_control.get_next_recipe(self.area)
+    #     # Loop through recipe
+    #     x = 1  # Just a counter for display
+    #     for nid in recipe:
+    #         # ri - 0=nid, 1=ml, 2=L, 3=rid, 4=freq, 5=adj ml, 6=adj remaining
+    #         rs, diff = self.feed_control.recipe_item_status(self.area, self.mix_number, (nid[0], nid[1]))
+    #         if nid[0] == WATER_ONLY_IDX:
+    #             lw_item = QListWidgetItem(str(x) + " Water only")
+    #             v_item = QVariant(WATER_ONLY_IDX)
+    #             lw_item.setData(Qt.UserRole, v_item)
+    #             self.lw_recipe_1.addItem(lw_item)
+    #         else:
+    #             if nid[1] == 0:  # mls is 0 show as a no add
+    #                 lw_item = QListWidgetItem(str(x) + "   " + str(nid[1]) + "ml each (" + str(0) + ") x" + str(
+    #                     0) + ".  A total of " + str(
+    #                     round(nid[1] * feed_data[self.mix_number]["water total"], 1)) + "ml of "
+    #                                           + self.feed_control.nutrients[nid[0]])
+    #                 lw_item.setBackground(Qt.darkGray)
+    #             elif rs == 2:
+    #                 # This item is not part of normal recipe
+    #                 lw_item = QListWidgetItem(
+    #                     str(x) + "   " + str(recipe[nid] + 0) + "ml each.   A total of " +
+    #                     str(round((recipe[nid] + 0) * feed_data['mixes'][self.mix_number]["water total"], 1))
+    #                     + "ml of " + self.feed_control.nutrients[nid])
+    #                 lw_item.setBackground(Qt.lightGray)
+    #             elif rs == 1 and diff != 0:
+    #                 # This item is part of normal recipe but has been altered
+    #                 lw_item = QListWidgetItem(
+    #                     str(x) + "   " + str(recipe[nid]) + "ml each (" + str(round(diff, 1)) +
+    #                     ")   A total of " + str(
+    #                         round((recipe[nid] + 0) * feed_data['mixes'][self.mix_number]["water total"], 1))
+    #                     + "ml of " + self.feed_control.nutrients[nid])
+    #                 lw_item.setBackground(Qt.darkCyan)
+    #             else:  # Normal recipe item
+    #                 lw_item = QListWidgetItem(str(x) + "   " + str(recipe[nid]) + "ml each.  A total of " + str(
+    #                     round(recipe[nid] * feed_data['mixes'][self.mix_number]["water total"], 1)) + "ml of " +
+    #                                           self.feed_control.nutrients[nid])
+    #
+    #         v_item = QVariant(nid)
+    #         lw_item.setData(Qt.UserRole, v_item)
+    #         self.lw_recipe_1.addItem(lw_item)
+    #         x += 1
+    #
+    #     lpp = feed_data['lpp_next']
+    #     self.te_water_1.setText(
+    #         "Next water " + str(
+    #             round(lpp * feed_data['qty actual'], 2)) + " which is " +
+    #         str(lpp) + "L each")
 
     def check_included(self, item):
         cf = self.main_panel.feed_controller.check_item_included(self.area, item)
@@ -5278,6 +5279,151 @@ class DialogNutrients(QDialog, Ui_DialogNutrients):
         self.pb_nutrient_add.setEnabled(False)
 
 
+class DialogTemperatureSensorMapping(QDialog, Ui_DialogTemperatureSensorMApping):
+    def __init__(self, parent):
+        super(DialogTemperatureSensorMapping, self).__init__()
+        self.sub = None
+        self.main_window = parent
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.db = self.main_window.db
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+
+        self.current = []       # List of current addresses
+        self.scanned = []       # List of addresses received from scan
+        self.edit_address = ""      # Address being edited
+        self.tw_scan.setColumnCount(1)
+        self.tw_current.setColumnCount(2)
+        self.tw_current.setHorizontalHeaderLabels(["AA", "BB"])
+        self.main_window.coms_interface.update_system.connect(self.system_update)
+        self.pb_scan.clicked.connect(self.scan)
+        self.tw_current.clicked.connect(self.edit)
+        self.pb_add.clicked.connect(self.add_new)
+        self.pb_save.clicked.connect(self.save)
+        self.pb_delete.clicked.connect(self.delete)
+        self.pb_check.clicked.connect(self.query)
+        self.msg = QMessageBox(self)
+
+        self.cb_position.addItem("Select", -1)
+        self.cb_position.addItem("Workshop", 1)
+        self.cb_position.addItem("Area 1 Canopy", 2)
+        self.cb_position.addItem("Area 1 Root", 3)
+        self.cb_position.addItem("Area 2 Canopy", 4)
+        self.cb_position.addItem("Area 2 Root", 5)
+        self.load()
+
+    def scan(self):
+        self.tw_scan.clear()
+        self.main_window.coms_interface.send_data(COM_OW_COUNT, True, MODULE_IO)
+
+    @pyqtSlot(str, list, name="updateSystem")
+    def system_update(self, command, data):
+        if command == COM_OW_COUNT:
+            self.scanned.clear()
+            self.tw_scan.clear()
+            qty = int(data[0])
+            self.lbl_scanned.setText(data[0])
+            self.tw_scan.setRowCount(qty)
+            pos = 1
+            for x in range(0, qty):
+                address = data[pos].replace(",", "").replace("0x", "")
+                self.scanned.append(address)
+                self.tw_scan.setItem(x, 0, QTableWidgetItem(address))
+                if address not in self.current:
+                    self.tw_scan.item(x, 0).setBackground(QColor(255, 255, 0))
+
+                pos += 1
+                print(address)
+            self.tw_scan.resizeColumnsToContents()
+            self.check_scan()
+            self.pb_add.setEnabled(True)
+        elif command == COM_OW_SCAN:
+            self.lbl_scanned.setText("Checked")
+
+    def check_scan(self):
+        x = 0
+        for address in self.current:
+            if address not in self.scanned:
+                self.tw_current.item(x, 0).setBackground(QColor(255, 165, 0))
+            x += 1
+
+    def query(self):
+        self.lbl_scanned.clear()
+        self.main_window.coms_interface.send_data(COM_OW_SCAN, True, MODULE_IO)
+
+    def load(self):
+        self.current.clear()
+        self.tw_current.clear()
+        rows = self.db.execute('SELECT address, position FROM {} ORDER BY position'.format(DB_ONE_WIRE))
+        x = 0
+        self.tw_current.setRowCount(len(rows))
+        self.lbl_current.setText(str(len(rows)))
+        for row in rows:
+            self.tw_current.setItem(x, 0, QTableWidgetItem(row[0]))
+            self.tw_current.setItem(x, 1, QTableWidgetItem(str(row[1])))
+            self.current.append(row[0])
+            x += 1
+        self.tw_current.resizeColumnsToContents()
+
+    def add_new(self):
+        if self.tw_scan.currentRow() < 0:
+            return
+        address = self.tw_scan.item(self.tw_scan.currentRow(), 0).text()
+        if address in self.current:
+            self.msg.setText("This has already been added")
+            self.msg.setWindowTitle("Error")
+            self.msg.setStandardButtons(QMessageBox.Ok)
+            self.msg.exec_()
+            return
+        # self.le_address.setText(address)
+        sql = 'INSERT INTO {} (address, position) VALUES ("{}", 0)'.format(DB_ONE_WIRE, address)
+        self.db.execute_write(sql)
+        # self.tw_scan.removeRow(self.tw_scan.currentRow())
+        self.tw_scan.item(self.tw_scan.currentRow(), 0).setBackground(QColor(255, 255, 255))
+        self.load()
+
+    def edit(self):
+        address = self.tw_current.item(self.tw_current.currentRow(), 0).text()
+        self.edit_address = address
+        pos = int(self.tw_current.item(self.tw_current.currentRow(), 1).text())
+        self.le_address.setText(address)
+        if pos > 0:
+            self.cb_position.setCurrentIndex(self.cb_position.findData(pos))
+        self.cb_position.setEnabled(True)
+        self.pb_save.setEnabled(True)
+        self.pb_delete.setEnabled(True)
+
+    def save(self):
+        sql = 'UPDATE {} SET position = {} WHERE address = "{}" LIMIT 1'.\
+            format(DB_ONE_WIRE, self.cb_position.currentData(), self.edit_address)
+        self.db.execute_write(sql)
+        self.load()
+        self.le_address.clear()
+        self.cb_position.setCurrentIndex(0)
+        self.cb_position.setEnabled(False)
+        self.pb_save.setEnabled(False)
+        self.pb_delete.setEnabled(False)
+
+    def delete(self):
+        self.msg.setText("Do you wish to delete this sensor")
+        self.msg.setWindowTitle("Confirm")
+        self.msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+        if self.msg.exec_() == QMessageBox.Cancel:
+            return
+        sql = 'DELETE FROM {} WHERE address = "{}" LIMIT 1'.format(DB_ONE_WIRE, self.edit_address)
+        self.db.execute_write(sql)
+        self.load()
+        self.le_address.clear()
+        self.cb_position.setCurrentIndex(0)
+        self.cb_position.setEnabled(False)
+        self.pb_save.setEnabled(False)
+        self.pb_delete.setEnabled(False)
+
+    def set_row_colour(self, table, row_index, color):
+        for j in range(table.columnCount()):
+            table.item(row_index, j).setBackground(color)
+
+
 class DialogStrainPerformance(QDialog, Ui_DialogStrainPreformance):
     def __init__(self, parent, process=None):
         super(DialogStrainPerformance, self).__init__()
@@ -5400,7 +5546,7 @@ class DialogProcessInfo(QDialog, Ui_DialogProcessInfo):
 
         # temperatures
         self.teTemperatures.moveCursor(QTextCursor.End)
-        temps = p_class.temperature_ranges_active
+        temps = p_class.get_temperature_ranges()
         if p_class.light_status:
             title = "Day"
             alt = "Night"
@@ -5428,7 +5574,7 @@ class DialogProcessInfo(QDialog, Ui_DialogProcessInfo):
                     "Core&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; " + str(temps[4]['low']) + "&deg;  &lt;  <b>" + str(
                         temps[4]['set']) + "&deg;</b>  &gt;  " + str(temps[4]['high']) + "&deg;<br>")
 
-            temps = p_class.temperature_ranges_inactive
+            temps = p_class.get_temperature_ranges(False)
             if not p_class.light_status:
                 title = "Day"
                 # alt = "Night"
@@ -5453,58 +5599,41 @@ class DialogProcessInfo(QDialog, Ui_DialogProcessInfo):
                         temps[4]['set']) + "&deg;</b>  &gt;  " + str(temps[4]['high']) + "&deg;<br>")
 
         # Feed
+        feed = self.main_panel.area_controller.main_window.feed_controller.feeds[p_class.location]
+        text = "<table><tr><td>Schedule</td><td>" + feed.pattern_name + "</td><td>" + str(
+            feed.pattern_id) + "</td></tr></table>"
+        text += "<table border = \"1\"><tr><td>Stage</td><td>From</td><td>To</td><td>LPP</td><td>Recipe</td><td>Freq</td>"
+        for stage in feed.feed_schedules_all:
+            s = stage
+            for schedule in feed.feed_schedules_all[stage]:
+                text += "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>".\
+                    format(s, schedule[0], schedule[1], schedule[2], schedule[3], schedule[4])
+                s = ""
+        text += "</table>"
         if p_class.location != 3:
-            feed = self.main_panel.area_controller.main_window.feed_controller.feeds[p_class.location]
-            text = "<table><tr><td>Schedule</td><td>" + feed.pattern_name + "</td><td>" + str(
-                feed.pattern_id) + "</td></tr>"
-            text += "<tr><td>Recipe</td><td>" + feed.recipe_name + "</td><td>" + str(feed.recipe_id) + "</td></tr>"
 
+            text += "<table>"
+            text += "<tr><td>Recipe</td><td>" + feed.recipe_name + "</td><td>" + str(feed.recipe_id) + "</td></tr>"
+            recipe = feed.load_current_schedule_recipe_default()
+            tbl = "<table><tr><td>Nutrient</td><td>mls</td><td>LPP</td></tr>"
+            for line in recipe:
+                nut = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, line[0]))
+                tbl += "<tr><td>{}</td><td>{}</td><td>{}</tr>".format(nut, line[1], line[2])
+            tbl += "</table><br>"
+            text += "<tr><td>{}</td></tr>".format(tbl)
             text += "<tr><td>Changes in</td><td><b>" + str(feed.new_recipe_due) + " day" + \
                     "s" if feed.new_recipe_due > 1 else "" + "</b></td><td> </td></tr>"
-            #         table += "<tr><td>Next Recipe</td><td><b>" + r_name + "</b> [" + str(
-            #             p_class.recipe_next_id) + "]</td></tr>"
-            #         table += "<tr><td>Starts in</td><td><b>" + str(
-            #             p_class.recipe_expires_day - p_class.stage_days_elapsed) + "</b> days</td></tr>"
-            #         table += "</table><br>"
-            #         # Today
-            #         table += "<table cellpadding='3' border='1'><tr><td colspan='3'>Current Recipe " + str(
-            #             p_class.recipe_original[0][2]) + "Litre(s) Each</td></tr>"
-            #         table += '<tr><td>Nutrient</td><td>Amount</td><td>Freq</td></tr>'
-            #         for row in p_class.recipe_final:
-            #             if row[0] == 100:
-            #                 table += '<tr><td colspan="3" Font="3">Water Only</td></tr>'
-            #                 continue
-            #             sql = "SELECT name FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, row[0])
-            #             n_name = self.db.execute_single(sql)
-            #             colour = ""
-            #             if row[5] != 0:
-            #                 colour = " bgcolor='light gray'"
-            #             table += '<tr><td>' + n_name + '</td><td' + colour + '>' + str(
-            #                 row[1] + row[5]) + 'ml</td><td>' + str(
-            #                 row[4]) + '</td></tr>'
-            #         table += "</table><br><br>"
-            #
-            #         if len(p_class.recipe_next) > 0:
-            #             table += "<table cellpadding='3' border='1'><tr><td colspan='3'>Next Recipe " + str(
-            #                 p_class.recipe_next[0][2]) + "Litre(s) Each</td></tr>"
-            #             table += '<tr><td>Nutrient</td><td>Amount</td><td>Freq</td></tr>'
-            #             for row in p_class.recipe_next:
-            #                 if row[3] == 100:
-            #                     table += '<tr><td colspan="3" Font="3">Water Only</td></tr>'
-            #                     continue
-            #                 sql = "SELECT name FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, row[0])
-            #                 n_name = self.db.execute_single(sql)
-            #                 colour = ""
-            #                 if row[5] != 0:
-            #                     colour = " bgcolor='#00FF00'"
-            #                 table += '<tr><td>' + n_name + '</td><td' + colour + '>' + str(
-            #                     row[1] + row[5]) + 'ml</td><td>' + str(
-            #                     row[4]) + '</td></tr>'
-            #             table += "</table><br><br>"
-            #         self.tefeed.textCursor().insertHtml(table)
-            #     else:
-            #         table = "<table cellpadding='3' border='1'><tr><td>Current Feed Schedule</td><td><b>Missing</b> </td></tr>"
-            #         table += "</table><br><br>"
+            next_recipe = feed.get_recipe_next_feed_schedule()
+            text += "<tr><td>Next Recipe</td><td><b>" + feed.recipe_next_name + "</b> [" + str(
+                feed.recipe_next_id) + "]</td></tr>"
+
+            # Next recipe
+            tbl = "<table><tr><td>Nutrient</td><td>mls</td><td>LPP</td></tr>"
+            for line in next_recipe:
+                nut = self.db.execute_single("SELECT name FROM {} WHERE id = {}".format(DB_NUTRIENTS_NAMES, line[0]))
+                tbl += "<tr><td>{}</td><td>{}</td><td>{}</tr>".format(nut, line[1], line[2])
+            tbl += "</table><br>"
+            text += "<tr><td>{}</td></tr>".format(tbl)
             self.tefeed.textCursor().insertHtml(text)
 
         # Water supply
@@ -5980,6 +6109,8 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         else:
             self.fan_sensor = False
             txt = ""
+        if self.area < 3:
+            self.pb_set_fan.setEnabled(False)
 
         # Is sensor controlling any outputs
         rows = self.db.execute('SELECT name FROM {} WHERE input = {}'.format(DB_OUTPUTS, self.s_id))
@@ -6024,15 +6155,15 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
                 used when switched to day or night on currently active"""
         if self.process != 0 and self.area < 3:
             if inverted:
-                self.temperatures_active = self.process.temperature_ranges_inactive[self.item]
-                self.temperatures_inactive = self.process.temperature_ranges_active[self.item]
-                self.temperatures_active_org = self.process.temperature_ranges_inactive_org[self.item]
-                self.temperatures_inactive_org = self.process.temperature_ranges_active_org[self.item]
+                self.temperatures_active = self.process.get_temperature_range_item(self.item, False)
+                self.temperatures_inactive = self.process.get_temperature_range_item(self.item)
+                self.temperatures_active_org = self.process.get_temperature_range_item_default(self.item, False)
+                self.temperatures_inactive_org = self.process.get_temperature_range_item_default(self.item)
             else:
-                self.temperatures_active = self.process.temperature_ranges_active[self.item]
-                self.temperatures_inactive = self.process.temperature_ranges_inactive[self.item]
-                self.temperatures_active_org = self.process.temperature_ranges_active_org[self.item]
-                self.temperatures_inactive_org = self.process.temperature_ranges_inactive_org[self.item]
+                self.temperatures_active = self.process.get_temperature_range_item(self.item)
+                self.temperatures_inactive = self.process.get_temperature_range_item(self.item, False)
+                self.temperatures_active_org = self.process.get_temperature_range_item_default(self.item)
+                self.temperatures_inactive_org = self.process.get_temperature_range_item_default(self.item, False)
         else:
             # No process so use default values which are stored in the process_temperature_adjustments
             rows = self.db.execute('SELECT item, setting, value FROM {} WHERE area = {} AND item = {}'.
@@ -6091,13 +6222,17 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self.le_high.setText(str(self.high))
         self.le_set.setText(str(self.set))
         self.le_low.setText(str(self.low))
-        self.db.execute_write('UPDATE {} SET value = 0 WHERE area= {} AND day = {} AND item = {} '
-                              'LIMIT 3'.format(DB_PROCESS_TEMPERATURE, self.area, self.day_night, self.item))
+        self.db.execute_write('UPDATE {} SET value = {} WHERE area= {} AND day = {} AND item = {} AND setting = "set" '
+                              'LIMIT 1'.format(DB_PROCESS_TEMPERATURE, self.set, self.area, self.day_night, self.item))
+        self.db.execute_write('UPDATE {} SET value = {} WHERE area= {} AND day = {} AND item = {} AND setting = "high" '
+                              'LIMIT 1'.format(DB_PROCESS_TEMPERATURE, self.high, self.area, self.day_night, self.item))
+        self.db.execute_write('UPDATE {} SET value = {} WHERE area= {} AND day = {} AND item = {} AND setting = "low" '
+                              'LIMIT 1'.format(DB_PROCESS_TEMPERATURE, self.low, self.area, self.day_night, self.item))
         if self.process != 0:
-            self.process.load_active_temperature_ranges()
+            self.process.load_temperature_adjustments()
         self.main_panel.coms_interface.relay_send(NWC_SENSOR_RELOAD, self.area, self.s_id)
         self.main_panel.area_controller.sensors[self.s_id].load_range()
-        self.main_panel.area_controller.sensors[self.s_id].update_status_ctrl()
+        # self.main_panel.area_controller.sensors[self.s_id].update_status_ctrl()
 
     def change_set(self):
         # if self.sender().hasFocus():
@@ -6112,9 +6247,10 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self._check_high(nv)
         # Check low value
         self._check_low(nv)
-        self.main_panel.area_controller.fan_controller.set_req_temperature(self.area, nv)
+        if self.fan_sensor:
+            self.main_panel.area_controller.fan_controller.set_req_temperature(self.area, nv)
         if self.process != 0 and self.area < 3:
-            self.process.load_active_temperature_ranges()
+            self.process.load_temperature_adjustments()
             self.main_panel.area_controller.sensors[self.s_id].load_range()
         else:
             self.main_panel.area_controller.sensor_load_manual_ranges(self.area, self.item)
@@ -6133,7 +6269,7 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self._check_set_high(nv)
         self._check_low(self.set)
         if self.process != 0 and self.area < 3:
-            self.process.load_active_temperature_ranges()
+            self.process.load_temperature_adjustments()
             self.main_panel.area_controller.sensors[self.s_id].load_range()
         else:
             self.main_panel.area_controller.sensor_load_manual_ranges(self.area, self.item)
@@ -6152,7 +6288,7 @@ class DialogSensorSettings(QWidget, Ui_DialogSensorSettings):
         self._check_set_low(nv)
         self._check_high(self.set)
         if self.process != 0 and self.area < 3:
-            self.process.load_active_temperature_ranges()
+            self.process.load_temperature_adjustments()
             self.main_panel.area_controller.sensors[self.s_id].load_range()
         else:
             self.main_panel.area_controller.sensor_load_manual_ranges(self.area, self.item)
@@ -7067,12 +7203,28 @@ class DialogSoilLimits(QDialog, Ui_DialogSoilLimits):
         self.pb_save_2.clicked.connect(lambda: self.save(2))
         self.pb_save_3.clicked.connect(lambda: self.save(3))
         self.pb_save_4.clicked.connect(lambda: self.save(4))
+        self.pb_auto_cal.clicked.connect(self.auto_cal)
         self.dialog_soil_sensors.main_panel.coms_interface.update_soil_reading.connect(self.readings_update)
 
     def save(self, sensor):
         wet = int(getattr(self, "le_wet_{}".format(sensor)).text())
         dry = int(getattr(self, "le_dry_{}".format(sensor)).text())
         self.soil_sensors.set_wet_dry(self.area, sensor, wet, dry)
+
+    def auto_cal(self):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Question)
+        msg.setText("Confirm you wish to auto calibrate using current readings as just watered")
+        msg.setWindowTitle("Confirm Auto Calibrate")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        msg.setDefaultButton(QMessageBox.No)
+        if msg.exec_() == QMessageBox.No:
+            return
+        for sensor in range(1, 5):
+            raw = string_to_int(getattr(self, "le_raw_{}".format(sensor)).text())
+            raw -= raw * 0.05
+            getattr(self, "le_wet_{}".format(sensor)).setText(str(int(raw)))
+            self.save(sensor)
 
     def readings_update(self, data):
         raw = []

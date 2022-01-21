@@ -86,7 +86,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.timer.setInterval(1000)
         self.timer.timeout.connect(self.recurring_timer)
         self.loop_15_flag = True  # To give every other loop 15
-        self.last_sensor_data = None
+        # self.last_sensor_data = None
 
         self.has_scales = int(self.db.get_config(CFT_MODULES, "ss unit", 0))
         if self.main_window.factory:
@@ -507,6 +507,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         if self.area_controller.area_has_process(area):
             self.area_controller.get_area_process(area).advance_stage()
             self.area_controller.reload_area(area)
+            self.feed_controller.reload_area(area)
             self.update_duration_texts()
             self.check_stage(area)
             self.coms_interface.relay_send(NWC_RELOAD_PROCESSES)
@@ -516,14 +517,15 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             return
         if location == 1:
             next_stage_days = self.area_controller.get_area_process(location).stage_days_remaining
-            if next_stage_days <= self.stage_change_warning_days:
+            stage_day_adjust = self.area_controller.get_area_process(location).stage_day_adjust
+            if next_stage_days - stage_day_adjust <= self.stage_change_warning_days:
                 self.frmstagechange_1.setEnabled(True)
                 ctrl = self.pbstageadvance_1
                 ctrl_le = self.lestageinfo_1
                 ctrl_advance = self.pb_advance_1
                 # self.process_from_location(1)
                 ctrl_le.setText(str(next_stage_days))  # + day + str(
-                if next_stage_days > 1:
+                if next_stage_days >= 1:
                     ctrl_advance.setEnabled(True)
                     ctrl.setEnabled(False)
                     ctrl_le.setStyleSheet("background-color: white;  color: black;")
@@ -790,6 +792,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         if len(self.area_controller.get_area_items(3)) == 0:
             # None left, so finish stage
             self.area_controller.get_area_process(3).end_process()
+            # BreakPoint above is returning 0 and crashing - is process already ended ??
             self.area_controller.load_areas()
             self.area_controller.load_sensors(3)
             self.area_controller.load_outputs(3)
@@ -850,9 +853,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         if not self.area_controller.area_has_process(area):
             return
         p = self.area_controller.get_area_process(area)
-        # current_stage = p.current_stage
         p.adjust_stage_days(val)
-        # if p.current_stage is not current_stage:
         self.area_controller.display_stage_icon(area)
         self.update_duration_texts()
         self.check_stage(area)
@@ -1038,11 +1039,13 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         idx = 1
         try:
             for d in data:
-                if idx in self.area_controller.sensors.keys():
+                if idx < 8:     # Humidity and temperature
+                    if idx in self.area_controller.sensors.keys():
+                        self.area_controller.sensors[idx].update(d)
+                else:   # One wire
                     self.area_controller.sensors[idx].update(d)
+
                 idx += 1
-            # print("Data in ", self.current_data)
-            self.last_sensor_data = data
         except Exception as e:
             print("Update display error - ", e.args)
 
@@ -1051,7 +1054,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         if module == MODULE_IO or module == MODULE_SL:
             if sw == OUT_LIGHT_1:
                 if self.area_controller.area_has_process(1):
-                    self.area_controller.reload_sensor_ranges(1)
+                    self.area_controller.reload_area_ranges(1)
                 self.area_controller.light_relay_1 = state
                 if state == 0:
                     self.lbl_light_status_1.setPixmap(QtGui.QPixmap(":/normal/light_off.png"))
@@ -1065,7 +1068,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             #     if self.area_controller.area_is_manual(1):
             #         self.db.set_config(CFT_AREA, "mode {}".format(1), state + 1)
             if sw == OUT_LIGHT_2:
-                self.area_controller.reload_sensor_ranges(2)
+                self.area_controller.reload_area_ranges(2)
                 self.area_controller.light_relay_2 = state
                 if state == 0:
                     self.area_controller.day_night[2] = NIGHT
@@ -1073,7 +1076,6 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 else:
                     self.area_controller.day_night[2] = DAY
                     self.lbl_light_status_2.setPixmap(QtGui.QPixmap(":/normal/light_on.png"))
-                # self.area_controller.get_area_process(2).check_trans()
                 self.area_controller.fan_controller.load_req_temperature(2)
                 # else:
                 #     if self.area_controller.area_is_manual(2):
@@ -1246,8 +1248,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
     def process_relay_command(self, cmd, data):
         """ For outputs use the actual output class and not the controller as it relays the action"""
         if cmd == NWC_SENSOR_RELOAD:
-            self.area_controller.sensors[data[1]].load_range()
-            self.area_controller.sensors[data[1]].update_status_ctrl()
+            self.area_controller.reload_area_process_ranges(data[0])
+            # self.area_controller.sensors[data[1]].update_status_ctrl()
         elif cmd == NWC_STAGE_ADJUST:
             self.area_controller.get_area_process(1).process_load_stage_info()
             self.update_duration_texts()

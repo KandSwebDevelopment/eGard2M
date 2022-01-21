@@ -46,6 +46,7 @@ class SensorClass(object):
         self.max_min = MaxMin(self)
 
     def load_profile(self):
+        """ Loads the sensor config"""
         row = self.db.execute_one_row(
             'SELECT maps_to, calibration, step, area, area_range, short_name FROM {} WHERE id = '
             '{}'.format(DB_SENSORS_CONFIG, self.id))
@@ -60,18 +61,20 @@ class SensorClass(object):
         self.short_name = row[5]
 
     def load_range(self):
+        """ Loads the sensors range values. For sensors with a process this will be from the process
+            This loads the low, set and high values for all area sensors for both day and night
+            Call this when any of the range values change, either by user or by changing day and night"""
         if self.area_controller.area_has_process(self.area) and self.area < 3:
             # Load process range values
             p = self.area_controller.get_area_process(self.area)
             if p != 0:
-                p.load_active_temperature_ranges()
-                r = p.temperature_ranges_active
+                # p.load_temperature_adjustments()
+                r = p.get_temperature_range_item(self.item)
                 if len(r) > 0:
-                    r = r[self.item]
                     self.set_range(r)
-                    ro = p.temperature_ranges_active_org[self.item]
+                    ro = p.get_temperature_range_item_default(self.item)
                     self.set_range_org(ro)
-                    self.range_inactive = p.temperature_ranges_inactive_org[self.item]
+                    self.range_inactive = p.get_temperature_range_item_default(self.item, False)
                     self.has_process = True
                 else:
                     # @todo Add call to msg sys - No temperature range for process
