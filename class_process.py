@@ -40,20 +40,21 @@ class ProcessClass(QObject):
         self.current_stage = 0  # The current stage running
         self.stage_required = 0  # The stage that should be running
         # self.stage_adjustments = []  # Holds the number of days a stage is delayed (+) or advanced (-)
-        self.stages_len_default = [0, 0, 0, 0]  # The default number of days for each stage
-        self.stages_len_adjustment = [0, 0, 0, 0]  # The number of days each stage is adjusted by. The 1st 0 is for base 0
+        # self.stages_len_default = [0, 0, 0, 0]  # The default number of days for each stage
+        self.stages_len_adjustment = collections.defaultdict(int)  # The number of days each stage is adjusted by.
         # self.stage_offset = 0  # The number of days the current stage is adjusted by
         self.stages_max = 0  # Total number of stages in this process
-        self.stage_total_duration = 0  # The current stage total duration
+        self.stage_total_duration = 0  # The total duration of current stage
         self.stage_days_elapsed = 0  # Number of days elapsed in current stage
-        self.stage_days_remaining = 0  # Number of days remaining in this stage
+        self.stage_days_remaining = 0  # Number of days remaining in current stage
         self.stage_day_adjust = 0  # Value here will change the current stage day by that amount
         self.stage_start = None  # Date current stage starts
         self.stage_start_day = 0  # Day number of total days current stage starts
         self.stage_end = None  # Date current stage ends
-        self.stages = []  # Holds all the info about all the stages in this process  [stage](dur, light, temp, feed, location)
+        self.stages = collections.defaultdict(list)  # Holds all the current info about all the stages in this process  [stage](dur, light, temp, feed, location)
+        self.stages_default = collections.defaultdict(list)  # Holds all the default info about all the stages in this process  [stage](dur, light, temp, feed, location)
         self.stage_name = ""  # Current stage name
-        self.stages_start = []  # List of datetime each stage starts on
+        self.stages_start = collections.defaultdict(datetime)  # List of datetime each stage starts on
         self.stages_end = []
         self.stage_location = None  # The location required for stage 1=Prep, "=Finishing, 3=Drying, 50=None as completed
         self.stage_next_location = None  # The location required for next stage
@@ -73,11 +74,6 @@ class ProcessClass(QObject):
         self.temperature_ranges_default = collections.defaultdict(dict)
         self.temperature_ranges_adjusted = collections.defaultdict(dict)    # The default ranges adjusted for this process
 
-        # self.temperature_ranges = collections.defaultdict()  # hold range values for temperature ranges for current stage
-        # self.temperature_ranges_active = collections.defaultdict()  # The final in use with any adjustments applied
-        # self.temperature_ranges_active_org = collections.defaultdict()  # The original temp range currently active
-        # self.temperature_ranges_inactive = collections.defaultdict()  # The final in use with any adjustments applied
-        # self.temperature_ranges_inactive_org = collections.defaultdict()  # The original temp range currently active
         self.temperature_name = ""
 
         self.strains = collections.defaultdict()    # id, shortest, longest, name, plant number -> id: min: max: name
@@ -91,30 +87,6 @@ class ProcessClass(QObject):
         self.recipe_id = 0              # Current recipe id
         self.recipe_name = ""           # The name of recipe in use
         self.feed_mode = 1              # 1= Manual, 2 = Semi Auto, 3 = Full auto use feeder
-        # self.recipe_original = []       # Array of recipe_item's which makes the complete feed    0=nid, 1=ml, 2=L, 3=rid, 4=freq, 5=adj ml, 6=adj remaining
-        # self.recipe_final = []          # Array with changed feed, a manual change to a feed
-        # self.recipe_changes = []        # Array of changes to current feed   0=nid, 1=ml, 2=remaining
-        # self.recipe_extended = 0        # Indicates the number of days the recipe is extended by due to the stage being delayed
-        # self.recipe_next = []           # Next recipe to be used
-        # self.recipe_next_id = None      # Next recipe id
-        # self.recipe_score = 0           # Used by feeder to determine which area to do first. It is the sum of all the nutrients in the feed, lower score goes first
-        # self.recipe_status = 0          # 0 = Same recipe in use, -1 = Recipe will change next feed, 1 = Recipe has changed and next feed will be first
-        # self.recipe_is_change = True    # True if recipe has been modified
-        # self.recipe_expires_day = 0     # The day number which current recipe expires, used with stage_days_elapsed
-        # self.recipe_starts_day = 0      # The day number which current recipe started on
-        # self.recipe_next_replaced = False  # True if next recipe does not exist so current will be used
-        # self.new_recipe_due = None      # The number of days until a different recipe is used
-        # self.feed_schedule = []       # The feed schedule for current stage
-        # self.feed_time = ""             # Default feed time, loaded from the db
-        # self.feed_litres = 0            # Litres per plant per feed (each)
-        # self.feed_litres_next = 0       # Litres per plant per feed (each) for the next recipe
-        # self.feed_litres_adj = 0        # Litres to add to feed_liters (total not each), allows manual change
-        # self.feed_litres_adj_remaining = 0  # Number of feed to use above adjustment
-        # self.feed_schedule_item_num = 0  # The row number currently in use in the feed schedule
-        # self.feed_quantity_array = []   # Array with 1 = plant feed, 0 = not feed
-        # self.feed_quantity = 0          # The number that feed will be made for which may be different than the quantity
-        # self.feed_frequency = 0
-        # self.feed_frequency_next = 0
         self.feeds_till_end = []
         self.last_feed_date = None      # Datetime of last feed
         self.cool_time = 0
@@ -193,47 +165,58 @@ class ProcessClass(QObject):
 
     def process_load_stage_info(self):
         # load the the stages for the process
+        self.load_stage_patterns()  # Loads the stages from the template in use into stages
         self.load_process_adjustments()  # Loads any adjustments from the template in use into current_stage_len_adjustments
-        self.load_stages()  # Loads the stages form the template in use into stages and applies offset
         self.calculate_stages_start()
         self.is_running()
-        self.get_required_stage()
+        # self.get_required_stage()
         self.load_stage(self.current_stage)  # Loads the current stage
-        self.load_temperature_schedule()
+        self.load_temperature_schedule_default()
 
     def load_process_adjustments(self):
         if not self.running:
             return
-        self.process_offset_total = 0
-        # self.stage_adjustments.clear()
-        self.stages_len_adjustment = [0, 0, 0, 0, 0]
-        sda = self.db.execute_one_row("SELECT itemid, offset from {} WHERE item = '{}' AND id = {}".
-                                      format(DB_PROCESS_ADJUSTMENTS, PA_STAGE_DAY_ADJUST, self.id))
-        if sda is None:
-            sda = 0
-        else:
-            if sda[0] == self.current_stage:
-                self.stage_day_adjust = int(sda[1])
+        # self.process_offset_total = 0
+        self.stages_len_adjustment.clear()
+        self.stage_day_adjust = 0
+        for stage in range(1, len(self.stages) + 1):
+            if stage == 3:  # For the auto cal of flowering
+                self.stages_len_adjustment[stage] = self.stages[stage][0] - self.strain_longest
             else:
-                self.stage_day_adjust = 0
-        sql = "SELECT * FROM " + DB_PROCESS_ADJUSTMENTS + " WHERE id = {} AND item = '{}' ORDER BY id, item, itemid".format(
-            self.id, PA_STAGE_DAY_ADJUST)
-        rows = self.db.execute(sql)
-        for row in rows:
-            #                            stage    offset
-            if sda == row[2]:
-                v = int(row[3]) - self.stage_day_adjust
-            else:
-                v = int(row[3])
-            # self.stage_adjustments.append([row[2], v])
-            self.stages_len_adjustment[row[2]] = v
+                self.stages_len_adjustment[stage] = self.stages[stage][0] - self.stages_default[stage][0]
+            if stage == self.current_stage:
+                self.stage_day_adjust = self.stages_len_adjustment[stage]
 
-    def load_stages(self):
-        # This loads all the stage info for the process and applies offset
+    def load_stage_patterns(self):
+        """ This loads the stage pattern, it looks for the user copy and if not found it creates it
+            which is the stage, duration, light, temperature, feeding, location info for the process
+            and applies offset"""
         if not self.running:
             return
-        sql = "SELECT * FROM " + DB_STAGE_PATTERNS + " WHERE pid = {} ORDER BY stage".format(self.pattern_id)
+        # Check if the process pattern table contains the pattern for this process
+        # If not create a copy of default pattern
+        sql = "SELECT process, stage, duration, light, temperature, feeding, location FROM " + DB_PROCESS_PATTERNS + \
+              " WHERE process = {} ORDER BY stage".format(self.id)
         rows = self.db.execute(sql)
+        # Load default patterns
+        sql = "SELECT pid, stage, duration, lighting, temperature, feeding, location FROM " + DB_STAGE_PATTERNS + \
+              " WHERE pid = {} ORDER BY stage".format(self.pattern_id)
+        rows_d = self.db.execute(sql)
+        if len(rows) == 0:  # No user copy
+            # Create user copy of default
+            for row in rows_d:
+                dur = row[2]
+                if row[1] == 3 and dur == 0:
+                    dur = self.strain_longest
+                sql = 'INSERT INTO {} (process, stage, duration, light, temperature, feeding, location) VALUES ' \
+                      '({}, {}, {}, {}, {}, {}, {})'.format(
+                       DB_PROCESS_PATTERNS, self.id, row[1], dur, row[3], row[4], row[5], row[6])
+                self.db.execute_write(sql)
+                self.stages_default[row[1]] = [row[2], row[3], row[4], row[5], row[6]]
+        else:
+            for row in rows_d:
+                self.stages_default[row[1]] = [row[2], row[3], row[4], row[5], row[6]]
+
         stage = 1
         self.stages.clear()
         self.days_total = 0
@@ -241,54 +224,53 @@ class ProcessClass(QObject):
             stage_len = row[2]
             if stage_len == 0 and row[1] == 3:  # Auto cal flowering
                 stage_len = self.strain_longest
-            self.stages_len_default[stage - 1] = stage_len
-            stage_len += self.stages_len_adjustment[stage]
-            #                   stage     dur      light   temp    feed    location
-            self.stages.append([row[1], stage_len, row[3], row[4], row[5], row[6]])
+            # self.stages_len_default[stage - 1] = stage_len
+            # stage_len += self.stages_len_adjustment[stage]
+            #            stage     dur        light   temp    feed    location
+            self.stages[row[1]] = [stage_len, row[3], row[4], row[5], row[6]]
             self.days_total += stage_len
             stage += 1
         self.stages_max = stage - 1
         self.due_date = self.start + timedelta(days=self.days_total)
 
     def load_stage(self, stage):
+        """ This load the stage into the process as the running stage """
         if not self.running:
             return
-        self.stage_total_duration = self.stages[stage - 1][1]  # includes offset
+        self.stage_total_duration = self.stages[stage][0]  # includes offset
 
         if stage == 1:
             diff = datetime.today() - self.start
         elif stage == 2:
-            diff = datetime.today() - self.stages_start[stage - 1]
+            diff = datetime.today() - self.stages_start[stage]
         else:
-            diff = datetime.today() - self.stages_start[stage - 1]
+            diff = datetime.today() - self.stages_start[stage]
         self.stage_days_elapsed = diff.days
         # if self.stage_days_elapsed < 1:
         #     self.stage_days_elapsed = 1
 
         self.stage_name = self.db.execute_single("SELECT name FROM " + DB_STAGE_NAMES + " WHERE id = " + str(stage))
-        self.current_lighting = self.stages[stage - 1][2]
-        self.current_temperature_id = self.stages[stage - 1][3]
-        # self.current_feed_schedule_id = self.stages[stage - 1][4]
-        self.stage_location = self.stages[stage - 1][5]
-        self.stage_start = self.stages_start[stage - 1]
+        self.current_lighting = self.stages[stage][1]
+        self.current_temperature_id = self.stages[stage][2]
+        self.stage_location = self.stages[stage][4]
+        self.stage_start = self.stages_start[stage]
         self.stage_end = self.stage_start + timedelta(days=self.stage_total_duration)
         self.stage_days_remaining = self.stage_total_duration - self.stage_days_elapsed
 
-        # self.stage_offset = self.get_stage_adjustment(stage)
         self.stage_day_adjust = self.get_stage_adjustment(stage)
         if stage is self.stages_max:
             self.stage_next_location = 0
         else:
-            self.stage_next_location = self.stages[stage][5]
+            self.stage_next_location = self.stages[stage][4]
 
     def load_lighting_schedule(self):
         if not self.running:
             return
         self.light_name = self.db.execute_single(
-            "SELECT name FROM " + DB_LIGHT_NAMES + " WHERE id = " + str(self.stages[self.current_stage - 1][2]))
+            "SELECT name FROM " + DB_LIGHT_NAMES + " WHERE id = " + str(self.stages[self.current_stage][1]))
 
         rows = self.db.execute_one_row(
-            "SELECT * FROM " + DB_LIGHT + " WHERE id = " + str(self.stages[self.current_stage - 1][2]))
+            "SELECT * FROM " + DB_LIGHT + " WHERE id = " + str(self.stages[self.current_stage][1]))
         if rows is not None:
             ct = datetime.now()
             self.light_on = datetime.combine(date.today(), datetime.min.time()) + rows[
@@ -315,28 +297,30 @@ class ProcessClass(QObject):
             # self.area_controller.notifier.add(CRITICAL, "No light schedule could be found", FC_P_LIGHT_SCHEDULE_MISSING,
             #                             add_info)
 
-    def get_required_stage(self):
-        if not self.running:
-            return
-        self.stage_required = None
-        # Get active stage
-        stage = 1
-        start = 0
-        ct = datetime.now().date()
-        while ct >= self.stages_start[stage].date() and stage < len(self.stages):
-            stage += 1
-            start += self.stages[stage - 2][1]
-        if stage > len(self.stages):
-            stage = len(self.stages)
-        self.stage_required = stage
-        self.stage_start_day = start
-        # self.current_duration = self.stages[stage-2][1]
-        # print("Stage = " + str(stage))
+    # def get_required_stage(self):
+    #     if not self.running:
+    #         return
+    #     self.stage_required = None
+    #     # Get active stage
+    #     stage = 1
+    #     start = 0
+    #     ct = datetime.now().date()
+    #     while ct >= self.stages_start[stage].date() and stage <= len(self.stages):
+    #         start += self.stages[stage][0]
+    #         stage += 1
+    #     if stage > len(self.stages):
+    #         stage = len(self.stages)
+    #     self.stage_required = stage
+    #     self.stage_start_day = start
+    #     # self.current_duration = self.stages[stage-2][1]
+    #     # print("Stage = " + str(stage))
 
     def get_stage_name(self, stage):
-        # Return the stage name for the given stage
+        """ Return the stage name for the given stage """
         sql = "SELECT name FROM " + DB_STAGE_NAMES + " WHERE id = {}".format(stage)
         row = self.db.execute(sql)
+        if not row:
+            return ""
         return row[0][0]
 
     def get_stage_adjustment(self, stage):
@@ -371,7 +355,7 @@ class ProcessClass(QObject):
         for stage in range(self.current_stage, self.stages_max):
             if stage != self.current_stage:
                 run_day = carry_over
-            feed_schedule = self.stages[stage - 1][4]
+            feed_schedule = self.stages[stage][3]
             if feed_schedule > 0:
                 sql = "SELECT start, dto, liters, rid, frequency FROM {} WHERE sid = {}".format(DB_FEED_SCHEDULES,
                                                                                                 feed_schedule)
@@ -406,21 +390,21 @@ class ProcessClass(QObject):
             text = "Process Finished\nTotal duration " + str(self.days_total) + " days " + str(
                 round(self.days_total / 7, 1)) + " weeks\n"
             text += "Stages\n"
-            idx = 0
+            idx = 1
             if self.stages_start[self.stages_max].date() != datetime.now().date():
                 # If end date is not today then adjust last stage length to bring it to today
                 self.stages_start[self.stages_max] = datetime.now()
                 self.stages_len_adjustment[self.stages_max] -= self.stage_days_remaining
-                self.stages[self.stages_max - 1][1] -= self.stage_days_remaining
+                self.stages[self.stages_max][0] -= self.stage_days_remaining
             for s in self.stages_start:
-                if idx > 3:
+                if idx > 4:
                     break
                 stage_name = self.db.execute_single(
                     "SELECT name FROM " + DB_STAGE_NAMES + " WHERE id = " + str(idx + 1))
                 text += "Stage " + str(idx + 1) + " " + stage_name + " from " + s.strftime("%d-%m-%y") + " for " + \
-                        str(self.stages[idx][1]) + " days " + str(
-                    round(self.stages[idx][1] / 7, 1)) + " weeks ending on " + (
-                                    s + timedelta(days=self.stages[idx][1] - 1)).strftime("%d-%m-%y") + "."
+                        str(self.stages[idx][0]) + " days " + str(
+                    round(self.stages[idx][0] / 7, 1)) + " weeks ending on " + (
+                                    s + timedelta(days=self.stages[idx][0] - 1)).strftime("%d-%m-%y") + "."
                 if self.stages_len_adjustment[idx + 1] > 0:
                     text += " This stage was held back by " + str(self.stages_len_adjustment[idx + 1]) + " days."
                 elif self.stages_len_adjustment[idx + 1] < 0:
@@ -446,6 +430,12 @@ class ProcessClass(QObject):
             print(sql)
             self.db.execute_write(sql)
 
+            # Remove from process patterns
+            sql = "DELETE FROM {} WHERE process = {}".format(DB_PROCESS_PATTERNS, self.id)
+
+            print(sql)
+            self.db.execute_write(sql)
+
             # Reset any stage day advance
             if self.stage_day_adjust != 0:
                 self.stages_len_adjustment[self.current_stage] -= self.stage_day_adjust
@@ -461,14 +451,6 @@ class ProcessClass(QObject):
             # Remove any feed mixes
             self.db.execute_write('DELETE FROM {} WHERE area = 2'.format(DB_PROCESS_FEED_ADJUSTMENTS))
             self.db.execute_write('DELETE FROM {} WHERE area = 2'.format(DB_PROCESS_MIXES))
-
-            # Feed liters
-            # if self.location < 3:
-            #     sql = "UPDATE {} SET itemid = 0, offset = 0 WHERE item = {} id = {} LIMIT 1".format(
-            #         DB_PROCESS_ADJUSTMENTS, PA_FEED, self.location)
-            #     self.db.execute_write(sql)
-            # print(sql)
-            # self.db.execute_write(sql)
 
     def is_running(self):
         if self.start < datetime.now():
@@ -519,55 +501,47 @@ class ProcessClass(QObject):
         val = datetime.now()
         running_total = 0
         self.stages_start.clear()
-        self.stages_start.append(self.start)
-        for stage in range(0, self.stages_max):
-            stage_len = self.stages[stage][1]
+        self.stages_start[1] = self.start
+        for stage in range(1, self.stages_max + 1):
+            stage_len = self.stages[stage][0]
             running_total += stage_len
             val = self.start + timedelta(days=running_total)
-            self.stages_start.append(val)
+            self.stages_start[stage + 1] = val
 
         self.end = val
 
     def adjust_stage_days(self, adjustment, other=0):
         """ Advances or delays a stage end by number of days
-            It store the adjustment in the processs_adjustments table """
+            It store the adjustment in the process_patterns table """
         if not self.running:
             return
         if adjustment != 0:
-            self.stage_day_adjust += adjustment
-            sql = 'SELECT * FROM ' + DB_PROCESS_ADJUSTMENTS + ' WHERE id = {} AND item = "{}" AND itemid = {}'.format(
-                self.id, PA_STAGE_DAY_ADJUST, self.current_stage)
-            row = self.db.execute_one_row(sql)
-            if row is None:
-                sql = 'INSERT INTO ' + DB_PROCESS_ADJUSTMENTS + ' (id, item, itemid, offset, other) VALUES ({}, "{}", {}, {}, {})'.format(
-                    self.id, PA_STAGE_DAY_ADJUST, self.current_stage, self.stage_day_adjust, other)
-            else:
-                co = row[3] + adjustment
-                sql = 'UPDATE ' + DB_PROCESS_ADJUSTMENTS + ' SET offset = {} WHERE id = "{}" AND item = "{}" ' \
-                                                           'AND itemid = {}'.format(co, self.id, PA_STAGE_DAY_ADJUST, self.current_stage)
+            sql = 'UPDATE {} SET duration = duration + {} WHERE stage = {} AND process = {} LIMIT 1'.\
+                format(DB_PROCESS_PATTERNS, adjustment, self.current_stage, self.id)
             self.db.execute_write(sql)
+            self.stage_day_adjust += adjustment
+            # sql = 'SELECT * FROM ' + DB_PROCESS_ADJUSTMENTS + ' WHERE id = {} AND item = "{}" AND itemid = {}'.format(
+            #     self.id, PA_STAGE_DAY_ADJUST, self.current_stage)
+            # row = self.db.execute_one_row(sql)
+            # if row is None:
+            #     sql = 'INSERT INTO ' + DB_PROCESS_ADJUSTMENTS + ' (id, item, itemid, offset, other) VALUES ({}, "{}", {}, {}, {})'.format(
+            #         self.id, PA_STAGE_DAY_ADJUST, self.current_stage, self.stage_day_adjust, other)
+            # else:
+            #     co = row[3] + adjustment
+            #     sql = 'UPDATE ' + DB_PROCESS_ADJUSTMENTS + ' SET offset = {} WHERE id = "{}" AND item = "{}" ' \
+            #                                                'AND itemid = {}'.format(co, self.id, PA_STAGE_DAY_ADJUST, self.current_stage)
+            # self.db.execute_write(sql)
 
             # update the end date
             self.end = self.end + timedelta(days=adjustment)
             sql = "UPDATE {} SET end = '{}' WHERE id = {}".format(DB_PROCESS, datetime.strftime(self.end, "%d-%m-%y"),
                                                                   self.id)
-            # print(sql)
             self.db.execute_write(sql)
-
             self.process_load_stage_info()
-            # Check if this has caused stage to change, if so load new stage info
-            # if self.stage_required is not self.current_stage:
-            #     self.change_due = True
-            # else:
-            #     self.change_due = False
 
-    def load_temperature_schedule(self):
-        """
-        Loads the temperature schedule in use for the current stage into temperature_ranges, this will contain both
-        day and night ranges
-        @return: None
-        @rtype: None
-        """
+    def load_temperature_schedule_default(self):
+        """ Loads the temperature schedule in use for the current stage into temperature_ranges, this will contain
+            both day and night ranges """
         if not self.running:
             return
         rows = self.db.execute_one_row(
@@ -582,11 +556,7 @@ class ProcessClass(QObject):
             #                             FC_P_TEMPERATURE_SCHEDULE_MISSING, add_info)
 
         for row in rows:
-            # if row[0] not in self.temperature_ranges.keys():
-            #     self.temperature_ranges[row[0]] = {}
-            # self.temperature_ranges[row[0]][row[1]] = {'low': row[2], 'set': row[3], 'high': row[4]}
             self.temperature_ranges_default[row[0]][row[1]] = {'low': row[2], 'set': row[3], 'high': row[4]}
-        # print(self.temperature_ranges)
         self.load_temperature_adjustments()
 
     def load_temperature_adjustments(self):
@@ -601,27 +571,6 @@ class ProcessClass(QObject):
             if row[3] != 0:     # value is not zero
                 dn = DAY if row[0] == 1 else NIGHT
                 self.temperature_ranges_adjusted[dn][row[1]][row[2]] = row[3]
-
-        sql = 'SELECT value, item, setting FROM {} WHERE `area` = {} and `day` = {}'.\
-            format(DB_PROCESS_TEMPERATURE, self.location, self.light_status)
-        # rows = self.db.execute(sql)
-        # for row in rows:
-        #     if row[0] > 0:
-        #         if row[1] in self.temperature_ranges_active:
-        #             if row[0] == 0:
-        #                 # No adjustment so set it to original value
-        #                 # temperature_ranges_ [item][setting] = value
-        #                 self.temperature_ranges_active[row[1]][row[2]] = row[0]
-        #                 # pass
-        #             else:
-        #                 self.temperature_ranges_active[row[1]][row[2]] = row[0]
-        # sql = 'SELECT value, item, setting FROM {} WHERE `area` = {} and `day` = {}'.\
-        #     format(DB_PROCESS_TEMPERATURE, self.location, int(not self.light_status))
-        # rows = self.db.execute(sql)
-        # for row in rows:
-        #     if row[0] > 0:
-        #         if row[1] in self.temperature_ranges_inactive:
-        #             self.temperature_ranges_inactive[row[1]][row[2]] = row[0]
 
     def get_temperature_ranges(self, current=True):
         """ Returns a dict of the current adjusted temperature ranges
@@ -659,32 +608,6 @@ class ProcessClass(QObject):
             dn = DAY if self.check_light() == 0 else NIGHT
         return self.temperature_ranges_default[dn][item]
 
-    # def load_active_temperature_ranges(self):
-    #     """
-    #     produces two arrays of temperature settings, one for day and one for night,
-    #     process.active_temperature_ranges for current light state
-    #     process.inactive_temperature_ranges for the alt light state
-    #     These will be altered by load_temperature_adjustments to add any user setting
-    #     It also creates two arrays of the original default values which can be compared with to detect user changes
-    #     DO NOT USE this to get the temp range use the variable process.temperature_ranges_active
-    #     @return: Will only have a return list if current is False
-    #     @rtype: list
-    #     """
-    #     if len(self.temperature_ranges) == 0:
-    #         return
-    #     for dn in self.temperature_ranges:
-    #         if dn == self.light_status:
-    #             self.temperature_ranges_active_org = self.temperature_ranges[1].copy()
-    #             self.temperature_ranges_active = copy.deepcopy(self.temperature_ranges_active_org)
-    #             self.temperature_ranges_inactive_org = self.temperature_ranges[2].copy()
-    #             self.temperature_ranges_inactive = copy.deepcopy(self.temperature_ranges_inactive_org)
-    #         elif dn == 2 and self.light_status == 0:
-    #             self.temperature_ranges_active_org = self.temperature_ranges[2].copy()
-    #             self.temperature_ranges_active = copy.deepcopy(self.temperature_ranges_active_org)
-    #             self.temperature_ranges_inactive_org = self.temperature_ranges[1].copy()
-    #             self.temperature_ranges_inactive = copy.deepcopy(self.temperature_ranges_inactive_org)
-    #     self.load_temperature_adjustments()
-    #
     def info(self, item):
         if not self.running:
             return
@@ -698,9 +621,6 @@ class ProcessClass(QObject):
                 .format(self.stage_name, self.stage_days_elapsed, self.stage_total_duration, self.stage_days_remaining)
             if self.stage_day_adjust != 0:
                 text += "<tr><td><i>This stage had been adjusted by {} days</i></td></tr>".format(self.stage_day_adjust)
-            # text += "<tr><td>Light on at {} for {}hrs</td></tr>".format(datetime.strftime(self.light_on, "%H:%M"),
-            #                                                             ':'.join(
-            #                                                                 str(self.light_duration).split(':')[:1]))
             text += "<tr><td></td></tr>"
             text += "</table>"
             return text
@@ -908,7 +828,7 @@ class ProcessClass(QObject):
                 return
             self.stage_days_remaining = self.stage_total_duration - self.stage_days_elapsed
             #                 self.stage_offset = adj
-            sd = (self.stages_start[self.current_stage - 1])  #
+            sd = (self.stages_start[self.current_stage])  #
             ed = sd + timedelta(days=self.stage_total_duration)
             # wd = self.stage_total_duration - self.stage_days_elapsed
             if datetime.now() > ed:

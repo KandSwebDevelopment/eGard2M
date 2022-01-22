@@ -5511,14 +5511,12 @@ class DialogProcessInfo(QDialog, Ui_DialogProcessInfo):
 
         # Pattern
         line = '<table cellpadding = "3"  border = "1">'
-        for x in range(0, len(p_class.stages)):
-            # sn = p_class.get_stage_name(x + 1)
-            # for z in range(len(sn), 14):
-            #     sn += "&nbsp;"
+        for x in range(1, p_class.stages_max + 1):
+            #               stage     name        date      dur        weeks       days diff
             line += "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>".format(
-                p_class.stages[x][0], p_class.get_stage_name(x + 1),
-                p_class.datetime_to_string(p_class.stages_start[x], "%d-%m-%y"), p_class.stages[x][1],
-                round(p_class.stages[x][1] / 7, 1), p_class.stages_len_adjustment[x + 1]
+                x, p_class.get_stage_name(x),
+                p_class.datetime_to_string(p_class.stages_start[x], "%d-%m-%y"), p_class.stages[x][0],
+                round(p_class.stages[x][0] / 7, 1), p_class.stages_len_adjustment[x]
             )
             # line = str(p_class.stages[x][0]) + \
             #     " " + sn + p_class.datetime_to_string(p_class.stages_start[x], "%d-%m-%y") + " | " + \

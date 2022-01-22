@@ -55,6 +55,7 @@ class FeedClass(QObject):
         self.pattern_name = ""
         self._area = 0
         self.stage = 0
+        self.stage_days_max = 0     # Max days in current stage
         self.stages_max = 0
         self.qty_org = 0
         self.qty_current = 0
@@ -124,6 +125,7 @@ class FeedClass(QObject):
             'SELECT name FROM {} WHERE id = {}'.format(DB_PATTERN_NAMES, self.pattern_id))
         self.stage = self.process.current_stage
         self.stages_max = self.process.stages_max
+        self.stage_days_max = self.process.stage_total_duration
         self.stage_days_elapsed = self.process.stage_days_elapsed
         self.stage_days_elapsed = 1 if self.stage_days_elapsed == 0 else self.stage_days_elapsed
         self.items = self.feed_controller.main_window.area_controller.get_area_items(area)
@@ -230,7 +232,7 @@ class FeedClass(QObject):
                     return self.feed_schedules_all[self.stage][i]
         if self.stage + 1 >= self.stages_max:
             return []
-        return self.feed_schedules_all[self.stage + 1]
+        return self.feed_schedules_all[self.stage + 1][0]
 
     def get_recipe_next_feed_schedule(self):
         nfs = self.get_next_feed_schedule()
@@ -250,6 +252,8 @@ class FeedClass(QObject):
         else:
             self.recipe_next_name = self.db.execute_single(
                 "SELECT name FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, self.recipe_next_id))
+            if self.recipe_next_name is None:
+                self.recipe_next_name = ""
 
         if self.feed_schedule_current[RECIPE] is WATER_ONLY_IDX:
             # Water only
@@ -350,8 +354,8 @@ class FeedClass(QObject):
             format(DB_PROCESS_FEED_ADJUSTMENTS, area))
         mix_num = 1 if len(self.items_flushing) == 0 else 2
         for row in rows:
-            # if mix_num not in self.area_data['mixes']:
-            #     self.area_data["mixes"][mix_num] = {}
+            if mix_num not in self.area_data['mixes']:
+                self.area_data["mixes"][mix_num] = {}
             self.area_data["mixes"][mix_num]["items"] = str_to_list(row[3])
             self.area_data["mixes"][mix_num]["lpp"] = row[2]
             self.area_data["mixes"][mix_num]["base id"] = row[5]
@@ -653,11 +657,17 @@ class FeedClass(QObject):
         return self.frequency
 
     def get_recipe_days_remaining(self):
+        if self.recipe_expires_day > self.stage_days_max:
+            return self.stage_days_max - self.stage_days_elapsed
         return self.recipe_expires_day - self.stage_days_elapsed
 
     def get_feeds_remaining(self, ):
         """ Returns the number of feeds remaining using current recipe """
-        return int((self.recipe_expires_day - self.stage_days_elapsed)
+        if self.recipe_expires_day > self.stage_days_max:
+            tot = self.stage_days_max
+        else:
+            tot = self.recipe_expires_day
+        return int((tot - self.stage_days_elapsed)
                    / self.frequency)
 
     def get_future_feeds(self):

@@ -788,11 +788,11 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             dt = datetime.strftime(datetime.now(), '%d/%m/%Y %H:%M')
             p.journal_write(dt + "    Number " + str(item) + " Dried and finished.")
 
-        self.area_controller.load_areas()
-        if len(self.area_controller.get_area_items(3)) == 0:
+        # self.area_controller.load_areas()
+        if len(self.area_controller.get_area_items(3)) == 1:    # 1 as this item not removed from areas yet... Should fix below
             # None left, so finish stage
             self.area_controller.get_area_process(3).end_process()
-            # BreakPoint above is returning 0 and crashing - is process already ended ??
+            # BreakPoint above is returning 0 and crashing - process already removed by load_areas ?? It is important that the end process gets called
             self.area_controller.load_areas()
             self.area_controller.load_sensors(3)
             self.area_controller.load_outputs(3)
@@ -855,6 +855,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         p = self.area_controller.get_area_process(area)
         p.adjust_stage_days(val)
         self.area_controller.display_stage_icon(area)
+        # FixMe - reload feed
         self.update_duration_texts()
         self.check_stage(area)
         self.coms_interface.relay_send(NWC_STAGE_ADJUST)
@@ -876,21 +877,25 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             return
         rsd = datetime.strftime(datetime.now(), "%Y-%m-%d")
         # rsd = self.db.reverse_date(sd)
-        # Update processes table
 
+        # Update processes table
         # Breakpoint is set so you can check the date, it seems to get put in reverse
         sql = 'UPDATE {} SET running = 1, start = "{}", location = 1, stage = 1, feed_mode = 1 WHERE id = {}'.format(
             DB_PROCESS, rsd, pid)
         self.db.execute_write(sql)
+
         # Set last feed date
         sql = 'UPDATE {} SET dt = "{}" WHERE item = "feed date" AND id = 1'.format(DB_PROCESS_ADJUSTMENTS, rsd)
         self.db.execute_write(sql)
+
         # Reset feed litres
         sql = 'UPDATE {} SET offset = 0 WHERE item = "feed litres" AND id = 1'.format(DB_PROCESS_ADJUSTMENTS)
         self.db.execute_write(sql)
+
         # Set process strains location
         sql = 'UPDATE {} SET location = 1 WHERE process_id = {}'.format(DB_PROCESS_STRAINS, pid)
         self.db.execute_write(sql)
+
         # Add to areas table
         self.db.execute_write("DELETE FROM {} WHERE area = 1".format(DB_AREAS))
         self.db.execute_write(sql)
@@ -898,14 +903,17 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             "SELECT COUNT(process_id) FROM {} WHERE process_id = {}".format(DB_PROCESS_STRAINS, pid))
         for i in range(1, qty + 1):
             self.db.execute_write("INSERT INTO {} (area, process_id, item) VALUES (1, {}, {})".format(DB_AREAS, pid, i))
+
             # Deduct seeds from stock
             sid = self.db.execute_single(
                 "SELECT strain_id FROM {} WHERE process_id ={} and item = {}".format(DB_PROCESS_STRAINS, pid, i))
             sql = 'UPDATE {} SET qty = qty - 1 WHERE id = {} LIMIT 1'.format(DB_STRAINS, sid)
             self.db.execute_write(sql)
+
             # update last used
             sql = 'UPDATE {} SET last_used_id = {} WHERE id = {} LIMIT 1'.format(DB_STRAINS, pid, sid)
             self.db.execute_write(sql)
+
         # Remove any feed info left over for area 1
         sql = 'DELETE FROM {} WHERE area = 1'.format(DB_PROCESS_FEED_ADJUSTMENTS)
         self.db.execute_write(sql)
