@@ -56,9 +56,7 @@ class FeedControl(QObject):
         """ Reloads the feed data for the area. """
         p = self.main_window.area_controller.get_area_process(area)
         if p != 0:
-            self.feeds[area].load(area, p.pattern_id, p.current_stage, p.stage_days_elapsed, p.stages_max,
-                                  self.main_window.area_controller.get_area_items(area))
-            self.feeds[area].qty_org = p.quantity_org
+            self.feeds[area].load(area)
             self.feeds[area].load_mixes()
 
     def mute_timeout(self):

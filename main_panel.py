@@ -855,10 +855,10 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         p = self.area_controller.get_area_process(area)
         p.adjust_stage_days(val)
         self.area_controller.display_stage_icon(area)
-        # FixMe - reload feed
+        self.feed_controller.reload_area(area)
         self.update_duration_texts()
         self.check_stage(area)
-        self.coms_interface.relay_send(NWC_STAGE_ADJUST)
+        self.coms_interface.relay_send(NWC_STAGE_ADJUST, area)
 
     def start_new_process(self, pid):
         msg = QMessageBox()
@@ -1259,9 +1259,11 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.area_controller.reload_area_process_ranges(data[0])
             # self.area_controller.sensors[data[1]].update_status_ctrl()
         elif cmd == NWC_STAGE_ADJUST:
-            self.area_controller.get_area_process(1).process_load_stage_info()
+            self.area_controller.get_area_process(data[0]).process_load_stage_info()
+            self.area_controller.reload_area(data[0])
+            self.feed_controller.reload_area(data[0])
             self.update_duration_texts()
-            self.check_stage(1)
+            self.check_stage(data[0])
         elif cmd == NWC_OUTPUT_SENSOR:
             self.area_controller.output_controller.outputs[data[0]].set_input_sensor(data[1])
         elif cmd == NWC_OUTPUT_MODE:
@@ -1319,6 +1321,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.update_duration_texts()
             self.check_stage(1)
             self.check_stage(2)
+        elif cmd == NWC_SOIL_LOAD:
+            self.area_controller.soil_sensors.load()
         elif cmd == NWC_STOCK_TOTAL:
             self.main_window.update_stock()
         elif cmd == NWC_SWITCH_REQUEST:

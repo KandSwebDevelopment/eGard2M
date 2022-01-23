@@ -2158,7 +2158,7 @@ class DialogFeedMix(QWidget, Ui_DialogFeedMix):
             # print('Click')
             if self.sender().isChecked():
                 self.feed_control.add_item(self.area, self.mix_number, item)
-                print(item)
+                # print(item)
             else:
                 if self.mix_number == 1 and self.feed_control.feeds[self.area].get_has_flush():
                     self.feed_control.remove_item(self.area, item)
@@ -7208,6 +7208,7 @@ class DialogSoilLimits(QDialog, Ui_DialogSoilLimits):
         wet = int(getattr(self, "le_wet_{}".format(sensor)).text())
         dry = int(getattr(self, "le_dry_{}".format(sensor)).text())
         self.soil_sensors.set_wet_dry(self.area, sensor, wet, dry)
+        self.dialog_soil_sensors.main_panel.coms_interface.relay_send(NWC_SOIL_LOAD)
 
     def auto_cal(self):
         msg = QMessageBox()
@@ -7223,6 +7224,7 @@ class DialogSoilLimits(QDialog, Ui_DialogSoilLimits):
             raw -= raw * 0.05
             getattr(self, "le_wet_{}".format(sensor)).setText(str(int(raw)))
             self.save(sensor)
+        self.dialog_soil_sensors.main_panel.coms_interface.relay_send(NWC_SOIL_LOAD)
 
     def readings_update(self, data):
         raw = []

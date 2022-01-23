@@ -27,7 +27,7 @@ class SoilSensorClass(QObject):
         self.soil_wet = 0
         self.area_active = [0, 0, 0]
 
-        self.load_status()
+        self.load()
 
         self.area_controller.main_window.coms_interface.update_soil_reading.connect(self.new_readings)
 
@@ -46,7 +46,7 @@ class SoilSensorClass(QObject):
             s += 1
         self.update_display()
 
-    def load_status(self):
+    def load(self):
         rows = self.db.execute('SELECT id, item, dry, wet FROM {}'.format(DB_SOIL_SENSORS))
         for row in rows:
             self.dry_reading[row[0]] = row[2]
