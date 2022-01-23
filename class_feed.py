@@ -76,7 +76,7 @@ class FeedClass(QObject):
         #                                   [29, 35, 1.5, 10, 2],
         #                                   [36, 56, 1.5, 7, 2],
         #                                   [57, 63, 1.0, 100, 2]]})
-        self.feed_schedules_previous = None  # Feed schedules for previous stage
+        # self.feed_schedules_previous = None  # Feed schedules for previous stage
         # self.feed_schedule_item_num = 0  # The idx of the current schedule in feed_schedules_current
         self.feed_time = self.db.get_config(CFT_FEEDER, "feed time", "21:00")
         self.recipe = []  # Original recipe  [nid, ml, L, rid, freq]
@@ -134,25 +134,12 @@ class FeedClass(QObject):
             format(DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id)
         rows_s = self.db.execute(sql)
         for row in rows_s:
+            #                        stage          start   end     lpp     rid     freq
             self.feed_schedules_all[row[0]].append([row[1], row[2], row[3], row[4], row[5]])
+        # self.feed_schedules_all = self.process.stages
 
         self.load_feed_schedule_default(self.get_feed_schedule_current())
         self.get_next_feed_schedule()
-        # sql = "SELECT f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = s.feeding " \
-        #       "AND s.pid = {} and s.stage ={} ORDER BY f.start". \
-        #     format(DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id, self.stage)
-        # rows_s = self.db.execute(sql)
-        # # self.feed_schedules_current = rows_s.copy()
-        # if self.stage > 1:
-        #     sql = "SELECT f.start, f.dto, f.liters, f.rid, f.frequency FROM {} f INNER JOIN {} s ON f.sid = s.feeding " \
-        #           "AND s.pid = {} and s.stage ={} ORDER BY f.start". \
-        #         format(DB_FEED_SCHEDULES, DB_STAGE_PATTERNS, self.pattern_id, self.stage - 1)
-        #     rows_s = self.db.execute(sql)
-        #     self.feed_schedules_previous = rows_s.copy()
-        # self.recipe_current_from_feed_schedule()
-        # self.get_next_feed_recipe()
-        # print(self.recipe)
-        # print(self.recipe_next)
 
     def load_feed_schedule_default(self, schedule):
         """ This loads all the data for the default schedule,

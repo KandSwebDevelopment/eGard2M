@@ -38,10 +38,9 @@ class ProcessClass(QObject):
         self.due_date = None  # Date due to finish with no adjustments
         self.cool_warm = UNSET        # Area is is cool = 1, warm = 2, normal = 0
         self.current_stage = 0  # The current stage running
-        self.stage_required = 0  # The stage that should be running
+        # self.stage_required = 0  # The stage that should be running
         # self.stage_adjustments = []  # Holds the number of days a stage is delayed (+) or advanced (-)
         # self.stages_len_default = [0, 0, 0, 0]  # The default number of days for each stage
-        self.stages_len_adjustment = collections.defaultdict(int)  # The number of days each stage is adjusted by.
         # self.stage_offset = 0  # The number of days the current stage is adjusted by
         self.stages_max = 0  # Total number of stages in this process
         self.stage_total_duration = 0  # The total duration of current stage
@@ -51,8 +50,9 @@ class ProcessClass(QObject):
         self.stage_start = None  # Date current stage starts
         self.stage_start_day = 0  # Day number of total days current stage starts
         self.stage_end = None  # Date current stage ends
-        self.stages = collections.defaultdict(list)  # Holds all the current info about all the stages in this process  [stage](dur, light, temp, feed, location)
+        self.stages = collections.defaultdict(list)  # Holds the user copy of the stages in this process  [stage](dur, light, temp, feed, location)
         self.stages_default = collections.defaultdict(list)  # Holds all the default info about all the stages in this process  [stage](dur, light, temp, feed, location)
+        self.stages_len_adjustment = collections.defaultdict(int)  # The number of days each stage is adjusted by.
         self.stage_name = ""  # Current stage name
         self.stages_start = collections.defaultdict(datetime)  # List of datetime each stage starts on
         self.stages_end = []
