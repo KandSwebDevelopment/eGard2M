@@ -85,9 +85,11 @@ class FeedControl(QObject):
 
     def feed_due_today(self):
         """ Returns true if either area is due today"""
-        if self.days_till_feed(1) > 0:
+        d = self.days_till_feed(1)
+        if d > 0 and d != 101:
             return False
-        if self.days_till_feed(2) > 0:
+        d = self.days_till_feed(2)
+        if d > 0 and d != 101:
             return False
         return True
 

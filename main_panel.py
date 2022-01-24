@@ -248,8 +248,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
     def loop_6(self):  # 2 min
         if self.master_mode == MASTER:
             self.coms_interface.send_command(NWC_SOIL_READ)
-            if self.nutrient_auto_stir > 0 and datetime.now().hour % self.nutrient_auto_stir == 0 and datetime.now().minute < 3:
-                print("Stirred Nutrients ---------")
+        if self.nutrient_auto_stir > 0 and datetime.now().hour % self.nutrient_auto_stir == 0 and datetime.now().minute < 3:
+            print("Stirred Nutrients --------- ", datetime.now())
 
     def loop_15(self):  # 3 Min
         if self.main_window.access.has_status(ACS_COVER_OPEN) and \
@@ -423,7 +423,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 # txt = " Today.."
                 ctrl.setPixmap(QPixmap(":/normal/today.png"))
                 ctrl.setToolTip("Feed due today")
-                css = "background-color: green;  color: black; border-radius: 6px;"
+                css = "background-color: green;  color: black;"
             elif days == 1:
                 # txt = " Tomorrow"
                 ctrl.setPixmap(QPixmap(":/normal/tomorrow.png"))
@@ -438,6 +438,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 ctrl.setPixmap(QPixmap(":/normal/tomorrow.png"))
                 css = ""
             ctrl.setStyleSheet(css)
+            # show days till feed
             if days >= 1:
                 ctrl.setToolTip("Feed due in {} day{}".format(days, "" if days == 1 else "s"))
                 getattr(self, "lbl_days_%i" % loc).setText(str(days))
@@ -445,7 +446,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 ctrl.setToolTip("Feed due in {} day{}".format(days, "" if days == 1 else "s"))
                 getattr(self, "lbl_days_%i" % loc).setText(str(days))
             else:
-                getattr(self, "lbl_days_%i" % loc).setText("")
+                getattr(self, "lbl_days_%i" % loc).setText(str(days))
+                getattr(self, "lbl_days_%i" % loc).setStyleSheet("background-color: green;  color: White;")
 
             getattr(self, "lbl_feed_mixes_%i" % loc).setText(str(self.feed_controller.feeds[loc].get_mix_count()))
 

@@ -1,4 +1,5 @@
 import time
+from datetime import datetime
 
 from PyQt5 import QtGui
 from PyQt5.QtCore import QThread, pyqtSignal, QTimer
@@ -192,7 +193,7 @@ class FanClass(QThread):
         self._set_point = value
         self.pid.SetPoint = value
         self.pid.clear()
-        print("Fan {} set point {}".format(self.id, value))
+        print("Fan {} set point {} @ {}".format(self.id, value, datetime.now()))
 
     def set_kp(self, kp):
         self.pid.Kp = kp
