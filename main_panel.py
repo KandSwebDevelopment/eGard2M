@@ -1285,6 +1285,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 self.update_fans(2, data[1] - 1)
         elif cmd == NWC_FAN_REQUIRED:
             self.area_controller.fan_controller.set_req_temperature(data[0], data[1])
+            print("Fan set point changed by remote")
         elif cmd == NWC_FAN_MODE:
             self.area_controller.fan_controller.set_mode(data[0], data[1])
         elif cmd == NWC_FAN_PID:
