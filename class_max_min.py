@@ -19,7 +19,8 @@ class MaxMin(QObject):
         self.day_night = UNSET
         self.log_data = [0, 999, 0, -999, 0, 999, 0, -999]      # Day min time, day min, day max time, day max .. then night
         self.log_path = self.sensor.area_controller.main_window.logger.log_path + "\\"
-        self.display_ctrl = getattr(self.sensor.area_controller.main_panel, "te_max_min_%i" % self.sensor.display_id)
+        self.display_ctrl_max = getattr(self.sensor.area_controller.main_panel, "le_max_%i" % self.sensor.display_id)
+        self.display_ctrl_min = getattr(self.sensor.area_controller.main_panel, "le_min_%i" % self.sensor.display_id)
         if self.sensor.id in [1, 2, 9]:
             self.type = 2   # Clock cycle
         else:
@@ -46,10 +47,11 @@ class MaxMin(QObject):
             # self.save()
 
     def update_display(self):
-        txt = ">{}  <{}".format(self.max if self.max > -999 else "----", self.min if self.min < 999 else "----")
-        self.display_ctrl.setText(txt)
-        self.display_ctrl.setToolTip(
-            "> {} < {}".format(self.max_time.strftime("%a %H:%M"), self.min_time.strftime("%a %H:%M")))
+        # txt = ">{}  <{}".format(self.max if self.max > -999 else "----", self.min if self.min < 999 else "----")
+        self.display_ctrl_max.setText(str(self.max) if self.max > -999 else "--")
+        self.display_ctrl_min.setText(str(self.min) if self.min < 999 else "--")
+        self.display_ctrl_max.setToolTip("{}".format(self.max_time.strftime("%a %H:%M")))
+        self.display_ctrl_min.setToolTip("{}".format(self.min_time.strftime("%a %H:%M")))
 
     def reset(self, day_night):
         self.max = -999

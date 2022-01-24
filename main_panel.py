@@ -439,14 +439,13 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 css = ""
             ctrl.setStyleSheet(css)
             # show days till feed
+            getattr(self, "lbl_days_%i" % loc).setText(str(days))
             if days >= 1:
                 ctrl.setToolTip("Feed due in {} day{}".format(days, "" if days == 1 else "s"))
-                getattr(self, "lbl_days_%i" % loc).setText(str(days))
             elif days <= -1:
-                ctrl.setToolTip("Feed due in {} day{}".format(days, "" if days == 1 else "s"))
-                getattr(self, "lbl_days_%i" % loc).setText(str(days))
-            else:
-                getattr(self, "lbl_days_%i" % loc).setText(str(days))
+                ctrl.setToolTip("Feed overdue by {} day{}".format(days, "" if days == -1 else "s"))
+            elif days == 0:
+                ctrl.setToolTip("Feed due Today")
                 getattr(self, "lbl_days_%i" % loc).setStyleSheet("background-color: green;  color: White;")
 
             getattr(self, "lbl_feed_mixes_%i" % loc).setText(str(self.feed_controller.feeds[loc].get_mix_count()))
