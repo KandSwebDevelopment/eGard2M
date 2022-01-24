@@ -381,6 +381,7 @@ class CommunicationInterface(QObject):
                 command == NWC_CHANGE_TO_FLUSHING or \
                 command == NWC_MOVE_TO_FINISHING or \
                 command == NWC_MESSAGE or \
+                command == NWC_NUTRIENTS_AUTO_STIR or \
                 command == NWC_RELOAD_PROCESSES or \
                 command == NWC_SLAVE_START or \
                 command == NWC_STAGE_ADJUST or \

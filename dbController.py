@@ -286,10 +286,11 @@ class MysqlDB(QObject):
                 d = datetime.strptime(date_, "%d-%m-%Y")
             return datetime.strftime(d, "%Y-%m-%d")
 
-    def backup(self, gzip=0):
-        msg = QMessageBox(QMessageBox.Question, "Confirm", "Do you wish to back up the database", QMessageBox.Yes | QMessageBox.Cancel)
-        if msg.exec_() == QMessageBox.Cancel:
-            return
+    def backup(self, gzip=0, silent=False):
+        if not silent:
+            msg = QMessageBox(QMessageBox.Question, "Confirm", "Do you wish to back up the database", QMessageBox.Yes | QMessageBox.Cancel)
+            if msg.exec_() == QMessageBox.Cancel:
+                return
         self.gzip = int(gzip)
         th = threading.Thread(target=self._backup)
         th.start()

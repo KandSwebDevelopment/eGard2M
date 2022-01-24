@@ -491,7 +491,6 @@ class DialogDispatchReports(QDialog, Ui_DialogDispatchReport):
         self.plot_by_out = None
         self.plot_by_strain = None
         self.plot_by_out_weekly = None
-        self.refresh()
         self.db.fill_combo(self.cb_client, DB_CLIENTS, 1, 0, ("All", 0))
         self.cb_type.addItem("All", 0)
         self.cb_type.addItem("CA", 1)  # Cash
@@ -508,11 +507,14 @@ class DialogDispatchReports(QDialog, Ui_DialogDispatchReport):
             # if row[1] > 0:
             #     strain = self.db.execute_single("SELECT name, id FROM {} WHERE id = {}".format(DB_STRAINS, row[1]))
             self.cb_jar.addItem("{}".format(row[0]), row[1])
+        self.refresh()
         # self.cb_jar.blockSignals(False)
 
     def refresh(self):
         self.plot_internal()
         self.out_going_summary()
+        self.internals()
+        self.monthly_totals_by_type()
         self.plot_output()
         self.out_totals()
 
@@ -656,74 +658,126 @@ class DialogDispatchReports(QDialog, Ui_DialogDispatchReport):
 
         # Monthly Counter Totals #####################################################################
 
-        sql = "SELECT MONTHNAME(d.`date`) month_name, MONTH(d.date) month_number, ROUND(SUM(d.grams), 2) " \
-              "total_grams, SUM((d.amount)) total_amount FROM dispatch d WHERE d.p_type = 1 " \
-              "GROUP BY month_name ORDER BY d.`date`, month_number DESC"
-        rows = self.db.execute(sql)
-        txt += '<h3>Monthly</h3><h4>Counter</h4>' \
-               '<table cellspacing = "5"  border = "0">'
-        txt += '<tr><th>Month</th><th>Amount</th><th>Total</th></tr>'
-        t1 = 0
-        t2 = 0
-        for row in rows:
-            txt += '<tr><td>{}</td><td style="text-align:center;">{}</td><td>{}</td></tr>'.format(row[0], row[2],
-                                                                                                  row[3])
-            t1 += row[2]
-            t2 += row[3]
-        txt += '<tr style="font-size:12px;"><td>Totals</td><td>{}</td><td style="text-align:center;">{}</td></tr>'. \
-            format(round(t1, 1), round(t2, 2))
+        # sql = "SELECT MONTHNAME(d.`date`) month_name, MONTH(d.date) month_number, ROUND(SUM(d.grams), 2) " \
+        #       "total_grams, SUM((d.amount)) total_amount FROM dispatch d WHERE d.p_type = 1 " \
+        #       "GROUP BY month_name ORDER BY d.`date`, month_number DESC"
+        # rows = self.db.execute(sql)
+        # txt += '<h3>Monthly</h3><h4>Counter</h4>' \
+        #        '<table cellspacing = "5"  border = "0">'
+        # txt += '<tr><th>Month</th><th>Amount</th><th>Total</th></tr>'
+        # t1 = 0
+        # t2 = 0
+        # for row in rows:
+        #     txt += '<tr><td>{}</td><td style="text-align:center;">{}</td><td>{}</td></tr>'.format(row[0], row[2],
+        #                                                                                           row[3])
+        #     t1 += row[2]
+        #     t2 += row[3]
+        # txt += '<tr style="font-size:12px;"><td>Totals</td><td>{}</td><td style="text-align:center;">{}</td></tr>'. \
+        #     format(round(t1, 1), round(t2, 2))
         txt += "</table>"
+        self.te_weeks_summary.append(txt)
 
+    def internals(self):
         # Monthly Internal Totals
-        sql = "SELECT MONTHNAME(d.`date`) month_name, MONTH(d.date) month_number, ROUND(SUM(d.grams), 2) total_grams " \
-              "FROM dispatch d WHERE d.client = 1 " \
-              "GROUP BY month_name ORDER BY month_number DESC"
-        rows = self.db.execute(sql)
-        txt += '<h4>Internal</h4><table cellspacing = "5"  border = "0">'
-        txt += '<tr><th>Month</th><th>Amount</th></tr>'
-        t1 = 0
-        for row in rows:
-            txt += '<tr><td>{}</td><td style="text-align:center;">{}</td></tr>'.format(row[0], row[2])
-            t1 += row[2]
-        txt += '<tr style="font-size:12px;"><td>Totals</td><td style="text-align:center;">{}</td></tr>'. \
-            format(round(t1, 2))
+        txt = ""
+        year = datetime.now().year
+        counter = 0
+        total = 0
+        txt += '<br><h3>Internal</h3><table><tr><th>Month</th><th>Amount</th></tr>'
+        for month in range(datetime.now().month, 0, -1):
+            sql = "SELECT MONTHNAME(d.`date`) month_name, ROUND(SUM(d.grams), 2) total FROM {} d " \
+                  "WHERE MONTH(d.date) = {} AND YEAR(d.date) = {} AND (d.p_type = 0)".\
+                format(DB_DISPATCH, month, year)
+            row = self.db.execute_one_row(sql)
+            txt += '<tr><td>{}</td><td style="text-align:center;">{}</td></tr>'.format(row[0], row[1])
+            total += row[1]
+            counter += 1
+
+        year -= 1
+        # counter = counter - 1 if counter > 0 else counter
+        for month in range(12, counter, -1):
+            sql = "SELECT MONTHNAME(d.`date`) month_name, ROUND(SUM(d.grams), 2) total FROM {} d " \
+                  "WHERE MONTH(d.date) = {} AND YEAR(d.date) = {} AND (d.p_type = 0)".\
+                format(DB_DISPATCH, month, year)
+            row = self.db.execute_one_row(sql)
+            txt += '<tr><td>{}</td><td style="text-align:center;">{}</td></tr>'.format(row[0], row[1])
+            total += row[1]
+
+        txt += '<tr><td>Total</td><td style="text-align:center;">{}</td></tr>'.format(round(total, 1))
         txt += "</table>"
-        self.te_weeks_summary.setHtml(txt)
-        self.monthly_totals_by_type()
+        self.te_weeks_summary.append(txt)
 
     def monthly_totals_by_type(self):
-        txt = '<h3>Monthly</h3><h4>Types</h4>' \
-              '<table cellspacing = "5"  border = "0">'
+        txt = '<br><h3>Types Monthly</h3><table cellspacing = "5"  border = "0">'
         txt += '<tr><th>Month</th><th>Type 1</th><th>Type 2</th><th>Total</th></tr>'
-        sql = "SELECT MONTHNAME(d.`date`) month_name, MONTH(d.date) month_number, ROUND(SUM(d.amount), 2) total " \
-              "FROM dispatch d WHERE d.p_type = 1 " \
-              "GROUP BY month_name ORDER BY d.`date`, month_number DESC"
-        rows = self.db.execute(sql)
-        sql = "SELECT MONTHNAME(d.`date`) month_name, MONTH(d.date) month_number, ROUND(SUM(d.amount), 2) total " \
-              "FROM dispatch d WHERE d.p_type = 2 " \
-              "GROUP BY month_name ORDER BY d.`date`, month_number DESC"
-        rows2 = self.db.execute(sql)
-        t1 = t2 = 0
-        # r2 = 0
-        bt = collections.defaultdict(dict)
-        for row in rows2:
-            bt[row[0]] = {"b": row[2]}
-        for row in rows:
-            b = 0
-            if row[0] in bt:
-                b = float(bt[row[0]]['b'])
-            else:
-                bt[row[0]]['b'] = 0
+        year = datetime.now().year
+        counter = 0
+        total1 = total2 = 0
+        for month in range(datetime.now().month, 0, -1):
+            sql = "SELECT d.p_type, MONTHNAME(d.`date`) month_name, ROUND(SUM(d.amount), 2) total FROM {} d " \
+                  "WHERE MONTH(d.date) = {} AND YEAR(d.date) = {} AND (d.p_type = 1 OR d.p_type = 2) GROUP BY d.p_type".\
+                format(DB_DISPATCH, month, year)
+            rows = self.db.execute(sql)
+            t1 = t2 = 0
+            for row in rows:
+                if row[0] == 1:
+                    t1 = row[2]
+                else:
+                    t2 = row[2]
             txt += '<tr><td>{}</td><td style="text-align:center;">£{:0,.0f}</td>' \
                    '<td style="text-align:center;">£{:0,.0f}</td><td style="text-align:center;">£{:0,.0f}' \
-                   '</td></tr>'.format(row[0], row[2], b, float(row[2]) + b).replace('£-', '-£')
-            t1 += row[2]
-            t2 += bt[row[0]]['b']
-            # r2 += 1
+                   '</td></tr>'.format(rows[0][1], t1, t2, float(t1) + float(t2)).replace('£-', '-£')
+            total1 += t1
+            total2 += t2
+            counter += 1
+
+        year -= 1
+        counter = counter - 1 if counter > 0 else counter
+        for month in range(12, counter, -1):
+            sql = "SELECT d.p_type, MONTHNAME(d.`date`) month_name, ROUND(SUM(d.amount), 2) total FROM {} d " \
+                  "WHERE MONTH(d.date) = {} AND YEAR(d.date) = {} AND (d.p_type = 1 OR d.p_type = 2) GROUP BY d.p_type".\
+                format(DB_DISPATCH, month, year)
+            rows = self.db.execute(sql)
+            t1 = t2 = 0
+            for row in rows:
+                if row[0] == 1:
+                    t1 = row[2]
+                else:
+                    t2 = row[2]
+            txt += '<tr><td>{}</td><td style="text-align:center;">£{:0,.0f}</td>' \
+                   '<td style="text-align:center;">£{:0,.0f}</td><td style="text-align:center;">£{:0,.0f}' \
+                   '</td></tr>'.format(rows[0][1], t1, t2, float(t1) + float(t2)).replace('£-', '-£')
+            total1 += t1
+            total2 += t2
+
+        # sql = "SELECT MONTHNAME(d.`date`) month_name, MONTH(d.date) month_number, ROUND(SUM(d.amount), 2) total " \
+        #       "FROM dispatch d WHERE d.p_type = 1 " \
+        #       "GROUP BY month_name ORDER BY d.`date`, month_number DESC"
+        # sql = "SELECT MONTHNAME(d.`date`) month_name, MONTH(d.date) month_number, ROUND(SUM(d.amount), 2) total " \
+        #       "FROM dispatch d WHERE d.p_type = 2 " \
+        #       "GROUP BY month_name ORDER BY d.`date`, month_number DESC"
+        # rows2 = self.db.execute(sql)
+        # t1 = t2 = 0
+        # # r2 = 0
+        # bt = collections.defaultdict(dict)
+        # for row in rows2:
+        #     bt[row[0]] = {"b": row[2]}
+        # for row in rows:
+        #     b = 0
+        #     if row[0] in bt:
+        #         b = float(bt[row[0]]['b'])
+        #     else:
+        #         bt[row[0]]['b'] = 0
+        #     txt += '<tr><td>{}</td><td style="text-align:center;">£{:0,.0f}</td>' \
+        #            '<td style="text-align:center;">£{:0,.0f}</td><td style="text-align:center;">£{:0,.0f}' \
+        #            '</td></tr>'.format(row[0], row[2], b, float(row[2]) + b).replace('£-', '-£')
+        #     t1 += row[2]
+        #     t2 += bt[row[0]]['b']
+        #     # r2 += 1
         txt += '<tr style="font-size:12px;"><td>Totals</td><td style="text-align:center;">£{:0,.0f}' \
                '</td><td style="text-align:center;">£{:0,.0f}</td><td style="text-align:center;">£{:0,.0f}' \
                '</td></tr>'. \
-            format(round(t1, 2), t2, t1 + t2).replace('£-', '-£')
+            format(round(total1, 2), total2, total1 + total2).replace('£-', '-£')
         txt += "</table>"
         self.te_weeks_summary.append(txt)
 
@@ -6731,8 +6785,8 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         self.db_password = self.settings.value("Database/password")
         self.db_name = self.settings.value("Database/database")
         self.pb_back_up.clicked.connect(self.db_backup)
-        # else:
-        #     self.host = "192.168.0.20"  # self.main_window.server.remote_ip_str
+        self.ck_db_auto.setChecked(int(self.db.get_config(CFT_SYSTEM, "auto_db)backup", "1")))
+        self.ck_db_auto.clicked.connect(self.db_auto_backup)
         self.le_db_host.setText(self.host)
         self.le_db_user_name.setText(self.db_user)
         self.le_db_password.setText(self.db_password)
@@ -6774,6 +6828,18 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         self.ck_test.clicked.connect(lambda: self.logging(1))
         self.ck_test_2.clicked.connect(lambda: self.logging(2))
 
+        # ------------------ Feeder ----------------
+        self.cb_feeder_auto_stir.addItem("Off", 0)
+        self.cb_feeder_auto_stir.addItem("1 Hr", 1)
+        self.cb_feeder_auto_stir.addItem("2 Hrs", 2)
+        self.cb_feeder_auto_stir.addItem("3 Hrs", 3)
+        self.cb_feeder_auto_stir.addItem("4 Hrs", 4)
+        self.cb_feeder_auto_stir.addItem("6 Hrs", 6)
+        self.cb_feeder_auto_stir.addItem("8 Hrs", 8)
+        self.cb_feeder_auto_stir.addItem("12 Hrs", 12)
+        self.cb_feeder_auto_stir.addItem("24 Hrs", 24)
+        self.cb_feeder_auto_stir.currentIndexChanged.connect(self.feeder_auto_stir)
+
         self.toolBox.setCurrentIndex(0)
 
     @pyqtSlot(int, int, int)
@@ -6784,6 +6850,7 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
 
     def tab_change(self):
         tab = self.toolBox.currentIndex()
+        print(tab)
         if tab == 0:
             pass
 
@@ -6794,11 +6861,22 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
             self.le_area_trans_warm_1.setText(self.db.get_config(CFT_AREA, "trans warm 1", "NS"))
             self.le_area_trans_warm_2.setText(self.db.get_config(CFT_AREA, "trans warm 2", "NS"))
 
-        # ----------------- Areas
+        # ----------------- Dispatch
         elif tab == 3:
             self.le_dispatch_ppg.setText(self.db.get_config(CFT_DISPATCH, "ppg", "NS"))
             self.le_dispatch_empty.setText(self.db.get_config(CFT_DISPATCH, "empty grams", "NS"))
             self.le_dispatch_per_item.setText(self.db.get_config(CFT_DISPATCH, "estimate per plant", "NS"))
+
+        # ---------------- Feeder
+        elif tab == 5:
+            self.le_feeder_feed_litres.setText(self.db.get_config(CFT_FEEDER, "feed L", "2"))
+            self.le_feeder_soak.setText(self.db.get_config(CFT_FEEDER, "soak time", "2"))
+            self.le_feeder_man_max.setText(self.db.get_config(CFT_FEEDER, "max manual feed", "2"))
+            self.le_mix_max.setText(self.db.get_config(CFT_FEEDER, "max mix litres", "8"))
+            self.le_feeder_flush.setText(self.db.get_config(CFT_FEEDER, "flush litres", "1"))
+            self.le_feeder_stir_nutrients.setText(self.db.get_config(CFT_FEEDER, "nutrient stir time", "30"))
+            self.le_feeder_stri_mix.setText(self.db.get_config(CFT_FEEDER, "mix stir time", "30"))
+            self.cb_feeder_auto_stir.setCurrentIndex(self.cb_feeder_auto_stir.findData(int(self.db.get_config(CFT_FEEDER, "auto stir", "3"))))
 
     # ============= Area
     def save_area(self):
@@ -6859,6 +6937,12 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         self.settings.sync()
         os.execl(sys.executable, os.path.abspath(__file__), *sys.argv)
 
+    def db_auto_backup(self):
+        s = int(self.ck_db_auto.isChecked())
+        self.db.set_config(CFT_SYSTEM, "auto_db_backup", s)
+        self.main_window.main_panel.auto_db_backup = s
+        self.main_window.coms_interface.relay_send(NWC_NUTRIENTS_AUTO_STIR)
+
     # database
     def scan_ip(self):
         import socket
@@ -6887,6 +6971,11 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         self.main_window.area_controller.fan_controller.fans[fan].reset()
         self.main_window.coms_interface.relay_send(NWC_FAN_PID, fan)
 
+    # Feeder
+    def feeder_auto_stir(self):
+        v = self.cb_feeder_auto_stir.currentData()
+        self.db.set_config_both(CFT_FEEDER, "auto stir", v)
+        self.main_window.main_panel.nutrients_auto_stir = v
 
 class DialogProcessPerformance(QDialog, Ui_DialogProcessPreformance):
 

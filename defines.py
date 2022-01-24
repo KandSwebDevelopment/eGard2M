@@ -344,6 +344,7 @@ MODULE_NWC = 100    # For testing NWC, send it to it's self so you can test how 
 # Network commands - These are only Master to slave to master
 NWC_ACCESS_OPERATE = "access_operate"       # The Access operate button press forwarded to other pc
 NWC_ACCESS_BOOST = "access_boost"           # Access auto boost changed
+NWC_CHANGE_TO_FLUSHING = "move_flushing"      # Plant has changed to flushing
 NWC_DRYING_AREA = "drying_area"             # Reload drying area settings
 NWC_FAN_SENSOR = "fan sensor"               # Fan sensor has changed, fan num, new sensor id
 NWC_FAN_SPEED = "fan speed"                 # Fan speed has been changed Manually, fan num, speed
@@ -356,7 +357,7 @@ NWC_FINISH_ITEM = "finish item"             # An item has finished (drying), ite
 NWC_MESSAGE = "message"                     # Refresh msg sys
 NWC_MODULES_STATUS = "modules_status"       # I/O D/E modules on/off line
 NWC_MOVE_TO_FINISHING = "move_finishing"    # Plant has moved to finishing
-NWC_CHANGE_TO_FLUSHING = "move_flushing"      # Plant has changed to flushing
+NWC_NUTRIENTS_AUTO_STIR = "nutrients auto"  # The nutrient auto stir time has changed
 NWC_OUTPUT = "output"                       # An output has operated, which output, state
 NWC_OUTPUT_MODE = "output mode"             # An output mode has changed, send output id, mode
 NWC_OUTPUT_SENSOR = "output sensor"         # An output sensor has changed, send area

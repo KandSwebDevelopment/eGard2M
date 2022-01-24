@@ -18,7 +18,7 @@ class WindowsController(QObject):
             if self.check_opened(dialog_):
                 return
         s = self.mdiArea.addSubWindow(dialog_)
-        s.setGeometry(50, 50, dialog_.frameGeometry().width() + 15, dialog_.frameGeometry().height() + 30)
+        s.setGeometry(50, 0, dialog_.frameGeometry().width() + 15, dialog_.frameGeometry().height() + 30)
         if 'resize' not in kwargs:
             s.setFixedSize(dialog_.frameGeometry().width() + 15, dialog_.frameGeometry().height() + 30)
         s.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint)

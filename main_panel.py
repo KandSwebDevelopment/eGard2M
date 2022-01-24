@@ -88,6 +88,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.loop_15_flag = True  # To give every other loop 15
         # self.last_sensor_data = None
 
+        self.auto_db_backup = int(self.db.get_config(CFT_SYSTEM, "auto_db_backup", 1))
+        self.nutrient_auto_stir = int(self.db.get_config(CFT_FEEDER, "auto stir", 6))
         self.has_scales = int(self.db.get_config(CFT_MODULES, "ss unit", 0))
         if self.main_window.factory:
             self.has_scales = 0
@@ -246,6 +248,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
     def loop_6(self):  # 2 min
         if self.master_mode == MASTER:
             self.coms_interface.send_command(NWC_SOIL_READ)
+            if self.nutrient_auto_stir > 0 and datetime.now().hour % self.nutrient_auto_stir == 0 and datetime.now().minute < 3:
+                print("Stirred Nutrients ---------")
 
     def loop_15(self):  # 3 Min
         if self.main_window.access.has_status(ACS_COVER_OPEN) and \
@@ -402,13 +406,9 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
     #     self.msg_sys.add("Database backup complete", MSG_DATABASE_BACKUP, INFO)
     #
     def update_next_feeds(self):
-        """
-        This updates the all feeding information for both areas
-        :return: None
-        :rtype: None
-        """
+        """ This updates the all feeding information for both areas  """
         for loc in range(1, 3):
-            if not self.area_controller.area_has_process(loc):  # Has area a process
+            if not self.area_controller.area_has_process(loc):  # Has area no process
                 getattr(self, "lbl_feed_days_" + str(loc)).setText("")
                 getattr(self, "lbl_days_" + str(loc)).setText("")
                 getattr(self, "lbl_feed_remaining_" + str(loc)).setText("")
@@ -416,6 +416,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 getattr(self, "pb_feed_mix_" + str(loc)).setEnabled(False)
                 getattr(self, "pb_man_feed_" + str(loc)).setEnabled(False)
                 continue
+
             days = self.feed_controller.days_till_feed(loc)
             ctrl = getattr(self, "lbl_next_feed_" + str(loc))
             if days == 0:
@@ -433,9 +434,6 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 ctrl.setPixmap(QPixmap(":/normal/yesterday.png"))
                 ctrl.setToolTip("Feed due yesterday")
                 css = "background-color: red;  color: white; border-radius: 6px;"
-            # elif days < -1:
-            #     txt = "-{} Days".format(days)
-            #     css = "background-color: red;  color: white;"
             else:
                 ctrl.setPixmap(QPixmap(":/normal/tomorrow.png"))
                 css = ""
@@ -1245,6 +1243,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.area_controller.output_controller.outputs[OUT_WATER_HEATER_2].new_day()
         self.check_upcoming_starts()
         self.area_controller.max_min_reset_clock()  # Reset max min's that are on clock
+        if self.auto_db_backup:
+            self.db.backup(1, True)
         # # Reset feeder for new day
         # self.water_control.new_day()
 
@@ -1316,6 +1316,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.check_stage(2)
             self.check_stage(3)
             self.feed_controller.reload_area(2)
+        elif cmd == NWC_NUTRIENTS_AUTO_STIR:
+            self.nutrient_auto_stir = int(self.db.get_config(CFT_FEEDER, "auto stir", 6))
         elif cmd == NWC_RELOAD_PROCESSES:
             self.area_controller.load_processes()
             self.update_duration_texts()

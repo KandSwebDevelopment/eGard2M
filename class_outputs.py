@@ -46,10 +46,13 @@ class OutputClass(QObject):
         self.tooltip = ""
         self.font_i = QtGui.QFont()
         self.font_i.setItalic(True)
-        self.font_i.setPointSize(11)
+        self.font_i.setFamily("Arial Narrow")
+        self.font_i.setPointSize(10)
+
         self.font_n = QtGui.QFont()
         self.font_n.setItalic(False)
-        self.font_n.setPointSize(11)
+        self.font_n.setFamily("Arial Narrow")
+        self.font_n.setPointSize(10)
         self.timer = QTimer()
         self.timer.setInterval(1000)
         self.timer.timeout.connect(self.timer_event)
