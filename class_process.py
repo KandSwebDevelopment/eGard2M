@@ -154,7 +154,7 @@ class ProcessClass(QObject):
             # print(row)
             self.strain_shortest = row
 
-        # Get transition times from db. Has to be here as it need location
+        # Get transition times from db. Has to be here instead of in init as it need location
         self.cool_time = int(self.db.get_config(CFT_AREA, "trans cool {}".format(self.location), 60)) * 60
         self.warm_time = int(self.db.get_config(CFT_AREA, "trans warm {}".format(self.location), 60)) * 60
 
@@ -743,7 +743,7 @@ class ProcessClass(QObject):
                            format(from_loc, new_loc, self.stage_days_elapsed))
 
     def check_trans(self):
-        """ This only check for warm up and normal. Cool is detected by check_light as it changes the switching times"""
+        """ This checks for warm up, cool down and normal. """
         ct = datetime.now()
         if self.light_on < ct < (self.light_on + timedelta(seconds=self.warm_time)):
             if self.cool_warm != WARM:

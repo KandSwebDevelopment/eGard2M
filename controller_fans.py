@@ -111,7 +111,11 @@ class FansController(QObject):
             # if in cool down transition don't change the set point if fan trans lock is on and trigger trans timer in
             # fan class. As this is only called once the set set value will have to be held by fan class
             if self.area_controller.day_night[area] == NIGHT:
-                self.fans[area].trans_start(self.area_controller.sensors[s].get_set())
+                if self.area_controller.area_has_process(area):
+                    dur = self.area_controller.get_area_process(area).cool_time
+                else:
+                    dur = 60
+                self.fans[area].trans_start(self.area_controller.sensors[s].get_set(), dur)
                 return
             self.fans[area].set_point(self.area_controller.sensors[s].get_set())
 

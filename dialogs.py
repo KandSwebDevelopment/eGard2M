@@ -74,6 +74,7 @@ from ui.dialogValveTest import Ui_dialogValveTest
 from ui.dialogSettingsAll import Ui_dialogSettingsAll
 from ui.dialogDispatchReconcilation import Ui_DialogDispatchReconcilation
 from ui.dialogTemperatureSensorMapping import Ui_DialogTemperatureSensorMApping
+from ui.dialogLightSwitch import Ui_DialogLightSwitch
 
 
 class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
@@ -5355,7 +5356,7 @@ class DialogTemperatureSensorMapping(QDialog, Ui_DialogTemperatureSensorMApping)
         self.pb_add.clicked.connect(self.add_new)
         self.pb_save.clicked.connect(self.save)
         self.pb_delete.clicked.connect(self.delete)
-        self.pb_check.clicked.connect(self.query)
+        self.pb_ckeck.clicked.connect(self.query)
         self.msg = QMessageBox(self)
 
         self.cb_position.addItem("Select", -1)
@@ -6550,6 +6551,53 @@ class DialogLogViewer(QDialog, Ui_DialogLogViewer):
         self.te_log.setHtml(self.logger.get_log_contents(self.cb_log_type.currentData(), log))
 
 
+class DialogLightSwitch(QWidget, Ui_DialogLightSwitch):
+    def __init__(self, parent, area):
+        super(DialogLightSwitch, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.main_panel = parent
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.area = area
+        self.sub = None
+
+        self.setWindowTitle("Area {} Lighting".format(self.area))
+        if self.main_panel.area_controller.area_has_process(self.area):
+            self.lbl_control.setText("Process Controlled")
+            self.control_status = 1
+            self.light_status = self.main_panel.area_controller.get_light_status(self.area)
+        else:
+            self.control_status = 0
+            self.lbl_control.setText("Manual Control")
+            self.light_status = 1 if self.main_panel.area_controller.area_is_manual(self.area) == 2 else 0
+        if self.light_status:
+            self.lbl_control_2.setText("Light <b>On")
+        else:
+            self.lbl_control_2.setText("Light <b>Off")
+        self.pb_on.clicked.connect(self.switch_on)
+        self.pb_off.clicked.connect(self.switch_off)
+
+        self.msg = QMessageBox()
+        self.msg.setIcon(QMessageBox.Warning)
+        self.msg.setWindowTitle("Confirm Action")
+        self.msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        self.msg.setDefaultButton(QMessageBox.No)
+
+    def switch_on(self):
+        if self.control_status and not self.light_status:
+            self.msg.setText("The light should be off.<br>Confirm you wish to switch the light on")
+            if self.msg.exec_() == QMessageBox.No:
+                return
+        print("switch light on")
+
+    def switch_off(self):
+        if self.control_status and self.light_status:
+            self.msg.setText("The light should be on.<br>Confirm you wish to switch the light off")
+            if self.msg.exec_() == QMessageBox.No:
+                return
+        print("switch light off")
+
+
 class DialogOutputSettings(QWidget, Ui_DialogOutputSetting):
     def __init__(self, parent, area, item):
         """ :type parent: MainWindow """
@@ -6976,6 +7024,7 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         v = self.cb_feeder_auto_stir.currentData()
         self.db.set_config_both(CFT_FEEDER, "auto stir", v)
         self.main_window.main_panel.nutrients_auto_stir = v
+
 
 class DialogProcessPerformance(QDialog, Ui_DialogProcessPreformance):
 

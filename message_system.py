@@ -91,6 +91,7 @@ class MessageSystem(QObject):
         v_item = QVariant(mid)
         lw_item.setBackground(QColor(bg))
         lw_item.setForeground(QColor(fg))
+        lw_item.setToolTip(str(datetime.now()))
         lw_item.setFont(font)
         lw_item.setData(Qt.UserRole, v_item)
         self.control.insertItem(0, lw_item)

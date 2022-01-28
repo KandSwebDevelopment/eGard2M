@@ -1,22 +1,17 @@
 import os
 import pipes
-# import sys
 import threading
 from sqlite3 import OperationalError
 
-# from win32com.shell import shell, shellcon
-
 from PyQt5.QtCore import QSettings, pyqtSignal, QObject
 from PyQt5.QtWidgets import QMessageBox, QComboBox
-# from mysql.connector import *
 from datetime import datetime
 import mysql.connector
 from defines import *
-from subprocess import Popen, PIPE
 
 
 class MysqlDB(QObject):
-    backup_finished = pyqtSignal(name="backupFinished")
+    backup_finished = pyqtSignal(int, name="backupFinished")    # Silent = True or False
 
     def __init__(self, parent=None):
         # super(MysqlDB, self).__init__()
@@ -39,6 +34,7 @@ class MysqlDB(QObject):
         self.err_count = 0
         self.is_connected = False
         self.gzip = 0   # Set 1 to zip db backup
+        self.silent_backup = 0
         self.backup_finished.connect(self.notify_finished)
 
     def reconnect(self):
@@ -292,6 +288,7 @@ class MysqlDB(QObject):
             if msg.exec_() == QMessageBox.Cancel:
                 return
         self.gzip = int(gzip)
+        self.silent_backup = silent
         th = threading.Thread(target=self._backup)
         th.start()
 
@@ -314,11 +311,12 @@ class MysqlDB(QObject):
         if self.gzip:
             gzip_cmd = "gzip " + pipes.quote(today_path) + "/" + backup_name
             print(os.system(gzip_cmd))
-        self.backup_finished.emit()
+        self.backup_finished.emit(self.silent_backup)
 
-    def notify_finished(self):
-        msg = QMessageBox(QMessageBox.Information, "Complete", "The database backup has finished", QMessageBox.Ok)
-        msg.exec_()
+    def notify_finished(self, silent):
+        if not silent:
+            msg = QMessageBox(QMessageBox.Information, "Complete", "The database backup has finished", QMessageBox.Ok)
+            msg.exec_()
         self.main_window.msg_sys.add("Database backup complete", MSG_DATABASE_BACKUP, INFO)
 
     def __del__(self):

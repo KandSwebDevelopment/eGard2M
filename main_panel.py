@@ -13,7 +13,7 @@ from defines import *
 from dialogs import DialogFeedMix, DialogAreaManual, DialogAccessModule, DialogFan, DialogOutputSettings, \
     DialogSensorSettings, DialogProcessAdjustments, DialogWaterHeaterSettings, DialogWorkshopSettings, DialogElectMeter, \
     DialogJournal, DialogSoilSensors, DialogGraphEnv, DialogFanDry, DialogLogViewer, DialogDispatchLoadingBay, \
-    DialogWaterTank
+    DialogWaterTank, DialogLightSwitch
 from functions import play_sound, sound_access_warn
 from scales_com import ScalesComs
 from ui.mainPanel import Ui_MainPanel
@@ -48,6 +48,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.lbl_fill_tank_2.installEventFilter(self)
         self.lbl_feed_mode_1.installEventFilter(self)
         self.lbl_feed_mode_2.installEventFilter(self)
+        self.lbl_light_status_1.installEventFilter(self)
+        self.lbl_light_status_2.installEventFilter(self)
 
         self.tesstatus_2.viewport().installEventFilter(self)
         self.tesstatus_3.viewport().installEventFilter(self)
@@ -121,6 +123,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             # Area 1
             elif source is self.lbl_fan_1:
                 self.wc.show(DialogFan(self, 1))
+            elif source is self.lbl_light_status_1:
+                self.wc.show(DialogLightSwitch(self, 1))
             elif source is self.le_stage_1:
                 if self.area_controller.area_has_process(1):
                     self.wc.show(DialogJournal(self.area_controller.get_area_process(1), self))
@@ -142,6 +146,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             # Area 2
             elif source is self.lbl_fan_2:
                 self.wc.show(DialogFan(self, 2))
+            elif source is self.lbl_light_status_2:
+                self.wc.show(DialogLightSwitch(self, 2))
             elif source is self.le_stage_2:
                 if self.area_controller.area_has_process(2):
                     self.wc.show(DialogJournal(self.area_controller.get_area_process(2), self))
@@ -248,7 +254,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
     def loop_6(self):  # 2 min
         if self.master_mode == MASTER:
             self.coms_interface.send_command(NWC_SOIL_READ)
-        if self.nutrient_auto_stir > 0 and datetime.now().hour % self.nutrient_auto_stir == 0 and datetime.now().minute < 3:
+        if self.nutrient_auto_stir > 0 and datetime.now().hour % self.nutrient_auto_stir == 0 and datetime.now().minute < 2:
             print("Stirred Nutrients --------- ", datetime.now())
 
     def loop_15(self):  # 3 Min
@@ -308,10 +314,6 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.pb_output_mode_2.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 2)))
         self.pb_output_mode_3.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 3)))
         self.pb_output_mode_9.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 1, 4)))
-        self.pb_mm_reset_2.clicked.connect(lambda: self.area_controller.sensors[3].max_min.reset(0))
-        self.pb_mm_reset_3.clicked.connect(lambda: self.area_controller.sensors[4].max_min.reset(0))
-        self.pb_mm_reset_4.clicked.connect(lambda: self.area_controller.sensors[10].max_min.reset(0))
-        self.pb_mm_reset_5.clicked.connect(lambda: self.area_controller.sensors[11].max_min.reset(0))
         # Area 2
         self.pb_man_feed_2.clicked.connect(lambda: self.feed_manual(2))
         self.pb_feed_mix_2.clicked.connect(lambda: self.wc.show(DialogFeedMix(self, 2)))
@@ -336,17 +338,11 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.pb_pm_6.clicked.connect(lambda: self.change_to_flushing(6))
         self.pb_pm_7.clicked.connect(lambda: self.change_to_flushing(7))
         self.pb_pm_8.clicked.connect(lambda: self.change_to_flushing(8))
-        self.pb_mm_reset_6.clicked.connect(lambda: self.area_controller.sensors[5].max_min.reset(0))
-        self.pb_mm_reset_7.clicked.connect(lambda: self.area_controller.sensors[6].max_min.reset(0))
-        self.pb_mm_reset_8.clicked.connect(lambda: self.area_controller.sensors[12].max_min.reset(0))
-        self.pb_mm_reset_9.clicked.connect(lambda: self.area_controller.sensors[13].max_min.reset(0))
         # Area 3
         self.pb_pid_3.clicked.connect(lambda: self.wc.show_process_info(3))
         self.pb_output_status_7.clicked.connect(
             lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_31))
         self.pb_output_mode_7.clicked.connect(lambda: self.wc.show(DialogOutputSettings(self, 3, 1)))
-        self.pb_mm_reset_11.clicked.connect(lambda: self.area_controller.sensors[7].max_min.reset(0))
-        self.pb_mm_reset_12.clicked.connect(lambda: self.area_controller.sensors[8].max_min.reset(0))
         self.pb_pm2_1.clicked.connect(lambda: self.wc.show(DialogDispatchLoadingBay(self, 1)))
         self.pb_pm2_2.clicked.connect(lambda: self.wc.show(DialogDispatchLoadingBay(self, 2)))
         self.pb_pm2_3.clicked.connect(lambda: self.wc.show(DialogDispatchLoadingBay(self, 3)))
@@ -359,7 +355,6 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.pb_output_status_8.clicked.connect(
             lambda: self.area_controller.output_controller.switch_output(OUT_HEATER_ROOM))
         self.pb_output_mode_8.clicked.connect(lambda: self.wc.show(DialogWorkshopSettings(self)))
-        self.pb_mm_reset_10.clicked.connect(lambda: self.area_controller.sensors[9].max_min.reset(0))
         # Water
         self.pb_output_status_11.clicked.connect(
             lambda: self.area_controller.output_controller.switch_output(OUT_WATER_HEATER_1))
@@ -368,8 +363,6 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.pb_output_mode_11.clicked.connect(lambda: self.wc.show(DialogWaterHeaterSettings(self, 1)))
         self.pb_output_mode_12.clicked.connect(lambda: self.wc.show(DialogWaterHeaterSettings(self, 2)))
         # Outside
-        self.pb_mm_reset_0.clicked.connect(lambda: self.area_controller.sensors[1].max_min.reset(0))
-        self.pb_mm_reset_1.clicked.connect(lambda: self.area_controller.sensors[2].max_min.reset(0))
 
         # Signals
         self.coms_interface.update_sensors.connect(self.update_sensors)
@@ -1062,14 +1055,16 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             if sw == OUT_LIGHT_1:
                 if self.area_controller.area_has_process(1):
                     self.area_controller.reload_area_ranges(1)
-                self.area_controller.light_relay_1 = state
-                if state == 0:
+                if module == MODULE_SL and state == self.area_controller.light_relay_1:
+                    pass
+                elif state == 0:
                     self.lbl_light_status_1.setPixmap(QtGui.QPixmap(":/normal/light_off.png"))
                     self.area_controller.day_night[1] = NIGHT
                 else:
                     self.area_controller.day_night[1] = DAY
                     self.lbl_light_status_1.setPixmap(QtGui.QPixmap(":/normal/light_on.png"))
                     # self.area_controller.get_area_process(1).check_trans()
+                self.area_controller.light_relay_1 = state
                 self.area_controller.fan_controller.load_req_temperature(1)
             # else:
             #     if self.area_controller.area_is_manual(1):

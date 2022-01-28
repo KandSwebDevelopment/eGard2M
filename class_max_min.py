@@ -1,7 +1,9 @@
 from datetime import datetime
 
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtWidgets import QMessageBox, QWidget
 from PyQt5.QtCore import QObject
+from PyQt5 import QtCore, QtWidgets
+
 from defines import *
 from functions import dict2str
 
@@ -21,10 +23,24 @@ class MaxMin(QObject):
         self.log_path = self.sensor.area_controller.main_window.logger.log_path + "\\"
         self.display_ctrl_max = getattr(self.sensor.area_controller.main_panel, "le_max_%i" % self.sensor.display_id)
         self.display_ctrl_min = getattr(self.sensor.area_controller.main_panel, "le_min_%i" % self.sensor.display_id)
+        self.display_ctrl_max.installEventFilter(self)
+        self.display_ctrl_min.installEventFilter(self)
         if self.sensor.id in [1, 2, 9]:
             self.type = 2   # Clock cycle
         else:
             self.type = 1   # Process cycle
+
+    def eventFilter(self, source, event):
+        # Remember to install event filter for control first
+        if event.type() == QtCore.QEvent.MouseButtonDblClick:
+            if source is self.display_ctrl_max or source is self.display_ctrl_min:
+                modifiers = QtWidgets.QApplication.keyboardModifiers()
+                # if modifiers == QtCore.Qt.ShiftModifier:
+                # elif modifiers == QtCore.Qt.ControlModifier:
+                #     print('Control+Click')
+                if modifiers == (QtCore.Qt.ControlModifier | QtCore.Qt.ShiftModifier):
+                    self.reset(0)
+        return QWidget.eventFilter(self, source, event)
 
     def check(self, value):
         if value < self.min:

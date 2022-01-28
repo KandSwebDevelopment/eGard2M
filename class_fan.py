@@ -62,8 +62,9 @@ class FanClass(QThread):
         self.trans_timer.stop()
         self.set_point(self.trans_end_temp)
 
-    def trans_start(self, end_temp):
+    def trans_start(self, end_temp, duration):
         self.trans_end_temp = end_temp
+        self.trans_timer.setInterval(duration * 60000)  # Mins to mS
         self.trans_timer.start()
 
     def load_trans_time(self):
