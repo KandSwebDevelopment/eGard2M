@@ -6904,26 +6904,26 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
 
         # ----------------- Areas
         elif tab == 1:
-            self.le_area_trans_cool_1.setText(self.db.get_config(CFT_AREA, "trans cool 1", "NS"))
-            self.le_area_trans_cool_2.setText(self.db.get_config(CFT_AREA, "trans cool 2", "NS"))
-            self.le_area_trans_warm_1.setText(self.db.get_config(CFT_AREA, "trans warm 1", "NS"))
-            self.le_area_trans_warm_2.setText(self.db.get_config(CFT_AREA, "trans warm 2", "NS"))
+            self.le_area_trans_cool_1.setText(str(self.db.get_config(CFT_AREA, "trans cool 1", "NS")))
+            self.le_area_trans_cool_2.setText(str(self.db.get_config(CFT_AREA, "trans cool 2", "NS")))
+            self.le_area_trans_warm_1.setText(str(self.db.get_config(CFT_AREA, "trans warm 1", "NS")))
+            self.le_area_trans_warm_2.setText(str(self.db.get_config(CFT_AREA, "trans warm 2", "NS")))
 
         # ----------------- Dispatch
         elif tab == 3:
-            self.le_dispatch_ppg.setText(self.db.get_config(CFT_DISPATCH, "ppg", "NS"))
-            self.le_dispatch_empty.setText(self.db.get_config(CFT_DISPATCH, "empty grams", "NS"))
-            self.le_dispatch_per_item.setText(self.db.get_config(CFT_DISPATCH, "estimate per plant", "NS"))
+            self.le_dispatch_ppg.setText(str(self.db.get_config(CFT_DISPATCH, "ppg", "NS")))
+            self.le_dispatch_empty.setText(str(self.db.get_config(CFT_DISPATCH, "empty grams", "NS")))
+            self.le_dispatch_per_item.setText(str(self.db.get_config(CFT_DISPATCH, "estimate per plant", "NS")))
 
         # ---------------- Feeder
         elif tab == 5:
-            self.le_feeder_feed_litres.setText(self.db.get_config(CFT_FEEDER, "feed L", "2"))
-            self.le_feeder_soak.setText(self.db.get_config(CFT_FEEDER, "soak time", "2"))
-            self.le_feeder_man_max.setText(self.db.get_config(CFT_FEEDER, "max manual feed", "2"))
-            self.le_mix_max.setText(self.db.get_config(CFT_FEEDER, "max mix litres", "8"))
-            self.le_feeder_flush.setText(self.db.get_config(CFT_FEEDER, "flush litres", "1"))
-            self.le_feeder_stir_nutrients.setText(self.db.get_config(CFT_FEEDER, "nutrient stir time", "30"))
-            self.le_feeder_stri_mix.setText(self.db.get_config(CFT_FEEDER, "mix stir time", "30"))
+            self.le_feeder_feed_litres.setText(str(self.db.get_config(CFT_FEEDER, "feed L", "2")))
+            self.le_feeder_soak.setText(str(self.db.get_config(CFT_FEEDER, "soak time", "2")))
+            self.le_feeder_man_max.setText(str(self.db.get_config(CFT_FEEDER, "max manual feed", "2")))
+            self.le_mix_max.setText(str(self.db.get_config(CFT_FEEDER, "max mix litres", "8")))
+            self.le_feeder_flush.setText(str(self.db.get_config(CFT_FEEDER, "flush litres", "1")))
+            self.le_feeder_stir_nutrients.setText(str(self.db.get_config(CFT_FEEDER, "nutrient stir time", "30")))
+            self.le_feeder_stri_mix.setText(str(self.db.get_config(CFT_FEEDER, "mix stir time", "30")))
             self.cb_feeder_auto_stir.setCurrentIndex(self.cb_feeder_auto_stir.findData(int(self.db.get_config(CFT_FEEDER, "auto stir", "3"))))
 
     # ============= Area
