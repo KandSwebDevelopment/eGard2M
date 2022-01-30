@@ -661,6 +661,7 @@ class ProcessClass(QObject):
                 self.current_stage += 1
                 if ret_val == QMessageBox.Yes:  # ############### Advance and move #################
                     # Add journal entry
+                    # breakpoint - Follow this through as last time it totally fucked up, didn't move anything
                     self.journal_write("<b>Stage Change</b> to {} after {} days {}. Moved from area {} to {}"
                                        .format(next_stage_name, self.stage_days_elapsed, self.stage_name,
                                                self.stage_location,  self.stage_next_location))
@@ -678,13 +679,26 @@ class ProcessClass(QObject):
                         sql = "UPDATE {} SET dt = {} WHERE item = '{}' and id = {} LIMIT 1".format(
                             DB_PROCESS_ADJUSTMENTS, None, PA_FEED_DATE, self.stage_location)
                         self.db.execute_write(sql)
-                        # Feed liters
-                        # if self.location < 3:
-                        #     sql = "UPDATE {} SET itemid = 0, offset = 0 WHERE item = {} id = {} LIMIT 1".format(
-                        #         DB_PROCESS_ADJUSTMENTS, PA_FEED, self.location)
-                        #     self.db.execute_write(sql)
-                        # print(sql)
-                        # self.db.execute_write(sql)
+
+                    # Area table
+                    sql = "UPDATE {} SET area = {} WHERE process_id = {})".format(DB_AREAS, self.stage_next_location, self.id)
+                    self.db.execute_write(sql)
+
+                    # Process Strains
+                    sql = "UPDATE {} SET location = {} WHERE process_id = {})".format(DB_PROCESS_STRAINS, self.stage_next_location, self.id)
+                    self.db.execute_write(sql)
+
+                    # Process Table
+                    sql = "UPDATE {} SET location = {} WHERE d = {})".format(DB_PROCESS, self.stage_next_location, self.id)
+                    self.db.execute_write(sql)
+
+                    # Feed liters
+                    # if self.location < 3:
+                    #     sql = "UPDATE {} SET itemid = 0, offset = 0 WHERE item = {} id = {} LIMIT 1".format(
+                    #         DB_PROCESS_ADJUSTMENTS, PA_FEED, self.location)
+                    #     self.db.execute_write(sql)
+                    # print(sql)
+                    # self.db.execute_write(sql)
 
                 else:  # Just advance, not moved
                     self.db.execute_write(

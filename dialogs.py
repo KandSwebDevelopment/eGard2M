@@ -570,7 +570,7 @@ class DialogDispatchReports(QDialog, Ui_DialogDispatchReport):
               'FROM dispatch d INNER JOIN clients c ON d.`client` = c.id WHERE d.date >= "{}" AND d.client != 1 ' \
               "GROUP BY week_ending, d.`client` ORDER BY week_ending DESC".format(query_date)
         rows = self.db.execute(sql)
-        txt = '<h2 style="color:blue;">Clients Weekly</h2><table cellspacing = "5"  border = "0" width = "100%">'
+        txt = '<table cellspacing = "5"  border = "0" width = "100%">'
         txt += '<tr><th>Week Start</th><th>Client</th><th>Amount</th></tr>'
         lw = 0  # Tracking as when to put in date
         wt = 0  # Week total
