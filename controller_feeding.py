@@ -106,7 +106,7 @@ class FeedControl(QObject):
         return flag
 
     def get_recipe_status(self, area):
-        return self.feeds[area].r_status
+        return self.feeds[area].get_recipe_status()
 
     def get_feed_mode(self, area):
         return 1

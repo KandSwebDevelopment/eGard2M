@@ -611,25 +611,25 @@ class FeedClass(QObject):
                 self.r_status = 1
             else:
                 self.r_status = 2
-            return
+            return self.r_status
 
         if self.stage_days_elapsed - self.recipe_starts_day - 1 <= self.frequency:
             # After change
             if self.lfd.date() >= r_start_date:
                 self.r_status = 0
-                return
+                return self.r_status
             else:
                 self.r_status = 2
-                return
+                return self.r_status
         if r_change_days + 1 <= self.frequency - 1:
             if lfd_days == 0:
                 #  fed today
                 self.r_status = 1
-                return
+                return self.r_status
             else:
                 # Not Fed
                 self.r_status = -1
-                return
+                return self.r_status
         if r_change_days <= (self.frequency * 2) - 1:
             if lfd_days == 0:
                 # Not fed today
@@ -637,8 +637,9 @@ class FeedClass(QObject):
             else:
                 # Fed
                 self.r_status = -1
-                return
+                return self.r_status
         self.r_status = 0
+        return self.r_status
 
     def get_feed_frequency(self):
         return self.frequency

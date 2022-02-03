@@ -662,9 +662,10 @@ class ProcessClass(QObject):
                 if ret_val == QMessageBox.Yes:  # ############### Advance and move #################
                     # Add journal entry
                     # breakpoint - Follow this through as last time it totally fucked up, didn't move anything
-                    self.journal_write("<b>Stage Change</b> to {} after {} days {}. Moved from area {} to {}"
+                    self.journal_write("<b>Stage Change</b> to {} after {} days {}. Moved from area {} to {} on {}"
                                        .format(next_stage_name, self.stage_days_elapsed, self.stage_name,
-                                               self.stage_location,  self.stage_next_location))
+                                               self.stage_location,  self.stage_next_location,
+                                               datetime.now().strftime("%d/%m/%y %H:%M")))
                     # Update the processes current stage
                     self.db.execute_write(
                         "UPDATE " + DB_PROCESS + " SET stage = " + str(self.current_stage) + ", location = " + str(
@@ -707,8 +708,9 @@ class ProcessClass(QObject):
 
             else:   # Advance stage no location change required
                 # Add journal entry
-                self.journal_write("<b>Stage Change</b> to {} after {} days {}"
-                                   .format(next_stage_name, self.stage_days_elapsed, self.stage_name))
+                self.journal_write("<b>Stage Change</b> to {} after {} days {} on {}"
+                                   .format(next_stage_name, self.stage_days_elapsed, self.stage_name,
+                                           datetime.now().strftime("%d/%m/%y %H:%M")))
                 self.current_stage += 1
                 # Update the processes current stage
                 self.db.execute_write(

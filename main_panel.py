@@ -254,8 +254,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
     def loop_6(self):  # 2 min
         if self.master_mode == MASTER:
             self.coms_interface.send_command(NWC_SOIL_READ)
-        if self.nutrient_auto_stir > 0 and datetime.now().hour % self.nutrient_auto_stir == 0 and datetime.now().minute < 2:
-            print("Stirred Nutrients --------- ", datetime.now())
+            if self.nutrient_auto_stir > 0 and datetime.now().hour % self.nutrient_auto_stir == 0 and datetime.now().minute < 2:
+                print("Stirred Nutrients --------- ", datetime.now())
 
     def loop_15(self):  # 3 Min
         if self.main_window.access.has_status(ACS_COVER_OPEN) and \

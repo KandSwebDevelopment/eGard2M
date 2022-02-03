@@ -725,9 +725,10 @@ class DialogDispatchReports(QDialog, Ui_DialogDispatchReport):
                     t1 = row[2]
                 else:
                     t2 = row[2]
-            txt += '<tr><td>{}</td><td style="text-align:center;">£{:0,.0f}</td>' \
-                   '<td style="text-align:center;">£{:0,.0f}</td><td style="text-align:center;">£{:0,.0f}' \
-                   '</td></tr>'.format(rows[0][1], t1, t2, float(t1) + float(t2)).replace('£-', '-£')
+            if len(rows) > 0:
+                txt += '<tr><td>{}</td><td style="text-align:center;">£{:0,.0f}</td>' \
+                       '<td style="text-align:center;">£{:0,.0f}</td><td style="text-align:center;">£{:0,.0f}' \
+                       '</td></tr>'.format(rows[0][1], t1, t2, float(t1) + float(t2)).replace('£-', '-£')
             total1 += t1
             total2 += t2
             counter += 1
@@ -3970,7 +3971,7 @@ class DialogJournal(QDialog, Ui_DialogJournal):
         self.pb_8.clicked.connect(lambda: self.add_num(8))
 
     def add_num(self, num):
-        self.tenew.setText("Number {}. ".format(num))
+        self.tenew.append("Number {}. ".format(num))
         cur = self.tenew.textCursor()
         cur.movePosition(QTextCursor.End)
         self.tenew.setTextCursor(cur)
@@ -3986,7 +3987,7 @@ class DialogJournal(QDialog, Ui_DialogJournal):
         self.process.journal_write(entry)
 
         self.temessage.setText(self.process.journal_read())
-        self.main_panel.coms_interface.send_command(NWC_JOURNAL_ADD, self.process.location, entry)
+        # self.main_panel.coms_interface.send_command(NWC_JOURNAL_ADD, self.process.location, entry)
         self.tenew.setText("")
 
 
@@ -5768,17 +5769,19 @@ class DialogFan(QDialog, Ui_DialogFan):
         self.le_set.editingFinished.connect(self.change_set)
 
     def change_set(self):
-        msg = QMessageBox()
-        msg.setIcon(QMessageBox.Question)
-        msg.setText("Confirm you wish to change the set point")
-        msg.setWindowTitle("Confirm Change")
-        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
-        msg.setDefaultButton(QMessageBox.Cancel)
-        if msg.exec_() == QMessageBox.Cancel:
-            self.le_set.setText(str(self.set_temp))
-            return
-        self.main_panel.area_controller.fan_controller.fans[self.id].set_point(string_to_float(self.le_set.text()))
-        self.set_temp = string_to_float(self.le_set.text())
+        if self.le_set.isModified():
+            self.le_set.setModified(False)
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Question)
+            msg.setText("Confirm you wish to change the set point")
+            msg.setWindowTitle("Confirm Change")
+            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+            msg.setDefaultButton(QMessageBox.Cancel)
+            if msg.exec_() == QMessageBox.Cancel:
+                self.le_set.setText(str(self.set_temp))
+                return
+            self.main_panel.area_controller.fan_controller.fans[self.id].set_point(string_to_float(self.le_set.text()))
+            self.set_temp = string_to_float(self.le_set.text())
 
     def change_tuning_log(self):
         if self.ck_log_tuning.isChecked():
