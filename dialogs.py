@@ -53,7 +53,7 @@ from ui.dialogProcessPerformance import Ui_DialogProcessPreformance
 from ui.dialogRemoveItem import Ui_DialogRemoveItem
 from ui.dialogSeedPicker import Ui_DialogSeedPicker
 from ui.dialogSensorSettings import Ui_DialogSensorSettings
-from ui.dialogSettings import Ui_DialogSettings
+# from ui.dialogSettings import Ui_DialogSettings
 from ui.dialogSoilSensors import Ui_DialogSoilSensors
 from ui.dialogStrainFinder import Ui_DialogStrainFinder
 from ui.dialogStrains import Ui_DialogStrains
@@ -63,7 +63,7 @@ from ui.dialogsysInfo import Ui_DialogSysInfo
 from ui.dialogFanDry import Ui_DialogFanDry
 from ui.dialogStrainPerformance2 import Ui_DialogStrainPreformance
 from ui.dialogSoilLimits import Ui_DialogSoilLimits
-from ui.dialogFeederCalibrate import Ui_dialogFeederCalibrate
+# from ui.dialogFeederCalibrate import Ui_dialogFeederCalibrate
 from ui.dialogWaterTankCalibration import Ui_dailogWaterTanksCalibrate
 from ui.dialogFeederManualMix import Ui_DialogFeederManualMix
 from ui.dialogWaterTank import Ui_DialogWaterTank
@@ -75,6 +75,7 @@ from ui.dialogSettingsAll import Ui_dialogSettingsAll
 from ui.dialogDispatchReconcilation import Ui_DialogDispatchReconcilation
 from ui.dialogTemperatureSensorMapping import Ui_DialogTemperatureSensorMApping
 from ui.dialogLightSwitch import Ui_DialogLightSwitch
+from ui.dialogFeedSchedules import Ui_DialogSchedules
 
 
 class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
@@ -4263,6 +4264,61 @@ class DialogEngineerIo(QDialog, Ui_DialogMessage):
         return t
 
 
+class DialogFeedSchedules(QDialog, Ui_DialogSchedules):
+    def __init__(self, parent):
+        super(DialogFeedSchedules, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.sub = None
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.main_window = parent
+        self.db = self.main_window.db
+        self.load_schedule_list()
+        self.cb_schedules.currentIndexChanged.connect(self.load_schedule)
+        self.schedule_id = 0        # Schedule loaded
+
+        self.tw_schedule.setColumnCount(5)
+        self.tw_schedule.setHorizontalHeaderLabels(["Start", "End", "LPP", "Recipe", "Freq"])
+        self.tw_schedule.resizeColumnsToContents()
+        self.tw_schedule.activated.connect(self.load_schedule_item)
+        self.tw_schedule.clicked.connect(self.load_schedule_item)
+
+    def load_schedule_list(self):
+        """ This loads the names of all feed schedules into the combo box"""
+        self.cb_schedules.clear()
+        rows = self.db.execute('SELECT name, id FROM {}'.format(DB_FEED_SCHEDULE_NAMES))
+        self.cb_schedules.addItem("Select", 0)
+        for row in rows:
+            self.cb_schedules.addItem(row[0], row[1])
+
+    def load_schedule(self):
+        self.tw_schedule.clear()
+        self.le_id.clear()
+        self.schedule_id = self.cb_schedules.currentData()
+        if self.schedule_id == 0:
+            return
+        self.le_id.setText(str(self.schedule_id))
+        sql = "SELECT start, dto, liters, rid, frequency FROM {} WHERE sid = {} ORDER BY start". \
+            format(DB_FEED_SCHEDULES, self.schedule_id)
+        rows_s = self.db.execute(sql)
+        r = 0
+        self.tw_schedule.setRowCount(len(rows_s))
+        for row in rows_s:
+            recipe = self.db.execute_single('SELECT name FROM {} WHERE id ={}'.format(DB_RECIPE_NAMES, row[3]))
+            data = [str(row[0]), str(row[1]), str(row[2]), recipe, str(row[4])]
+            for c in range(0, 5):
+                self.tw_schedule.setItem(r, c, QTableWidgetItem(data[c]))
+            r += 1
+        self.tw_schedule.setHorizontalHeaderLabels(["Start", "End", "LPP", "Recipe", "Freq"])
+        self.tw_schedule.resizeColumnsToContents()
+
+    def load_schedule_item(self):
+        self.le_start.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 0).text())
+        self.le_end.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 1).text())
+        self.le_lpp.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 2).text())
+        self.le_.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 2).text())
+
+
 class DialogIOVC(QDialog, Ui_Dialog_IO_VC):
     def __init__(self, parent):
         super(DialogIOVC, self).__init__()
@@ -5491,7 +5547,6 @@ class DialogStrainPerformance(QDialog, Ui_DialogStrainPreformance):
         self.pb_close.clicked.connect(lambda: self.sub.close())
 
         self.tw_all.setColumnCount(6)
-        # self.tw_all.resizeRowsToContents()
         self.tw_all.setHorizontalHeaderLabels(["ID", "Strain", "Breeder", "Average", "Quantity", "Total"])
         self.tw_item.setColumnCount(4)
         self.tw_item.setHorizontalHeaderLabels(["Process", "Ending", "Days", "Yield"])
@@ -6069,7 +6124,7 @@ class DialogWaterHeaterSettings(QWidget, Ui_DialogWaterHeatertSetting):
         self.cb_mode.addItem("Off", 0)
         self.cb_mode.addItem("Manual On", 1)
         self.cb_mode.addItem("Auto", 2)
-        self.cb_mode.addItem("Timer", 3)
+        self.cb_mode.addItem("Next Feed Time", 3)
         self.cb_mode.setCurrentIndex(self.cb_mode.findData(row[3]))
         self.cb_frequency.addItem("As Required", 0)
         self.cb_frequency.addItem("Daily", 1)

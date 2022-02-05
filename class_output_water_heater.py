@@ -75,6 +75,7 @@ class OutputWaterHeater(OutputClass):
             if position == FLOAT_UP:
                 self.output_controller.area_controller.main_window.msg_sys.remove(MSG_FLOAT + self.ctrl_id - 1)
                 self.output_controller.area_controller.main_window.msg_sys.remove(MSG_FLOAT_HEATER + self.ctrl_id - 1)
+                self.is_feeding = False
 
     def load_profile(self):
         row = self.db.execute_one_row('SELECT `name`, `area`, `type`, `input`, `range`, `pin`, `short_name`, '
@@ -159,7 +160,36 @@ class OutputWaterHeater(OutputClass):
             self.days_since = 0
 
     def update_info(self):
-        OutputClass.update_info(self)
+        ctrl = getattr(self.output_controller.main_panel, "pb_output_mode_%i" % self.ctrl_id)
+        if self.mode == 0:
+            ctrl.setIcon(QIcon(":/normal/output_off_1.png"))
+            ctrl.setToolTip("Mode: Off")
+        elif self.mode == 1:
+            ctrl.setIcon(QIcon(":/normal/output_manual_1.png"))
+            ctrl.setToolTip("Mode: Manual On")
+            # t = OUT_TYPE[self.mode]
+        elif self.mode == 2:  # Sensor
+            ctrl.setIcon(QIcon(":/normal/output_auto.png"))
+            ctrl.setToolTip("Mode: Auto")
+        elif self.mode == 3:    # Next feed time
+            ctrl.setIcon(QIcon(":/normal/output_timer.png"))
+            ctrl.setToolTip("Mode: Timer")
+        # elif self.mode == 4:
+        #     ctrl.setIcon(QIcon(":/normal/output_both.png"))
+        #     ctrl.setToolTip("Mode: Sensor and timer")
+        # elif self.mode == 5:
+        #     ctrl.setIcon(QIcon(":/normal/output_day.png"))
+        #     ctrl.setToolTip("Mode: All Day")
+        # elif self.mode == 6:
+        #     ctrl.setIcon(QIcon(":/normal/output_night.png"))
+        #     ctrl.setToolTip("Mode: All Night")
+
+        if self.frequency == 0:
+            txt = "AR"
+        else:
+            txt = "D{}".format(self.frequency)
+        getattr(self.output_controller.main_panel, "lbl_output_sensor_%i" % self.ctrl_id).setText(txt)
+
         if self.mode == 0:
             getattr(self.output_controller.main_panel, "lbl_output_sensor_%i" % self.ctrl_id).setText("")
             return
@@ -169,13 +199,9 @@ class OutputWaterHeater(OutputClass):
             setText(datetime.strftime(self.off_time, "%H:%M"))
         getattr(self.output_controller.main_panel, "lbl_output_set_on_%i" % self.ctrl_id).\
             setText(datetime.strftime(self.on_time, "%H:%M"))
-        if self.frequency == 0:
-            txt = "AR"
-        else:
-            txt = "D{}".format(self.frequency)
-        getattr(self.output_controller.main_panel, "lbl_output_sensor_%i" % self.ctrl_id).setText(txt)
         if self.is_feeding:
             getattr(self.output_controller.main_panel, "pb_output_mode_%i" % self.ctrl_id).setIcon(QIcon(":/normal/next_feed.png"))
+
 
     def set_days_till_feed(self, days):
         """ Set the days_till_feed. It will only do this if frequency = As Required

@@ -189,7 +189,7 @@ class FeedClass(QObject):
             If it over runs last schedule in a stage it will attempt to return the first from the next stage
             It will return empty list if it can't find a schedule"""
         for s in self.feed_schedules_all[self.stage]:
-            if s[1] >= self.stage_days_elapsed > s[0]:  # end day >= day > start day
+            if s[1] >= self.stage_days_elapsed >= s[0]:  # end day >= day >= start day
                 return s
         return s    # Stage has over run so just return last one
         # if self.stage < self.stages_max:
@@ -213,7 +213,7 @@ class FeedClass(QObject):
         max_s = len(self.feed_schedules_all[self.stage])
         for i in range(0, max_s):
             if self.feed_schedules_all[self.stage][i][1] >= self. \
-                    stage_days_elapsed > self.feed_schedules_all[self.stage][i][0]:  # end day >= day > start day
+                    stage_days_elapsed >= self.feed_schedules_all[self.stage][i][0]:  # end day >= day > start day
                 i += 1
                 if i < max_s:
                     return self.feed_schedules_all[self.stage][i]

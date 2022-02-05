@@ -28,10 +28,11 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.sub = self.main_window.mdiArea.addSubWindow(self)
         self.wc = self.main_window.wc
         self.master_mode = self.main_window.master_mode
-        self.sub.setMinimumSize(970, 500)
-        self.sub.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint | QtCore.Qt.FramelessWindowHint)
-        self.setGeometry(0, 0, self.width(), self.height())
-        # self.main_window.resize(self.width(), 1000)
+        # self.sub.setMinimumSize(970, 500)
+        # self.sub.setWindowFlags(Qt.Window | Qt.WindowTitleHint | Qt.CustomizeWindowHint | QtCore.Qt.FramelessWindowHint)
+        self.setWindowFlags(Qt.Window | Qt.CustomizeWindowHint)
+        self.setFixedSize(self.width(), self.height())
+        # self.setGeometry(0, 0, self.width(), self.height())
         self.show()
 
         self.le_stage_1.installEventFilter(self)
