@@ -76,6 +76,7 @@ from ui.dialogDispatchReconcilation import Ui_DialogDispatchReconcilation
 from ui.dialogTemperatureSensorMapping import Ui_DialogTemperatureSensorMApping
 from ui.dialogLightSwitch import Ui_DialogLightSwitch
 from ui.dialogFeedSchedules import Ui_DialogSchedules
+from ui.dialogFeedRecipes import Ui_DialogFeedRecipes
 
 
 class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
@@ -4262,6 +4263,92 @@ class DialogEngineerIo(QDialog, Ui_DialogMessage):
             cmd = cmd.replace(">", ", ")
             t += "[" + str(x['client']) + "] " + cmd
         return t
+
+
+class DialogFeedRecipes(QDialog, Ui_DialogFeedRecipes):
+    def __init__(self, parent):
+        super(DialogFeedRecipes, self).__init__()
+        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.sub = None
+        self.pb_close.clicked.connect(lambda: self.sub.close())
+        self.main_window = parent
+        self.db = self.main_window.db
+        self.recipe_id = 0
+        self.tw_recipe.setColumnCount(3)
+        self.tw_recipe.setHorizontalHeaderLabels(["Nutrient", "mls/L", "Freq"])
+        self.tw_recipe.resizeColumnsToContents()
+        # self.tw_recipe.activated.connect(self.load_schedule_item)
+        # self.tw_recipe.clicked.connect(self.load_schedule_item)
+        self.tw_recipe.doubleClicked.connect(self.load_recipe_item)
+        self.load_recipe_list()
+        self.cb_recipes.currentIndexChanged.connect(self.load_recipe)
+        self.load_nutrient_list()
+        self.pb_open.clicked.connect(lambda: self.main_window.wc.show(DialogNutrients(self.main_window), onTop=True))
+        self.pb_save.clicked.connect(self.save)
+        self.pb_save_as.clicked.connect(self.save_as)
+        self.pb_add_item.clicked.connect(self.add_item)
+        self.pb_remove_item.clicked.connect(self.remove_item)
+
+    def load_recipe_list(self):
+        """ This loads the names of all recipes into the combo box"""
+        self.cb_recipes.clear()
+        rows = self.db.execute('SELECT name, id FROM {} ORDER BY name'.format(DB_RECIPE_NAMES))
+        self.cb_recipes.addItem("Select", 0)
+        for row in rows:
+            self.cb_recipes.addItem(row[0], row[1])
+
+    def load_nutrient_list(self):
+        """ This loads the names of all nutrients into the combo box"""
+        self.cb_nutrient.clear()
+        rows = self.db.execute('SELECT name, id FROM {}'.format(DB_NUTRIENTS_NAMES))
+        self.cb_nutrient.addItem("Select", 0)
+        for row in rows:
+            self.cb_nutrient.addItem(row[0], row[1])
+
+    def load_recipe(self):
+        self.tw_recipe.clear()
+        self.le_id.clear()
+        self.recipe_id = self.cb_recipes.currentData()
+        if self.recipe_id == 0:
+            return
+        self.le_id.setText(str(self.recipe_id))
+        info = self.db.execute_single("SELECT info FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, self.recipe_id))
+        self.te_info.setText(info)
+        sql = "SELECT nid, ml, frequency FROM {} WHERE rid = {}". \
+            format(DB_RECIPES, self.recipe_id)
+        rows_s = self.db.execute(sql)
+        r = 0
+        self.tw_recipe.setRowCount(len(rows_s))
+        for row in rows_s:
+            nutrient = self.db.execute_single('SELECT name FROM {} WHERE id ={}'.format(DB_NUTRIENTS_NAMES, row[0]))
+            data = [nutrient, str(row[1]), str(row[2])]
+            for c in range(0, 3):
+                self.tw_recipe.setItem(r, c, QTableWidgetItem(data[c]))
+            r += 1
+        self.tw_recipe.setHorizontalHeaderLabels(["Nutrient", "mls/L", "Freq"])
+        self.tw_recipe.resizeColumnsToContents()
+
+    def load_recipe_item(self):
+        self.le_mls.setText(self.tw_recipe.item(self.tw_recipe.currentRow(), 1).text())
+        self.cb_nutrient.setCurrentIndex(self.cb_nutrient.findText(self.tw_recipe.item(self.tw_recipe.currentRow(), 0).text()))
+        self.frm_edit.setEnabled(True)
+        self.cb_nutrient.setEnabled(False)
+
+    def save(self):
+        name = input("Enter new recipe name:")
+        if self.db.does_exist(DB_RECIPE_NAMES, 'name', name):
+            pass
+
+    def save_as(self):
+        pass
+
+    def add_item(self):
+        self.frm_edit.setEnabled(True)
+        self.cb_nutrient.setEditable(True)
+
+    def remove_item(self):
+        pass
 
 
 class DialogFeedSchedules(QDialog, Ui_DialogSchedules):

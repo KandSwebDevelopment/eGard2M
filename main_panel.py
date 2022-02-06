@@ -422,7 +422,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 # txt = " Tomorrow"
                 ctrl.setPixmap(QPixmap(":/normal/tomorrow.png"))
                 ctrl.setToolTip("Feed due today")
-                css = ""
+                css = BACKGROUND_DEFAULT
             elif days == -1:
                 # txt = "Yesterday"
                 ctrl.setPixmap(QPixmap(":/normal/yesterday.png"))
@@ -430,7 +430,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
                 css = "background-color: red;  color: white; border-radius: 6px;"
             else:
                 ctrl.setPixmap(QPixmap(":/normal/tomorrow.png"))
-                css = ""
+                css = BACKGROUND_DEFAULT
             ctrl.setStyleSheet(css)
             # show days till feed
             getattr(self, "lbl_days_%i" % loc).setText(str(days))

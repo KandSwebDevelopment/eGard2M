@@ -23,7 +23,10 @@ class WaterTank(QObject):
         self.load_levels()
 
     def update_level(self, reading):
-        self.current_level = self.reading_to_litres(reading)
+        if reading > 0:
+            self.current_level = self.reading_to_litres(reading)
+        else:
+            self.current_level = 0
         getattr(self.water_controller.main_window.main_panel, "le_water_tank_{}".
                 format(self.id)).setText(str(self.current_level))
         return self.current_level

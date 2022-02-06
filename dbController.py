@@ -219,13 +219,13 @@ class MysqlDB(QObject):
                 combo.addItem(row2[tbl_col], row2[data_col])
         return combo
 
-    def does_exist(self, table_name, column, new_val=None):
-        if new_val is None:
-            sql = 'SELECT * FROM ' + table_name + ' WHERE item = ' + str(column)
-        else:
-            sql = 'SELECT * FROM ' + table_name + ' WHERE item = ' + str(column) + ' AND itemid = ' + str(new_val)
-        row = self.execute_one_row(sql)
+    def does_exist(self, table_name, column, value):
+        """ Checks the table to see if value is in column """
+        sql = 'SELECT ' + column + ' FROM ' + table_name + ' WHERE ' + column + ' = ' + str(value)
+        row = self.execute_single(sql)
         print(row)
+        if row is None:
+            return False
         return row
 
     # Returns the number of days a standard pattern takes
