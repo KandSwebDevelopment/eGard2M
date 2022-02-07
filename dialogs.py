@@ -77,6 +77,7 @@ from ui.dialogTemperatureSensorMapping import Ui_DialogTemperatureSensorMApping
 from ui.dialogLightSwitch import Ui_DialogLightSwitch
 from ui.dialogFeedSchedules import Ui_DialogSchedules
 from ui.dialogFeedRecipes import Ui_DialogFeedRecipes
+from ui.dialogInputBasic import Ui_DialogInputBasic
 
 
 class DialogDispatchCounter(QWidget, Ui_DialogDispatchCounter):
@@ -4265,6 +4266,39 @@ class DialogEngineerIo(QDialog, Ui_DialogMessage):
         return t
 
 
+class DialogInputBasic(QDialog, Ui_DialogInputBasic):
+    """ Displays a basic input dialog modal for user input
+        To use:
+        cancel, name = DialogInputBasic.get_name(self.main_window, "Enter name for new recipe")
+
+        cancel = 1 if user cancels otherwise 0
+        name = user input"""
+    def __init__(self, parent, title):
+        super(DialogInputBasic, self).__init__(parent)
+        # self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
+        self.setupUi(self)
+        self.canceled = 0
+        self.setWindowTitle(title)
+        self.pb_ok.clicked.connect(self.ok)
+        self.pb_cancel.clicked.connect(self.cancel)
+
+    @staticmethod
+    def get_name(parent, title):
+        dialog = DialogInputBasic(parent, title)
+        ok = dialog.exec_()
+        name = dialog.le_input.text()
+        cancel = dialog.canceled
+        return cancel, name
+
+    def ok(self):
+        self.canceled = 0
+        self.close()
+
+    def cancel(self):
+        self.canceled = 1
+        self.close()
+
+
 class DialogFeedRecipes(QDialog, Ui_DialogFeedRecipes):
     def __init__(self, parent):
         super(DialogFeedRecipes, self).__init__()
@@ -4275,11 +4309,8 @@ class DialogFeedRecipes(QDialog, Ui_DialogFeedRecipes):
         self.main_window = parent
         self.db = self.main_window.db
         self.recipe_id = 0
+        self.nutrient_id = 0
         self.tw_recipe.setColumnCount(3)
-        self.tw_recipe.setHorizontalHeaderLabels(["Nutrient", "mls/L", "Freq"])
-        self.tw_recipe.resizeColumnsToContents()
-        # self.tw_recipe.activated.connect(self.load_schedule_item)
-        # self.tw_recipe.clicked.connect(self.load_schedule_item)
         self.tw_recipe.doubleClicked.connect(self.load_recipe_item)
         self.load_recipe_list()
         self.cb_recipes.currentIndexChanged.connect(self.load_recipe)
@@ -4292,11 +4323,16 @@ class DialogFeedRecipes(QDialog, Ui_DialogFeedRecipes):
 
     def load_recipe_list(self):
         """ This loads the names of all recipes into the combo box"""
+        self.cb_recipes.blockSignals(True)
         self.cb_recipes.clear()
+        self.tw_recipe.clear()
+        self.tw_recipe.setHorizontalHeaderLabels(["Nutrient", "mls/L", "Freq"])
+        self.tw_recipe.resizeColumnsToContents()
         rows = self.db.execute('SELECT name, id FROM {} ORDER BY name'.format(DB_RECIPE_NAMES))
         self.cb_recipes.addItem("Select", 0)
         for row in rows:
             self.cb_recipes.addItem(row[0], row[1])
+        self.cb_recipes.blockSignals(False)
 
     def load_nutrient_list(self):
         """ This loads the names of all nutrients into the combo box"""
@@ -4315,7 +4351,7 @@ class DialogFeedRecipes(QDialog, Ui_DialogFeedRecipes):
         self.le_id.setText(str(self.recipe_id))
         info = self.db.execute_single("SELECT info FROM {} WHERE id = {}".format(DB_RECIPE_NAMES, self.recipe_id))
         self.te_info.setText(info)
-        sql = "SELECT nid, ml, frequency FROM {} WHERE rid = {}". \
+        sql = "SELECT nid, ml, frequency FROM {} WHERE rid = {} ORDER BY nid". \
             format(DB_RECIPES, self.recipe_id)
         rows_s = self.db.execute(sql)
         r = 0
@@ -4331,24 +4367,93 @@ class DialogFeedRecipes(QDialog, Ui_DialogFeedRecipes):
 
     def load_recipe_item(self):
         self.le_mls.setText(self.tw_recipe.item(self.tw_recipe.currentRow(), 1).text())
-        self.cb_nutrient.setCurrentIndex(self.cb_nutrient.findText(self.tw_recipe.item(self.tw_recipe.currentRow(), 0).text()))
+        self.cb_nutrient.setCurrentIndex(
+            self.cb_nutrient.findText(self.tw_recipe.item(self.tw_recipe.currentRow(), 0).text()))
+        self.nutrient_id = self.cb_nutrient.currentData()
         self.frm_edit.setEnabled(True)
         self.cb_nutrient.setEnabled(False)
+        self.le_frequency.setText("1")
 
     def save(self):
-        name = input("Enter new recipe name:")
-        if self.db.does_exist(DB_RECIPE_NAMES, 'name', name):
-            pass
+        ml = string_to_float(self.le_mls.text())
+        self.nutrient_id = self.cb_nutrient.currentData()
+        if self.db.execute_single('SELECT ml FROM {} WHERE rid = {} AND nid = {}'.
+                                  format(DB_RECIPES, self.recipe_id, self.nutrient_id)) is None:
+            # New
+            sql = 'INSERT INTO {} (rid, nid, ml, frequency) VALUES ({}, {}, {}, 1)'.\
+                format(DB_RECIPES, self.recipe_id, self.nutrient_id, ml)
+        else:
+            sql = 'UPDATE {} SET ml ={} WHERE rid = {} AND nid = {} LIMIT 1'.\
+                format(DB_RECIPES, ml, self.recipe_id, self.nutrient_id)
+        self.db.execute_write(sql)
+        self.db.execute_write('UPDATE {} SET info = "{}" WHERE id = {}'.
+                              format(DB_RECIPE_NAMES, self.te_info.toPlainText(), self.recipe_id))
+        self.clear_item()
+        self.load_recipe()
 
     def save_as(self):
-        pass
+        cancel, name = DialogInputBasic.get_name(self.main_window, "Enter name for new recipe")
+        if cancel == 1:
+            return
+        ml = string_to_float(self.le_mls.text())
+        if self.db.does_exist(DB_RECIPE_NAMES, 'name', name):
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("A recipe with this name already exists ")
+            msg.setWindowTitle("Error")
+            msg.setStandardButtons(QMessageBox.Cancel)
+            msg.exec_()
+            return
+
+        print(name)
+        # Creating new recipe, first put name into names table
+        info = self.te_info.toPlainText() + " (Copy)"
+        sql = 'INSERT INTO {} (name, info) VALUES ("{}", "{}")'.format(DB_RECIPE_NAMES, name, info)
+        self.db.execute_write(sql)
+        self.recipe_id = self.db.execute_single("SELECT LAST_INSERT_ID()")
+        sql = 'INSERT INTO {} (rid, nid, ml, frequency) VALUES ({}, {}, {}, 1)'. \
+            format(DB_RECIPES, self.recipe_id, self.nutrient_id, ml)
+        self.db.execute_write(sql)
+        self.clear_item()
+        self.load_recipe_list()
+        self.cb_recipes.setCurrentIndex(self.cb_recipes.findData(self.recipe_id))
 
     def add_item(self):
         self.frm_edit.setEnabled(True)
-        self.cb_nutrient.setEditable(True)
+        self.cb_nutrient.setEnabled(True)
+        self.le_frequency.setText("1")
 
     def remove_item(self):
-        pass
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Warning)
+        msg.setWindowTitle("Confirm Remove")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        if self.tw_recipe.currentRow() == -1:
+            msg.setText("Do you wish to remove this Complete recipe {}<br>You are Not removing an individual item".format(self.cb_recipes.currentText()))
+            if msg.exec_() == QMessageBox.No:
+                return
+            sql = 'DELETE FROM {} WHERE id = {} LIMIT 1'.format(DB_RECIPE_NAMES, self.recipe_id)
+            self.db.execute_write(sql)
+            sql = 'DELETE FROM {} WHERE id = {}'.format(DB_RECIPES, self.recipe_id)
+            self.db.execute_write(sql)
+            self.load_recipe_list()
+            return
+        nut_name = self.tw_recipe.item(self.tw_recipe.currentRow(), 0).text()
+        msg.setText("Do you wish to remove {} from this recipe".format(nut_name))
+        if msg.exec_() == QMessageBox.No:
+            return
+        nid = self.db.execute_single('SELECT id FROM {} WHERE name = "{}"'.format(DB_NUTRIENTS_NAMES, nut_name))
+        sql = 'DELETE FROM {} WHERE rid = {} AND nid = {}'.format(DB_RECIPES, self.recipe_id, nid)
+        self.db.execute_write(sql)
+        self.load_recipe()
+        self.clear_item()
+
+    def clear_item(self):
+        self.cb_nutrient.setCurrentIndex(0)
+        self.le_mls.clear()
+        self.le_frequency.clear()
+        self.frm_edit.setEnabled(False)
+        self.nutrient_id = 0
 
 
 class DialogFeedSchedules(QDialog, Ui_DialogSchedules):
@@ -4363,47 +4468,170 @@ class DialogFeedSchedules(QDialog, Ui_DialogSchedules):
         self.load_schedule_list()
         self.cb_schedules.currentIndexChanged.connect(self.load_schedule)
         self.schedule_id = 0        # Schedule loaded
+        self.item_id = 0            # id in feed schedules table
+        self.recipe_id = 0
 
-        self.tw_schedule.setColumnCount(5)
-        self.tw_schedule.setHorizontalHeaderLabels(["Start", "End", "LPP", "Recipe", "Freq"])
+        self.tw_schedule.setColumnCount(6)
+        self.tw_schedule.setColumnHidden(0, True)
+        self.tw_schedule.setHorizontalHeaderLabels(["id", "Start", "End", "LPP", "Recipe", "Freq"])
         self.tw_schedule.resizeColumnsToContents()
-        self.tw_schedule.activated.connect(self.load_schedule_item)
-        self.tw_schedule.clicked.connect(self.load_schedule_item)
+        self.tw_schedule.doubleClicked.connect(self.load_schedule_item)
+        # self.tw_schedule.clicked.connect(self.load_schedule_item)
+        self.pb_open.clicked.connect(lambda: self.main_window.wc.show(DialogFeedRecipes(self.main_window), onTop=True))
+        self.pb_save.clicked.connect(self.save)
+        self.pb_save_as.clicked.connect(self.save_as)
+        self.pb_add_item.clicked.connect(self.add_item)
+        self.pb_remove_item.clicked.connect(self.remove_item)
+        self.load_recipe_list()
 
     def load_schedule_list(self):
         """ This loads the names of all feed schedules into the combo box"""
+        self.cb_schedules.blockSignals(True)
         self.cb_schedules.clear()
-        rows = self.db.execute('SELECT name, id FROM {}'.format(DB_FEED_SCHEDULE_NAMES))
+        self.tw_schedule.clear()
+        self.tw_schedule.setHorizontalHeaderLabels(["id", "Start", "End", "LPP", "Recipe", "Freq"])
+        rows = self.db.execute('SELECT name, id FROM {} ORDER BY name'.format(DB_FEED_SCHEDULE_NAMES))
         self.cb_schedules.addItem("Select", 0)
         for row in rows:
             self.cb_schedules.addItem(row[0], row[1])
+        self.cb_schedules.blockSignals(False)
+
+    def load_recipe_list(self):
+        """ This loads the names of all recipes into the combo box"""
+        self.cb_recipe.blockSignals(True)
+        self.cb_recipe.clear()
+        rows = self.db.execute('SELECT name, id FROM {} ORDER BY name'.format(DB_RECIPE_NAMES))
+        self.cb_recipe.addItem("Select", 0)
+        for row in rows:
+            self.cb_recipe.addItem(row[0], row[1])
+        self.cb_recipe.blockSignals(False)
 
     def load_schedule(self):
         self.tw_schedule.clear()
         self.le_id.clear()
+        self.te_info.clear()
+        self.clear_item()
         self.schedule_id = self.cb_schedules.currentData()
         if self.schedule_id == 0:
             return
         self.le_id.setText(str(self.schedule_id))
-        sql = "SELECT start, dto, liters, rid, frequency FROM {} WHERE sid = {} ORDER BY start". \
+        info = self.db.execute_single("SELECT info FROM {} WHERE id = {}".format(DB_FEED_SCHEDULE_NAMES, self.schedule_id))
+        self.te_info.setText(info)
+        sql = "SELECT start, dto, liters, rid, frequency, id FROM {} WHERE sid = {} ORDER BY start". \
             format(DB_FEED_SCHEDULES, self.schedule_id)
         rows_s = self.db.execute(sql)
         r = 0
         self.tw_schedule.setRowCount(len(rows_s))
         for row in rows_s:
-            recipe = self.db.execute_single('SELECT name FROM {} WHERE id ={}'.format(DB_RECIPE_NAMES, row[3]))
-            data = [str(row[0]), str(row[1]), str(row[2]), recipe, str(row[4])]
-            for c in range(0, 5):
+            if row[3] == WATER_ONLY_IDX:
+                recipe = WATER_ONLY
+            else:
+                recipe = self.db.execute_single('SELECT name FROM {} WHERE id ={}'.format(DB_RECIPE_NAMES, row[3]))
+            data = [str(row[5]), str(row[0]), str(row[1]), str(row[2]), recipe, str(row[4])]
+            for c in range(0, 6):
                 self.tw_schedule.setItem(r, c, QTableWidgetItem(data[c]))
             r += 1
-        self.tw_schedule.setHorizontalHeaderLabels(["Start", "End", "LPP", "Recipe", "Freq"])
+        self.tw_schedule.setHorizontalHeaderLabels(["id", "Start", "End", "LPP", "Recipe", "Freq"])
         self.tw_schedule.resizeColumnsToContents()
 
     def load_schedule_item(self):
-        self.le_start.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 0).text())
-        self.le_end.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 1).text())
-        self.le_lpp.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 2).text())
-        self.le_.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 2).text())
+        self.frm_edit.setEnabled(True)
+        self.item_id = self.tw_schedule.item(self.tw_schedule.currentRow(), 0).text()
+        self.le_start.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 1).text())
+        self.le_end.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 2).text())
+        self.le_lpp.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 3).text())
+        self.le_frequency.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 5).text())
+        self.cb_recipe.setCurrentIndex(self.cb_recipe.findText(self.tw_schedule.item(self.tw_schedule.currentRow(), 4).text()))
+
+    def save(self):
+        start = string_to_int(self.le_start.text())
+        end = string_to_int(self.le_end.text())
+        lpp = string_to_float(self.le_lpp.text())
+        freq = string_to_int(self.le_frequency.text())
+        self.recipe_id = self.cb_recipe.currentData()
+        if self.db.execute_single('SELECT sid FROM {} WHERE id = {}'.
+                                  format(DB_FEED_SCHEDULES, self.item_id)) is None:
+            # New
+            sql = 'INSERT INTO {} (sid, start, dto, liters, rid, frequency) VALUES ({}, {}, {}, {}, {}, {})'.\
+                format(DB_FEED_SCHEDULES, self.schedule_id, start, end, lpp, self.recipe_id, freq)
+        else:
+            sql = 'UPDATE {} SET start = {}, dto = {}, liters = {}, rid = {}, frequency = {} WHERE id = {} LIMIT 1'.\
+                format(DB_FEED_SCHEDULES, start, end, lpp, self.recipe_id, freq, self.item_id)
+        self.db.execute_write(sql)
+        self.db.execute_write('UPDATE {} SET info = "{}" WHERE id = {}'.
+                              format(DB_FEED_SCHEDULE_NAMES, self.te_info.toPlainText(), self.schedule_id))
+        self.clear_item()
+        self.load_schedule()
+
+    def save_as(self):
+        cancel, name = DialogInputBasic.get_name(self.main_window, "Enter name for new schedule")
+        if cancel == 1:
+            return
+        # ml = string_to_float(self.le_mls.text())
+        if self.db.does_exist(DB_FEED_SCHEDULE_NAMES, 'name', name):
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("A schedule with this name already exists ")
+            msg.setWindowTitle("Error")
+            msg.setStandardButtons(QMessageBox.Cancel)
+            msg.exec_()
+            return
+
+        print(name)
+        # Creating new recipe, first put name into names table
+        start = string_to_int(self.le_start.text())
+        end = string_to_int(self.le_end.text())
+        lpp = string_to_float(self.le_lpp.text())
+        freq = string_to_int(self.le_frequency.text())
+        self.recipe_id = self.cb_recipe.currentData()
+        info = self.te_info.toPlainText() + " (Copy)"
+        sql = 'INSERT INTO {} (name, info) VALUES ("{}", "{}")'.format(DB_FEED_SCHEDULE_NAMES, name, info)
+        self.db.execute_write(sql)
+        sid = self.schedule_id = self.db.execute_single("SELECT LAST_INSERT_ID()")
+        sql = 'INSERT INTO {} (sid, start, dto, liters, rid, frequency) VALUES ({}, {}, {}, {}, {}, {})'. \
+            format(DB_FEED_SCHEDULES, self.schedule_id, start, end, lpp, self.recipe_id, freq)
+        self.db.execute_write(sql)
+        self.clear_item()
+        self.load_schedule_list()
+        self.cb_schedules.setCurrentIndex(self.cb_schedules.findData(sid))
+
+    def add_item(self):
+        self.frm_edit.setEnabled(True)
+        self.cb_recipe.setEnabled(True)
+        self.item_id = -1   # New
+
+    def remove_item(self):
+        msg = QMessageBox()
+        msg.setIcon(QMessageBox.Warning)
+        msg.setWindowTitle("Confirm Remove")
+        msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+        if self.tw_schedule.currentRow() == -1:
+            msg.setText("Do you wish to remove this Complete schedule {}<br>You are Not removing an individual item".
+                        format(self.cb_schedules.currentText()))
+            if msg.exec_() == QMessageBox.No:
+                return
+            sql = 'DELETE FROM {} WHERE id = {} LIMIT 1'.format(DB_FEED_SCHEDULE_NAMES, self.schedule_id)
+            self.db.execute_write(sql)
+            sql = 'DELETE FROM {} WHERE id = {}'.format(DB_FEED_SCHEDULES, self.schedule_id)
+            self.db.execute_write(sql)
+            self.load_schedule_list()
+            return
+        msg.setText("Do you wish to remove the selected line from this schedule")
+        if msg.exec_() == QMessageBox.No:
+            return
+        # nid = self.db.execute_single('SELECT id FROM {} WHERE name = "{}"'.format(DB_NUTRIENTS_NAMES, nut_name))
+        sql = 'DELETE FROM {} WHERE id = {} LIMIT 1'.format(DB_FEED_SCHEDULES, self.item_id)
+        self.db.execute_write(sql)
+        self.load_schedule()
+        self.clear_item()
+
+    def clear_item(self):
+        self.cb_recipe.setCurrentIndex(0)
+        self.le_start.clear()
+        self.le_end.clear()
+        self.le_lpp.clear()
+        self.le_frequency.clear()
+        self.frm_edit.setEnabled(False)
 
 
 class DialogIOVC(QDialog, Ui_Dialog_IO_VC):

@@ -57,7 +57,7 @@ class Ui_DialogFeedRecipes(object):
         self.pb_close.setObjectName("pb_close")
         self.te_info = QtWidgets.QTextEdit(DialogFeedRecipes)
         self.te_info.setGeometry(QtCore.QRect(204, 79, 171, 71))
-        self.te_info.setReadOnly(True)
+        # self.te_info.setReadOnly(True)
         self.te_info.setObjectName("te_info")
         self.label_8 = QtWidgets.QLabel(DialogFeedRecipes)
         self.label_8.setGeometry(QtCore.QRect(200, 60, 71, 20))

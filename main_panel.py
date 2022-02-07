@@ -435,6 +435,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             # show days till feed
             getattr(self, "lbl_days_%i" % loc).setText(str(days))
             if days >= 1:
+                getattr(self, "lbl_days_%i" % loc).setStyleSheet("background-color: #f0f0f0;  color: Black;")
                 ctrl.setToolTip("Feed due in {} day{}".format(days, "" if days == 1 else "s"))
             elif days <= -1:
                 ctrl.setToolTip("Feed overdue by {} day{}".format(days, "" if days == -1 else "s"))
