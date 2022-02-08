@@ -4471,6 +4471,7 @@ class DialogFeedSchedules(QDialog, Ui_DialogSchedules):
         self.item_id = 0            # id in feed schedules table
         self.recipe_id = 0
 
+        self.lbl_error.setVisible(False)
         self.tw_schedule.setColumnCount(6)
         self.tw_schedule.setColumnHidden(0, True)
         self.tw_schedule.setHorizontalHeaderLabels(["id", "Start", "End", "LPP", "Recipe", "Freq"])
@@ -4483,6 +4484,10 @@ class DialogFeedSchedules(QDialog, Ui_DialogSchedules):
         self.pb_add_item.clicked.connect(self.add_item)
         self.pb_remove_item.clicked.connect(self.remove_item)
         self.load_recipe_list()
+
+        style = """QToolTip {background-color: white; color: black;}
+                   QLabel{background-color: red; color: yellow;}"""
+        self.lbl_error.setStyleSheet(style)
 
     def load_schedule_list(self):
         """ This loads the names of all feed schedules into the combo box"""
@@ -4533,15 +4538,21 @@ class DialogFeedSchedules(QDialog, Ui_DialogSchedules):
             r += 1
         self.tw_schedule.setHorizontalHeaderLabels(["id", "Start", "End", "LPP", "Recipe", "Freq"])
         self.tw_schedule.resizeColumnsToContents()
+        self.check_schedule()
 
     def load_schedule_item(self):
-        self.frm_edit.setEnabled(True)
-        self.item_id = self.tw_schedule.item(self.tw_schedule.currentRow(), 0).text()
-        self.le_start.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 1).text())
-        self.le_end.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 2).text())
-        self.le_lpp.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 3).text())
-        self.le_frequency.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 5).text())
-        self.cb_recipe.setCurrentIndex(self.cb_recipe.findText(self.tw_schedule.item(self.tw_schedule.currentRow(), 4).text()))
+        if self.tw_schedule.currentRow() == -1:
+            return
+        try:
+            self.item_id = self.tw_schedule.item(self.tw_schedule.currentRow(), 0).text()
+            self.le_start.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 1).text())
+            self.le_end.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 2).text())
+            self.le_lpp.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 3).text())
+            self.le_frequency.setText(self.tw_schedule.item(self.tw_schedule.currentRow(), 5).text())
+            self.cb_recipe.setCurrentIndex(self.cb_recipe.findText(self.tw_schedule.item(self.tw_schedule.currentRow(), 4).text()))
+            self.frm_edit.setEnabled(True)
+        except AttributeError:
+            pass
 
     def save(self):
         start = string_to_int(self.le_start.text())
@@ -4596,11 +4607,15 @@ class DialogFeedSchedules(QDialog, Ui_DialogSchedules):
         self.cb_schedules.setCurrentIndex(self.cb_schedules.findData(sid))
 
     def add_item(self):
+        if self.schedule_id == 0:
+            return
         self.frm_edit.setEnabled(True)
         self.cb_recipe.setEnabled(True)
         self.item_id = -1   # New
 
     def remove_item(self):
+        if self.schedule_id == 0:
+            return
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Warning)
         msg.setWindowTitle("Confirm Remove")
@@ -4632,6 +4647,41 @@ class DialogFeedSchedules(QDialog, Ui_DialogSchedules):
         self.le_lpp.clear()
         self.le_frequency.clear()
         self.frm_edit.setEnabled(False)
+
+    def check_schedule(self):
+        sql = "SELECT start, dto, liters, rid, frequency FROM {} WHERE sid = {} ORDER BY start". \
+            format(DB_FEED_SCHEDULES, self.schedule_id)
+        rows_s = self.db.execute(sql)
+        errors = ""
+        r = 1
+        last = 0
+        for row in rows_s:
+            if r == 1 and row[0] != 0:
+                errors += "Row {}: Does not start a day zero".format(r)
+                break
+            if row[1] <= row[0]:
+                errors += "Row {}: End is before or same as start".format(r)
+                break
+            if r > 1 and (row[0] - 1 != last):
+                errors += "Row {}: Start is not 1 day after previous end".format(r)
+                break
+            last = row[1]
+            if row[2] < 0.1 or row[2] > 5:
+                errors += "Row {}: Invalid LPP (0.1 to 5)".format(r)
+                break
+            if not self.db.does_exist(DB_RECIPE_NAMES, "id", row[3]) == 0:
+                errors += "Row {}: No recipe".format(r)
+                break
+            if row[4] <= 0 or row[4] > 7:
+                errors += "Row {}: Invalid frequency. (1 to 7)".format(r)
+                break
+            r += 1
+        if len(errors) > 0:
+            self.lbl_error.setVisible(True)
+            self.lbl_error.setToolTip(errors)
+        else:
+            self.lbl_error.setVisible(False)
+            self.lbl_error.setToolTip("")
 
 
 class DialogIOVC(QDialog, Ui_Dialog_IO_VC):
