@@ -4484,6 +4484,7 @@ class DialogFeedSchedules(QDialog, Ui_DialogSchedules):
         self.pb_add_item.clicked.connect(self.add_item)
         self.pb_remove_item.clicked.connect(self.remove_item)
         self.load_recipe_list()
+        self.main_window.window_change.connect(self.window_change)
 
         style = """QToolTip {background-color: white; color: black;}
                    QLabel{background-color: red; color: yellow;}"""
@@ -4669,8 +4670,8 @@ class DialogFeedSchedules(QDialog, Ui_DialogSchedules):
             if row[2] < 0.1 or row[2] > 5:
                 errors += "Row {}: Invalid LPP (0.1 to 5)".format(r)
                 break
-            if not self.db.does_exist(DB_RECIPE_NAMES, "id", row[3]) == 0:
-                errors += "Row {}: No recipe".format(r)
+            if not self.db.does_exist(DB_RECIPE_NAMES, "id", row[3]):
+                errors += "Row {}: Recipe Missing".format(r)
                 break
             if row[4] <= 0 or row[4] > 7:
                 errors += "Row {}: Invalid frequency. (1 to 7)".format(r)
@@ -4682,6 +4683,11 @@ class DialogFeedSchedules(QDialog, Ui_DialogSchedules):
         else:
             self.lbl_error.setVisible(False)
             self.lbl_error.setToolTip("")
+
+    def window_change(self, win_name):
+        """ This ensures the recipe combo is updated when you create a new recipe in the recipe dialog"""
+        if win_name == self.windowTitle():
+            self.load_recipe_list()
 
 
 class DialogIOVC(QDialog, Ui_Dialog_IO_VC):
@@ -5231,69 +5237,74 @@ class DialogPatternMaker(QDialog, Ui_DialogPatterns):
         self.setupUi(self)
         self.sub = None
         self.pb_close.clicked.connect(lambda: self.sub.close())
-        self.main_panel = parent
-        self.db = self.main_panel.db
+        self.main_window = parent
+        self.db = self.main_window.db
 
         self.pattern_name = ""
         self.pattern_id = UNSET
-        self.load_patterns()
-        self.cb_patterns.editTextChanged.connect(self.check_pattern)
-        self.cb_patterns.installEventFilter(self)
-        self.cb_patterns.currentIndexChanged.connect(self.change_pattern)
+        self.is_auto_cal = False    # True when it is an auto calculate schedule
+        self.load_patterns_list()
+        self.lbl_error.setVisible(False)
+        self.cb_patterns.currentIndexChanged.connect(self.load_pattern)
+        self.pb_open_3.clicked.connect(lambda: self.main_window.wc.show(DialogFeedSchedules(self.main_window), onTop=True))
+        self.pb_cancel.clicked.connect(self.clear_item)
+        self.pb_save.clicked.connect(self.save)
+        self.pb_save_as.clicked.connect(self.save_as)
+        self.pb_add_item.clicked.connect(self.add_item)
+        self.ck_auto_cal.clicked.connect(self.change_auto_cal)
 
         self.header_labels = ["Stg", "Days", "Lighting", "Temperature", "Feeding", "Area"]
         self.tw_pattern_stages.setColumnCount(6)
         self.tw_pattern_stages.resizeRowsToContents()
         self.tw_pattern_stages.setHorizontalHeaderLabels(self.header_labels)
         self.tw_pattern_stages.resizeColumnsToContents()
-        self.tw_pattern_stages.activated.connect(self.show_item)
-        self.tw_pattern_stages.clicked.connect(self.show_item)
+        self.tw_pattern_stages.doubleClicked.connect(self.load_pattern_item)
+        self.load_lighting_list()
+        self.load_temperature_list()
+        self.load_feeding_list()
+        style = """QToolTip {background-color: white; color: black;}
+                   QLabel{background-color: red; color: yellow;}"""
+        self.lbl_error.setStyleSheet(style)
 
-    def eventFilter(self, source, event):
-        # Remember to install event filter for control first
-        # print("Event ", event.type())
-        # if event.type() == QtCore.QEvent.FocusOut:
-        #     if source is self.cb_patterns:
-        #         self.add_pattern()
-        return QWidget.eventFilter(self, source, event)
+    def load_lighting_list(self):
+        self.cb_lighting.clear()
+        rows = self.db.execute('SELECT name, id FROM {}'.format(DB_LIGHT_NAMES))
+        self.cb_lighting.addItem("Select", 0)
+        for row in rows:
+            self.cb_lighting.addItem(row[0], row[1])
 
-    def show_item(self):
-        stage = self.tw_pattern_stages.item(self.tw_pattern_stages.currentRow(), 0).text()
-        item = self.header_labels[self.tw_pattern_stages.currentColumn()]
-        print(stage, "   ", item)
+    def load_temperature_list(self):
+        self.cb_temperature.clear()
+        rows = self.db.execute('SELECT name, id FROM {}'.format(DB_TEMPERATURE_NAMES))
+        self.cb_temperature.addItem("Select", 0)
+        for row in rows:
+            self.cb_temperature.addItem(row[0], row[1])
 
-    def change_pattern(self):
-        self.pattern_id = self.cb_patterns.currentData()
-        self.load_stages()
-        self.le_id.setText(str(self.pattern_id))
+    def load_feeding_list(self):
+        self.cb_feeding.clear()
+        rows = self.db.execute('SELECT name, id FROM {}'.format(DB_FEED_SCHEDULE_NAMES))
+        self.cb_feeding.addItem("Select", 0)
+        for row in rows:
+            self.cb_feeding.addItem(row[0], row[1])
 
-    def load_patterns(self):
+    def load_patterns_list(self):
         self.cb_patterns.blockSignals(True)
         self.cb_patterns.clear()
         rows = self.db.execute('SELECT name, id FROM {}'.format(DB_PATTERN_NAMES))
-        self.cb_patterns.addItem("Select or Type", 0)
+        self.cb_patterns.addItem("Select", 0)
         for row in rows:
             self.cb_patterns.addItem(row[0], row[1])
         self.cb_patterns.blockSignals(False)
 
-    def check_pattern(self, txt):
-        self.pattern_id = self.cb_patterns.findText(txt)
-        self.pattern_name = txt
-
-    def add_pattern(self):
-        if self.pattern_id < 1:
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Warning)
-            msg.setText("Do you wish to create a new pattern " + self.pattern_name)
-            msg.setWindowTitle("Confirm New Pattern")
-            msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
-            msg.setDefaultButton(QMessageBox.Cancel)
-            if msg.exec_() == QMessageBox.Cancel:
-                return
+    def load_pattern(self):
+        self.pattern_id = self.cb_patterns.currentData()
+        row = self.db.execute_one_row("SELECT description, auto_cal FROM {} WHERE id = {}".format(DB_PATTERN_NAMES, self.pattern_id))
+        self.te_info.setText(row[0])
+        self.is_auto_cal = row[1]
+        if row[1] == 1:
+            self.ck_auto_cal.setChecked(True)
         else:
-            self.load_stages()
-
-    def load_stages(self):
+            self.ck_auto_cal.setChecked(False)
         rows = self.db.execute('SELECT stage, duration, lighting, temperature, feeding, location FROM {}'
                                ' WHERE pid = {} ORDER BY stage'.format(DB_STAGE_PATTERNS, self.pattern_id))
         r = 0
@@ -5313,6 +5324,151 @@ class DialogPatternMaker(QDialog, Ui_DialogPatterns):
                 self.tw_pattern_stages.setItem(r, c, ti)
             r += 1
         self.tw_pattern_stages.resizeColumnsToContents()
+        self.le_id.setText(str(self.pattern_id))
+        self.check_pattern()
+
+    def load_pattern_item(self):
+        self.frm_edit.setEnabled(True)
+        self.le_stage.setEnabled(False)
+        self.le_stage.setText(self.tw_pattern_stages.item(self.tw_pattern_stages.currentRow(), 0).text())
+        self.le_days.setText(self.tw_pattern_stages.item(self.tw_pattern_stages.currentRow(), 1).text())
+        self.le_area.setText(self.tw_pattern_stages.item(self.tw_pattern_stages.currentRow(), 5).text())
+
+        self.cb_lighting.setCurrentIndex(
+            self.cb_lighting.findText(self.tw_pattern_stages.item(self.tw_pattern_stages.currentRow(), 2).text()))
+        self.cb_temperature.setCurrentIndex(
+            self.cb_temperature.findText(self.tw_pattern_stages.item(self.tw_pattern_stages.currentRow(), 3).text()))
+        self.cb_feeding.setCurrentIndex(
+            self.cb_feeding.findText(self.tw_pattern_stages.item(self.tw_pattern_stages.currentRow(), 4).text()))
+
+    def save(self):
+        stage = string_to_int(self.le_stage.text())
+        days = string_to_int(self.le_days.text())
+        area = string_to_float(self.le_area.text())
+        lighting = self.cb_lighting.currentData()
+        temperature = self.cb_temperature.currentData()
+        feeding = self.cb_feeding.currentData()
+        if self.db.execute_single('SELECT pid FROM {} WHERE pid = {} AND stage = {}'.
+                                  format(DB_STAGE_PATTERNS, self.pattern_id, stage)) is None:
+            # New
+            sql = 'INSERT INTO {} (pid, stage, duration, lighting, temperature, feeding, location) VALUES ({}, {}, {}, {}, {}, {}, {})'.\
+                format(DB_STAGE_PATTERNS, self.pattern_id, stage, days, lighting, temperature, feeding, area)
+        else:
+            sql = 'UPDATE {} SET duration = {}, lighting = {}, temperature = {}, feeding = {}, ' \
+                  'location = {} WHERE pid = {} AND stage = {} LIMIT 1'.\
+                format(DB_STAGE_PATTERNS, days, lighting, temperature, feeding, area, self.pattern_id, stage)
+        self.db.execute_write(sql)
+        self.db.execute_write('UPDATE {} SET description = "{}" WHERE id = {}'.
+                              format(DB_PATTERN_NAMES, self.te_info.toPlainText(), self.pattern_id))
+        self.clear_item()
+        self.load_pattern()
+
+    def save_as(self):
+        cancel, name = DialogInputBasic.get_name(self.main_window, "Enter name for new pattern")
+        if cancel == 1:
+            return
+        if self.db.does_exist(DB_PATTERN_NAMES, 'name', name):
+            msg = QMessageBox()
+            msg.setIcon(QMessageBox.Warning)
+            msg.setText("A schedule with this name already exists ")
+            msg.setWindowTitle("Error")
+            msg.setStandardButtons(QMessageBox.Cancel)
+            msg.exec_()
+            return
+
+        print(name)
+        # Creating new recipe, first put name into names table
+        stage = string_to_int(self.le_stage.text())
+        days = string_to_int(self.le_days.text())
+        area = string_to_float(self.le_area.text())
+        lighting = self.cb_lighting.currentData()
+        temperature = self.cb_temperature.currentData()
+        feeding = self.cb_feeding.currentData()
+        info = self.te_info.toPlainText() + " (Copy)"
+        sql = 'INSERT INTO {} (name, info) VALUES ("{}", "{}")'.format(DB_PATTERN_NAMES, name, info)
+        self.db.execute_write(sql)
+        org_pid = self.pattern_id
+        pid = self.pattern_id = self.db.execute_single("SELECT LAST_INSERT_ID()")
+        self.copy_pattern(org_pid, pid)
+        sql = 'UPDATE {} SET duration = {}, lighting = {}, temperature = {}, feeding = {}, ' \
+              'location = {} WHERE pid = {} AND stage = {} LIMIT 1'. \
+            format(DB_STAGE_PATTERNS, days, lighting, temperature, feeding, area, self.pattern_id, stage)
+        self.db.execute_write(sql)
+        self.clear_item()
+        self.load_patterns_list()
+        self.cb_patterns.setCurrentIndex(self.cb_patterns.findData(pid))
+
+    def copy_pattern(self, f_id, t_id):
+        rows = self.db.execute('SELECT stage, duration, lighting, temperature, feeding, location FROM {} '
+                               'WHERE pid = {}'.format(DB_STAGE_PATTERNS, f_id))
+        for row in rows:
+            sql = 'INSERT INTO {} (pid, stage, duration, lighting, temperature, feeding, location) ' \
+                  'VALUES ({}, {}, {}, {}, {}, {}, {})'. \
+                format(DB_STAGE_PATTERNS, t_id, row[0], row[1], row[2], row[3], row[4], row[5])
+            self.db.execute_write(sql)
+
+    def change_auto_cal(self):
+        self.is_auto_cal = self.ck_auto_cal.isChecked()
+        sql = 'UPDATE {} SET auto_cal = {} WHERE id = {} LIMIT 1'.\
+            format(DB_PATTERN_NAMES, self.is_auto_cal, self.pattern_id)
+        self.db.execute_write(sql)
+
+    def check_pattern(self):
+        sql = 'SELECT stage, duration, lighting, temperature, feeding, location FROM {} WHERE pid = {} ORDER BY stage'.\
+            format(DB_STAGE_PATTERNS, self.pattern_id)
+        rows_s = self.db.execute(sql)
+        errors = ""
+        r = 1
+        last = len(rows_s)
+        for row in rows_s:
+            if r != row[0]:
+                errors += "Row {}: Incorrect stage. Expecting stage {}".format(r, r)
+                break
+            if not row[1] > 0 and r != 3:
+                errors += "Row {}: The days must be greater than zero".format(r)
+                break
+            if r == 3:
+                if self.is_auto_cal and row[1] != 0:
+                    errors += "Row {}: Days should be zero for auto calculate schedules".format(r)
+                    break
+                if not self.is_auto_cal and row[1] == 0:
+                    errors += "Row {}: The days must be greater than zero".format(r)
+                    break
+            if r < last:
+                if not self.db.does_exist(DB_LIGHT_NAMES, "id", row[2]):
+                    errors += "Row {}: Lighting Schedule Missing".format(r)
+                    break
+                if not self.db.does_exist(DB_TEMPERATURE_NAMES, "id", row[3]):
+                    errors += "Row {}: Temperature Schedule Missing".format(r)
+                    break
+                if not self.db.does_exist(DB_FEED_SCHEDULE_NAMES, "id", row[5]):
+                    errors += "Row {}: Lighting Schedule Missing".format(r)
+                    break
+                if row[5] < 1 or row[5] > 3:
+                    errors += "Row {}: Invalid area. (1 to 3)".format(r)
+                    break
+            r += 1
+        if len(errors) > 0:
+            self.lbl_error.setVisible(True)
+            self.lbl_error.setToolTip(errors)
+        else:
+            self.lbl_error.setVisible(False)
+            self.lbl_error.setToolTip("")
+
+    def add_item(self):
+        if self.pattern_id == 0:
+            return
+        self.frm_edit.setEnabled(True)
+        self.le_stage.setEnabled(True)
+
+    def clear_item(self):
+        self.cb_lighting.setCurrentIndex(0)
+        self.cb_temperature.setCurrentIndex(0)
+        self.cb_feeding.setCurrentIndex(0)
+        self.le_stage.clear()
+        self.le_days.clear()
+        self.le_area.clear()
+        self.frm_edit.setEnabled(False)
 
 
 class DialogAccessModule(QDialog, Ui_DialogDEmodule):

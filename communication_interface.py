@@ -206,17 +206,12 @@ class CommunicationInterface(QObject):
                 data_list.pop(0)  # Remove command from list
                 data_list.pop()  # Remove blank line
                 data_list.pop()  # Remove goodbye
-                # self.process_command(command, data_list, received)
-                # return
             else:  # Slave PC
                 data_list = received.split(",")
-                # command = data_list[0][1:]
                 command = data_list[0]
                 command = command.replace('<', '')
                 command = command.replace('>', '')
                 data_list.pop(0)  # Remove command from list
-                # self.process_relay_command(command, data_list)
-                # return
         else:  # This will be all responses to requests by other PC
             data_list = received.split("\r\n")
             command = data_list[0]

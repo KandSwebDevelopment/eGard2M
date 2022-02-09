@@ -223,7 +223,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         if self.master_mode == SLAVE:
             self.slave_counter += 1
             if self.slave_counter > 6:
-                self.msg_sys.add("Master/Slave Data link lost", MSG_DATA_LINK, CRITICAL, persistent=0)
+                self.msg_sys.add("Master/Slave Data link lost", MSG_DATA_LINK, CRITICAL)
 
     def loop_3(self):  # 10 sec
         if self.master_mode == MASTER:
