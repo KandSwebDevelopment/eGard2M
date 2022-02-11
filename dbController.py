@@ -223,7 +223,6 @@ class MysqlDB(QObject):
         """ Checks the table to see if value is in column """
         sql = 'SELECT ' + column + ' FROM ' + table_name + ' WHERE ' + column + ' = "' + str(value) + '"'
         row = self.execute_single(sql)
-        print(row)
         if row is None:
             return False
         return row

@@ -254,7 +254,7 @@ class Logger(QObject):
         if not self.available:
             return ""
         p = ""
-        if log_type == LOG_DATA:
+        if log_type == LOG_DATA or log_type == LOG_SOIL:
             p = self.log_path
         elif log_type == LOG_EVENTS:
             p = self.events_path
@@ -278,7 +278,7 @@ class Logger(QObject):
         except FileNotFoundError:
             return "File Missing " + log
         if text == "":
-            return "There as no entries in this journal"
+            return "There as no entries in this file"
         entries = text.split("\n")
         return entries
 
