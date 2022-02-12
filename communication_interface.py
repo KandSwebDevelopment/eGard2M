@@ -271,7 +271,8 @@ class CommunicationInterface(QObject):
         #         self.relay_send(NWC_SWITCH_TIMED, prams[0], prams[1])
         elif command == COM_SENSOR_READ:
             self.update_sensors.emit(prams)
-            self.relay_command(relay_command)
+            if self.master_mode == MASTER:
+                self.relay_command(relay_command)
         elif command == COM_OTHER_READINGS:
             self.update_other_readings.emit(prams)
             self.update_float_switch.emit(1, int(prams[2]))
