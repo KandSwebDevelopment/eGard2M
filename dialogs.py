@@ -2591,9 +2591,8 @@ class DialogNutrientPumpCalibrate(QDialog, Ui_dialogNutrientPumpCalibrate):
         # self.ctrl_on = -1
         # self.last = 0
         self.feeder_unit = self.main_window.feeder_unit
-        self.pb_save_mix.clicked.connect(self.save_mix)
         self.pb_stop.clicked.connect(self.stop)
-        self.pb_run_mix.clicked.connect(self.calibrate_mix_pump)
+        # self.pb_run_mix.clicked.connect(self.calibrate_mix_pump)
         self.lbl_running.setVisible(False)
         for x in range(1, 9):
             getattr(self, "pb_run_%i" % x).clicked.connect(partial(self.calibrate, x))
