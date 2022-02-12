@@ -59,6 +59,7 @@ class UdpClient(QObject):
                     self.update_status.emit(self.id, FC_UDP_DROP, to[1])
             except Exception as e:
                 print("UDP Client Error Error: ", e)
+                print("Cmd:{}   Data:{}".format(cmd, data))
             cmd = ""
             while cmd == "":
                 cmd, to = self.my_parent.get_next_udp_communication(self.id)

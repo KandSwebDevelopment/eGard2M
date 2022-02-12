@@ -191,56 +191,59 @@ class CommunicationInterface(QObject):
         # self.update_network_status.emit(sid, status)
 
     def process_incoming(self, received, source, sender=""):
-        self.update_received.emit(received, sender)
-        # print("sender ", sender)
-        if sender[0] == self.slave_ip:
-            if self.main_window.main_panel.slave_counter > 6:   # Will only remove if its there, and will only be here when received
-                self.main_window.msg_sys.remove(MSG_DATA_LINK)
-            self.main_window.main_panel.slave_counter = 0
-        if source == "UPD_server":
-            if "\r\n" in received:  # This will be IO & DE broadcasts and slave will receive here from master
+        try:
+            self.update_received.emit(received, sender)
+            # print("sender ", sender)
+            if sender[0] == self.slave_ip:
+                if self.main_window.main_panel.slave_counter > 6:   # Will only remove if its there, and will only be here when received
+                    self.main_window.msg_sys.remove(MSG_DATA_LINK)
+                self.main_window.main_panel.slave_counter = 0
+            if source == "UPD_server":
+                if "\r\n" in received:  # This will be IO & DE broadcasts and slave will receive here from master
+                    data_list = received.split("\r\n")
+                    command = data_list[0]
+                    command = command.replace('<', '')
+                    command = command.replace('>', '')
+                    data_list.pop(0)  # Remove command from list
+                    data_list.pop()  # Remove blank line
+                    data_list.pop()  # Remove goodbye
+                else:  # Slave PC
+                    data_list = received.split(",")
+                    command = data_list[0]
+                    command = command.replace('<', '')
+                    command = command.replace('>', '')
+                    data_list.pop(0)  # Remove command from list
+            else:  # This will be all responses to requests by other PC
                 data_list = received.split("\r\n")
                 command = data_list[0]
                 command = command.replace('<', '')
                 command = command.replace('>', '')
                 data_list.pop(0)  # Remove command from list
-                data_list.pop()  # Remove blank line
-                data_list.pop()  # Remove goodbye
-            else:  # Slave PC
-                data_list = received.split(",")
-                command = data_list[0]
-                command = command.replace('<', '')
-                command = command.replace('>', '')
-                data_list.pop(0)  # Remove command from list
-        else:  # This will be all responses to requests by other PC
-            data_list = received.split("\r\n")
-            command = data_list[0]
-            command = command.replace('<', '')
-            command = command.replace('>', '')
-            data_list.pop(0)  # Remove command from list
-            if len(data_list) > 0 and sender[1] != self.fu_port:
-                data_list.pop()  # Remove blank line
-                data_list.pop()  # Remove goodbye
-        if self.master_mode == MASTER and (sender[1] == self.pc_relay_port or sender[1] == self.slave_port):
-            relay_command = ""
-        elif self.mode == SLAVE:
-            relay_command = ""
-        else:
-            relay_command = received
-        if sender[1] == self.io_port:
-            module = MODULE_IO
-        elif sender[1] == self.de_port:
-            module = MODULE_DE
-        elif sender[1] == self.pc_relay_port:
-            module = MODULE_SL
-        elif sender[1] == self.fu_port:
-            module = MODULE_FU
-            self.update_feeder_unit.emit(command, data_list)
-            self.relay_send(NWC_FEEDER_UPDATE, received)
-            return
-        else:
-            module = 999
-        self.process_command(command, data_list, relay_command, module)
+                if len(data_list) > 0 and sender[1] != self.fu_port:
+                    data_list.pop()  # Remove blank line
+                    data_list.pop()  # Remove goodbye
+            if self.master_mode == MASTER and (sender[1] == self.pc_relay_port or sender[1] == self.slave_port):
+                relay_command = ""
+            elif self.mode == SLAVE:
+                relay_command = ""
+            else:
+                relay_command = received
+            if sender[1] == self.io_port:
+                module = MODULE_IO
+            elif sender[1] == self.de_port:
+                module = MODULE_DE
+            elif sender[1] == self.pc_relay_port:
+                module = MODULE_SL
+            elif sender[1] == self.fu_port:
+                module = MODULE_FU
+                self.update_feeder_unit.emit(command, data_list)
+                self.relay_send(NWC_FEEDER_UPDATE, received)
+                return
+            else:
+                module = 999
+            self.process_command(command, data_list, relay_command, module)
+        except Exception as e:
+            print("Process incoming Error ", e)
 
     def process_command(self, command, prams, relay_command, module):
         """
@@ -271,8 +274,8 @@ class CommunicationInterface(QObject):
         #         self.relay_send(NWC_SWITCH_TIMED, prams[0], prams[1])
         elif command == COM_SENSOR_READ:
             self.update_sensors.emit(prams)
-            if self.master_mode == MASTER:
-                self.relay_command(relay_command)
+            # if self.master_mode == MASTER:
+            self.relay_command(relay_command)
         elif command == COM_OTHER_READINGS:
             self.update_other_readings.emit(prams)
             self.update_float_switch.emit(1, int(prams[2]))
@@ -352,7 +355,8 @@ class CommunicationInterface(QObject):
             return
             # Floats
         elif command == NWC_WATER_LEVELS or\
-                command == NWC_FAN_REQUIRED:
+                command == NWC_FAN_REQUIRED or\
+                command == COM_KWH:
             self.update_from_relay.emit(command, [float(prams[0]), float(prams[1])])
             return
             # Second pram is Bool
