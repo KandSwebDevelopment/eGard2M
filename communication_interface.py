@@ -357,12 +357,15 @@ class CommunicationInterface(QObject):
             elif command == NWC_QUE_STATUS:
                 self.update_que_status.emit(int(prams[0]), int(prams[1]), int(prams[2]), int(prams[3]))
                 return
-                # Floats
+                # Both Floats
             elif command == NWC_WATER_LEVELS or\
                     command == NWC_FAN_REQUIRED or\
-                    command == COM_READ_KWH or\
                     command == COM_KWH:
                 self.update_from_relay.emit(command, [float(prams[0]), float(prams[1])])
+                return
+            # One float
+            elif command == COM_READ_KWH:
+                self.update_from_relay.emit(command, [float(prams[0])])
                 return
                 # Second pram is Bool
             elif command == NWC_OUTPUT_LOCK:
