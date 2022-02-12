@@ -360,6 +360,7 @@ class CommunicationInterface(QObject):
                 # Floats
             elif command == NWC_WATER_LEVELS or\
                     command == NWC_FAN_REQUIRED or\
+                    command == COM_READ_KWH or\
                     command == COM_KWH:
                 self.update_from_relay.emit(command, [float(prams[0]), float(prams[1])])
                 return
