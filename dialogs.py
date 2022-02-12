@@ -2609,6 +2609,10 @@ class DialogNutrientPumpCalibrate(QDialog, Ui_dialogNutrientPumpCalibrate):
             txt = ""
             if pots[row]['level'] != 0:
                 txt = "{}ms/ml  {}ml/s".format(pots[row]['time'], round(1 / pots[row]['time'] * 1000, 1))
+            if pots[row]['name'] is None:
+                getattr(self, "pb_run_%i" % row).setEnabled(False)
+                getattr(self, "pb_save_%i" % row).setEnabled(False)
+                getattr(self, "pb_dispense_%i" % row).setEnabled(False)
             getattr(self, "lbl_current_%i" % row).setText(txt)
 
     def fu_update(self, command, data):
@@ -5312,6 +5316,7 @@ class DialogGraphEnv(QDialog, Ui_DialogGraphEnv):
         txt = self.logger.get_log(LOG_DATA, log)
         self.power_values.clear()
         self.times = []
+        v = [0, 0]
         start = 0
         for row in txt:
             if row == "":
@@ -5926,6 +5931,7 @@ class DialogNutrients(QDialog, Ui_DialogNutrients):
                                                            format(DB_FEEDER_POTS, self.pot_id)))
             self.clear()
             self.load_nutrients_list()
+            self.main_window.feeder_unit.load_pots()
             self.load_pots_list()
 
     def save_pot(self):
@@ -5955,6 +5961,7 @@ class DialogNutrients(QDialog, Ui_DialogNutrients):
         self.db.execute_write(sql)
         self.clear()
         self.load_nutrients_list()
+        self.main_window.feeder_unit.load_pots()
         self.load_pots_list()
 
     def pot_add(self):
@@ -5972,10 +5979,12 @@ class DialogNutrients(QDialog, Ui_DialogNutrients):
                                                            format(DB_FEEDER_POTS, self.pot_id)))
             self.clear()
             self.load_nutrients_list()
+            self.main_window.feeder_unit.load_pots()
             self.load_pots_list()
 
     def nutrient_add(self):
         amount = string_to_float(self.le_nutrient_add.text())
+        self.msg.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
         self.msg.setText("Confirm you wish to change <b>{}</b> by {}mls".format(self.nutrient_name, amount))
         if self.msg.exec_() == QMessageBox.Yes:
             self.db.execute_write("UPDATE {} SET current_level = current_level + {} WHERE nid = {} LIMIT 1".
@@ -7465,7 +7474,6 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         self.running = False  # True when running an action
         self.us_tank = 1  # Tank number to operate us sensor
         self.servo_valve = 0
-        # self.rbustank_1.setChecked(True)
 
         self.pb_close.clicked.connect(lambda: self.sub.close())
         self.toolBox.currentChanged.connect(self.tab_change)
@@ -7543,6 +7551,13 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         self.cb_feeder_auto_stir.addItem("12 Hrs", 12)
         self.cb_feeder_auto_stir.addItem("24 Hrs", 24)
         self.cb_feeder_auto_stir.currentIndexChanged.connect(self.feeder_auto_stir)
+        self.le_feeder_stir_nutrients.editingFinished.connect(self.simple_save)
+        self.le_feeder_stri_mix.editingFinished.connect(self.simple_save)
+        self.le_feeder_flush.editingFinished.connect(self.simple_save)
+        self.le_feeder_feed_litres.editingFinished.connect(self.simple_save)
+        self.le_feeder_soak.editingFinished.connect(self.simple_save)
+        self.le_feeder_man_max.editingFinished.connect(self.simple_save)
+        self.le_mix_max.editingFinished.connect(self.simple_save)
 
         self.toolBox.setCurrentIndex(0)
 
@@ -7601,6 +7616,16 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         self.db.set_config_both(CFT_DISPATCH, "ppg", string_to_int(self.le_dispatch_ppg.text()))
         self.db.set_config_both(CFT_DISPATCH, "empty grams", string_to_int(self.le_dispatch_empty.text()))
         self.db.set_config_both(CFT_DISPATCH, "estimate per plant", string_to_int(self.le_dispatch_per_item.text()))
+
+    def simple_save(self):
+        table = self.sender().table
+        title = self.sender().title
+        key = self.sender().key
+        value = self.sender().text()
+        if table is None or title is None or key is None:
+            return
+        if table == DB_CONFIG:
+            self.db.set_config_both(title, key, value)
 
     def electric_update(self):
         self.msg.setText("Confirm you wish update the price per unit")

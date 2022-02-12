@@ -257,6 +257,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.coms_interface.send_command(NWC_SOIL_READ)
             if self.nutrient_auto_stir > 0 and datetime.now().hour % self.nutrient_auto_stir == 0 and datetime.now().minute < 2:
                 print("Stirred Nutrients --------- ", datetime.now())
+                self.coms.send_data(CMD_SWITCH_TIMED, True, MODULE_FU, SW_NUTRIENT_STIR, ON,
+                                    self.main_window.feeder_unit.nutrient_stir_time / 2)
 
     def loop_15(self):  # 3 Min
         if self.main_window.access.has_status(ACS_COVER_OPEN) and \
