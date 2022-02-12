@@ -343,33 +343,26 @@ class CommunicationInterface(QObject):
     def process_relay_command(self, command, prams):
         if command == NWC_MODULES_STATUS:
             self.update_network_status.emit(int(prams[0]), int(prams[1]))
+            return
         elif command == NWC_QUE_STATUS:
             self.update_que_status.emit(int(prams[0]), int(prams[1]), int(prams[2]), int(prams[3]))
-
+            return
             # Floats
         elif command == NWC_WATER_LEVELS or\
                 command == NWC_FAN_REQUIRED:
             self.update_from_relay.emit(command, [float(prams[0]), float(prams[1])])
-
+            return
             # Second pram is Bool
         elif command == NWC_OUTPUT_LOCK:
             self.update_from_relay.emit(command, [float(prams[0]), strtobool(prams[1])])
-
+            return
         elif command == NWC_FEEDER_UPDATE:
             p = prams
             c = p.pop(0)
             c = c.replace('<', '')
             c = c.replace('>', '')
             self.update_feeder_unit.emit(c, p)
-
-        # # No prams
-        # if prams is None:
-        #     self.update_from_relay.emit(command, [])
-        # elif len(prams) == 1:
-        #     self.update_from_relay.emit(command, [int(prams[0])])
-        # else:
-        #     self.update_from_relay.emit(command, [int(prams[0]), int(prams[1])])
-
+            return
         elif command == NWC_WORKSHOP_HEATER or \
                 command == NWC_ACCESS_BOOST or \
                 command == NWC_DRYING_AREA or \
@@ -385,6 +378,7 @@ class CommunicationInterface(QObject):
                 command == NWC_WORKSHOP_RANGES or \
                 command == NWC_SOIL_LOAD:
             self.update_from_relay.emit(command, [])
+            return
         # 1 pram
         elif command == NWC_FEED_DATE or \
                 command == NWC_FAN_PID or \
@@ -401,6 +395,7 @@ class CommunicationInterface(QObject):
                 command == NWC_WORKSHOP_FROST or \
                 command == NWC_WORKSHOP_BOOST:
             self.update_from_relay.emit(command, [int(prams[0])])
+            return
         # 2 prams
         elif command == NWC_OUTPUT or \
                 command == NWC_OUTPUT_MODE or \
@@ -414,7 +409,15 @@ class CommunicationInterface(QObject):
                 command == NWC_FAN_REQUIRED or \
                 command == NWC_FAN_UPDATE:
             self.update_from_relay.emit(command, [int(prams[0]), int(prams[1])])
-        # 2 float prams
+            return
+
+        # No prams
+        if prams is None:
+            self.update_from_relay.emit(command, [])
+        elif len(prams) == 1:
+            self.update_from_relay.emit(command, [int(prams[0])])
+        else:
+            self.update_from_relay.emit(command, [int(prams[0]), int(prams[1])])
 
     # Sending functions communication
     def get_next_udp_communication(self, who) -> (str, tuple):

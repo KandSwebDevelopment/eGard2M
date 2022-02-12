@@ -13,7 +13,22 @@ class FeederUnit(QObject):
         self.db = parent.db
         self.pots = collections.defaultdict(dict)
         self.coms = self.main_window.coms_interface
+        self.nutrient_stir_time = 0
+        self.soak_time = 0
+        self.flush_litres = 0
+        self.spillage_litres = 0
+        self.max_mix_litres = 0
+        self.mix_stir_time = 0
+        self.feed_litres = 0
+        self.max_man_litres = 0
+        self.correction_mix_fill = 0
+        self.correction_mix_empty = 0
 
+        self.valve_open = 0     # Feed valve open so it knows what open to close
+        self.load_config()
+        self.load_pots()
+
+    def load_config(self):
         self.nutrient_stir_time = int(self.db.get_config(CFT_FEEDER, "nutrient stir time", 30)) * 1000
         self.soak_time = int(self.db.get_config(CFT_FEEDER, "soak time", 10))
         self.flush_litres = int(self.db.get_config(CFT_FEEDER, "flush litres", 2))
@@ -24,9 +39,6 @@ class FeederUnit(QObject):
         self.max_man_litres = int(self.db.get_config(CFT_FEEDER, "max manual feed", 1))
         self.correction_mix_fill = int(self.db.get_config(CFT_FEEDER, "correction_mix_fill", 50))
         self.correction_mix_empty = int(self.db.get_config(CFT_FEEDER, "correction_mix_empty", 50))
-        self.valve_open = 0     # Feed valve open so it knows what open to close
-
-        self.load_pots()
 
     def load_pots(self):
         rows = self.db.execute('SELECT pot, size, current_level, max, min, ml10, pin FROM {}'.format(DB_FEEDER_POTS))

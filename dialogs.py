@@ -7550,13 +7550,13 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         self.cb_feeder_auto_stir.addItem("12 Hrs", 12)
         self.cb_feeder_auto_stir.addItem("24 Hrs", 24)
         self.cb_feeder_auto_stir.currentIndexChanged.connect(self.feeder_auto_stir)
-        self.le_feeder_stir_nutrients.editingFinished.connect(self.simple_save)
-        self.le_feeder_stri_mix.editingFinished.connect(self.simple_save)
-        self.le_feeder_flush.editingFinished.connect(self.simple_save)
-        self.le_feeder_feed_litres.editingFinished.connect(self.simple_save)
-        self.le_feeder_soak.editingFinished.connect(self.simple_save)
-        self.le_feeder_man_max.editingFinished.connect(self.simple_save)
-        self.le_mix_max.editingFinished.connect(self.simple_save)
+        self.le_feeder_stir_nutrients.editingFinished.connect(self.feeder_simple_save)
+        self.le_feeder_stri_mix.editingFinished.connect(self.feeder_simple_save)
+        self.le_feeder_flush.editingFinished.connect(self.feeder_simple_save)
+        self.le_feeder_feed_litres.editingFinished.connect(self.feeder_simple_save)
+        self.le_feeder_soak.editingFinished.connect(self.feeder_simple_save)
+        self.le_feeder_man_max.editingFinished.connect(self.feeder_simple_save)
+        self.le_mix_max.editingFinished.connect(self.feeder_simple_save)
 
         self.toolBox.setCurrentIndex(0)
 
@@ -7616,15 +7616,19 @@ class DialogSettings(QDialog, Ui_dialogSettingsAll):
         self.db.set_config_both(CFT_DISPATCH, "empty grams", string_to_int(self.le_dispatch_empty.text()))
         self.db.set_config_both(CFT_DISPATCH, "estimate per plant", string_to_int(self.le_dispatch_per_item.text()))
 
-    def simple_save(self):
-        table = self.sender().table
-        title = self.sender().title
-        key = self.sender().key
-        value = self.sender().text()
-        if table is None or title is None or key is None:
-            return
-        if table == DB_CONFIG:
-            self.db.set_config_both(title, key, value)
+    def feeder_simple_save(self):
+        if self.sender().isModified():
+            self.sender().setModified(False)
+            table = self.sender().property('table')
+            title = self.sender().property('title')
+            key = self.sender().property('key')
+            value = self.sender().text()
+            if table is None or title is None or key is None:
+                return
+            if table == DB_CONFIG:
+                self.db.set_config_both(title, key, value)
+            self.main_window.feeder_unit.load_config()
+            self.main_window.coms_interface.relay_send(NWC_FEEDER_CONFIG)
 
     def electric_update(self):
         self.msg.setText("Confirm you wish update the price per unit")

@@ -257,8 +257,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.coms_interface.send_command(NWC_SOIL_READ)
             if self.nutrient_auto_stir > 0 and datetime.now().hour % self.nutrient_auto_stir == 0 and datetime.now().minute < 2:
                 print("Stirred Nutrients --------- ", datetime.now())
-                self.coms.send_data(CMD_SWITCH_TIMED, True, MODULE_FU, SW_NUTRIENT_STIR, ON,
-                                    self.main_window.feeder_unit.nutrient_stir_time / 2)
+                self.coms_interface.send_data(CMD_SWITCH_TIMED, True, MODULE_FU, SW_NUTRIENT_STIR, ON,
+                                              self.main_window.feeder_unit.nutrient_stir_time / 2)
 
     def loop_15(self):  # 3 Min
         if self.main_window.access.has_status(ACS_COVER_OPEN) and \
@@ -1264,16 +1264,9 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.feed_controller.reload_area(data[0])
             self.update_duration_texts()
             self.check_stage(data[0])
-        elif cmd == NWC_OUTPUT_SENSOR:
-            self.area_controller.output_controller.outputs[data[0]].set_input_sensor(data[1])
-        elif cmd == NWC_OUTPUT_MODE:
-            self.area_controller.output_controller.outputs[data[0]].set_mode(data[1])
-        elif cmd == NWC_OUTPUT_TRIGGER:
-            self.area_controller.output_controller.outputs[data[0]].set_detection(data[1])
-        elif cmd == NWC_OUTPUT_LOCK:
-            self.area_controller.output_controller.outputs[data[0]].update_locked(data[1])
-        elif cmd == NWC_OUTPUT_RANGE:
-            self.area_controller.output_controller.reload_range(data[0])
+        elif cmd == NWC_CHANGE_TO_FLUSHING:
+            self.check_stage(2)
+
         elif cmd == NWC_FAN_UPDATE:
             if data[0] == data[1] == 100:
                 self.coms_interface.relay_send(NWC_FAN_UPDATE, self.area_controller.fan_controller.get_speed(1),
@@ -1293,8 +1286,8 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.area_controller.fan_controller.speed_update(data[0], data[1])
         elif cmd == NWC_FAN_SENSOR:
             self.area_controller.fan_controller.set_fan_sensor(data[0], data[1])
-        elif cmd == NWC_PROCESS_MIX_CHANGE:
-            self.main_window.feed_controller.reload_area(data[0])
+        elif cmd == NWC_FEEDER_CONFIG:
+            self.main_window.feeder_unit.load_config()
         elif cmd == NWC_FEED_DATE:
             self.feed_controller.feeds[data[0]].load_feed_date()
             self.update_next_feeds()
@@ -1306,32 +1299,49 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
             self.area_controller.output_controller.water_heater_update_info()
             self.update_next_feeds()
             self.update_water_required()
-        elif cmd == NWC_CHANGE_TO_FLUSHING:
-            self.check_stage(2)
         elif cmd == NWC_FINISH_ITEM:
             self.area_controller.reload_area(3)
             self.check_stage(3)
+
+        elif cmd == NWC_MESSAGE:
+            self.main_window.msg_sys.load()
         elif cmd == NWC_MOVE_TO_FINISHING:
             self.area_controller.reload_area(2)
             self.area_controller.reload_area(3)
             self.check_stage(2)
             self.check_stage(3)
             self.feed_controller.reload_area(2)
+
         elif cmd == NWC_NUTRIENTS_AUTO_STIR:
             self.nutrient_auto_stir = int(self.db.get_config(CFT_FEEDER, "auto stir", 6))
+
+        elif cmd == NWC_OUTPUT_SENSOR:
+            self.area_controller.output_controller.outputs[data[0]].set_input_sensor(data[1])
+        elif cmd == NWC_OUTPUT_MODE:
+            self.area_controller.output_controller.outputs[data[0]].set_mode(data[1])
+        elif cmd == NWC_OUTPUT_TRIGGER:
+            self.area_controller.output_controller.outputs[data[0]].set_detection(data[1])
+        elif cmd == NWC_OUTPUT_LOCK:
+            self.area_controller.output_controller.outputs[data[0]].update_locked(data[1])
+        elif cmd == NWC_OUTPUT_RANGE:
+            self.area_controller.output_controller.reload_range(data[0])
+
+        elif cmd == NWC_PROCESS_MIX_CHANGE:
+            self.main_window.feed_controller.reload_area(data[0])
+
         elif cmd == NWC_RELOAD_PROCESSES:
             self.area_controller.load_processes()
             self.update_duration_texts()
             self.check_stage(1)
             self.check_stage(2)
+
         elif cmd == NWC_SOIL_LOAD:
             self.area_controller.soil_sensors.load()
         elif cmd == NWC_STOCK_TOTAL:
             self.main_window.update_stock()
         elif cmd == NWC_SWITCH_REQUEST:
             self.get_switch_position(data[0])
-        elif cmd == NWC_MESSAGE:
-            self.main_window.msg_sys.load()
+
         elif cmd == NWC_WATER_REQUIRED:
             pass
         elif cmd == NWC_WH_DURATION:

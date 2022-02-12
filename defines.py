@@ -355,6 +355,7 @@ NWC_FAN_PID = "fan pid"                     # Fan PID values has changed, fan nu
 NWC_FAN_REQUIRED = "fan required"           # Fan required temperature has changed, fan num, value
 NWC_FAN_UPDATE = "fan update"               # Update slaves fan speeds, fan 1 speed, fan 2 speed  100, 100 for speed is a request
 NWC_FEEDER_UPDATE = "feeder_update"         # A communication was received from the FU
+NWC_FEEDER_CONFIG = "feeder_config"         # Feeder reload configs,
 NWC_FINISH_ITEM = "finish item"             # An item has finished (drying), item num
 NWC_MESSAGE = "message"                     # Refresh msg sys
 NWC_MODULES_STATUS = "modules_status"       # I/O D/E modules on/off line
