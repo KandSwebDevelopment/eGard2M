@@ -345,6 +345,8 @@ class CommunicationInterface(QObject):
         if command == NWC_MODULES_STATUS:
             self.update_network_status.emit(int(prams[0]), int(prams[1]))
             return
+        elif command == NWC_SENSOR_READ:
+            return
         elif command == NWC_QUE_STATUS:
             self.update_que_status.emit(int(prams[0]), int(prams[1]), int(prams[2]), int(prams[3]))
             return
