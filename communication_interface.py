@@ -40,7 +40,7 @@ class CommunicationInterface(QObject):
     update_system = pyqtSignal(str, list, name="updateSystem")    # System related  command, data
     update_fan_speed = pyqtSignal(int, int, name="updateFanSpeed")     # Fan no, speed
     update_feeder_unit = pyqtSignal(str, list, name="updateFeeder_unit")    # A signal has been received from the FU.
-    #  It is issued for all commands and will only be picked up by require dialogs. Cmd, prams
+    #                           It is issued for all commands and will only be picked up by require dialogs. Cmd, prams
 
     def __init__(self, parent=None):
         """

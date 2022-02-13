@@ -2533,6 +2533,7 @@ class DialogWaterTanksCalibrate(QDialog, Ui_dailogWaterTanksCalibrate):
         self.le_litres.setText(str(litres))
         self.le_reading.clear()
         self.pb_read.setEnabled(True)
+        self.pb_store.setEnabled(True)
 
     def store(self):
         v = int(self.le_reading.text())
@@ -2678,7 +2679,7 @@ class DialogNutrientPumpCalibrate(QDialog, Ui_dialogNutrientPumpCalibrate):
             getattr(self, "le_test_%i" % x).setEnabled(state)
             getattr(self, "pb_save_%i" % x).setEnabled(state)
             getattr(self, "pb_dispense_%i" % x).setEnabled(state)
-        self.le_dur_mix.setEnabled(state)
+        # self.le_dur_mix.setEnabled(state)
         self.le_result_mix.setEnabled(state)
         self.pb_run_mix.setEnabled(state)
         self.pb_save_mix.setEnabled(state)
@@ -2695,14 +2696,14 @@ class DialogNutrientPumpCalibrate(QDialog, Ui_dialogNutrientPumpCalibrate):
         self.feeder_unit.load_pots()
         self.load()
 
-    def save_mix(self):
-        result = self.le_result_mix.text()
-        if not result.isnumeric():
-            return
-        result = int(result)
-        value = int(self.le_dur_mix.text())
-        value *= 1000 / result
-        self.db.set_config(CFT_FEEDER, "feed pump 1L", int(value))
+    # def save_mix(self):
+    #     result = self.le_result_mix.text()
+    #     if not result.isnumeric():
+    #         return
+    #     result = int(result)
+    #     value = int(self.le_dur_mix.text())
+    #     value *= 1000 / result
+    #     self.db.set_config(CFT_FEEDER, "feed pump 1L", int(value))
 
 
 class DialogMixTankCalibrate(QDialog, Ui_DialogMixTankCalibrate):
@@ -3554,8 +3555,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
             self.feeder_mix_litres = water_total
         txt += "<br>This feed comprises of {} feed mix{}, of {}L {}<b></b><br>".format(
             self.feeder_mix_count, "es" if self.feeder_mix_count > 1 else "", self.feeder_mix_litres,
-            "each" if self.feeder_mix_count > 1 else ""
-        )
+            "each" if self.feeder_mix_count > 1 else "")
         self.le_fill_to.setText(str(self.feeder_mix_litres))
         self.fill_to = self.feeder_mix_litres
         self.recipe = self.feed_controller.get_recipe(self.area, num)
@@ -5945,10 +5945,11 @@ class DialogNutrients(QDialog, Ui_DialogNutrients):
         if pot > 0:
             check = self.db.execute_single("SELECT nid FROM {} WHERE pot = {}".format(DB_NUTRIENT_PROPERTIES, pot))
             if check is not None:
-                self.msg.setText("This pot is not empty")
-                self.msg.setStandardButtons(QMessageBox.Cancel)
-                self.msg.exec_()
-                return
+                if check != self.nutrient_id:
+                    self.msg.setText("This pot is not empty")
+                    self.msg.setStandardButtons(QMessageBox.Cancel)
+                    self.msg.exec_()
+                    return
         if self.action == 1:    # Edit
             sql = "UPDATE {} SET top_up = {}, pot = {}, price = {} WHERE nid = {}".\
                 format(DB_NUTRIENT_PROPERTIES, self.le_size.text(), self.cb_pot.currentData(),
