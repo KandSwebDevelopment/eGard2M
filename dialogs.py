@@ -693,8 +693,9 @@ class DialogDispatchReports(QDialog, Ui_DialogDispatchReport):
                   "WHERE MONTH(d.date) = {} AND YEAR(d.date) = {} AND (d.p_type = 0)".\
                 format(DB_DISPATCH, month, year)
             row = self.db.execute_one_row(sql)
-            txt += '<tr><td>{}</td><td style="text-align:center;">{}</td></tr>'.format(row[0], row[1])
-            total += row[1]
+            if row[0] is not None:
+                txt += '<tr><td>{}</td><td style="text-align:center;">{}</td></tr>'.format(row[0], row[1])
+                total += row[1]
             counter += 1
 
         year -= 1
@@ -2609,7 +2610,7 @@ class DialogNutrientPumpCalibrate(QDialog, Ui_dialogNutrientPumpCalibrate):
             txt = ""
             if pots[row]['level'] != 0:
                 txt = "{}ms/ml  {}ml/s".format(pots[row]['time'], round(1 / pots[row]['time'] * 1000, 1))
-            if pots[row]['name'] is None:
+            if pots[row]['name'] is None or pots[row]['level'] != 0:
                 getattr(self, "pb_run_%i" % row).setEnabled(False)
                 getattr(self, "pb_save_%i" % row).setEnabled(False)
                 getattr(self, "pb_dispense_%i" % row).setEnabled(False)
@@ -2679,10 +2680,6 @@ class DialogNutrientPumpCalibrate(QDialog, Ui_dialogNutrientPumpCalibrate):
             getattr(self, "le_test_%i" % x).setEnabled(state)
             getattr(self, "pb_save_%i" % x).setEnabled(state)
             getattr(self, "pb_dispense_%i" % x).setEnabled(state)
-        # self.le_dur_mix.setEnabled(state)
-        self.le_result_mix.setEnabled(state)
-        self.pb_run_mix.setEnabled(state)
-        self.pb_save_mix.setEnabled(state)
 
     def save(self, pot):
         result = getattr(self, "le_result_%i" % pot).text()
@@ -2695,15 +2692,6 @@ class DialogNutrientPumpCalibrate(QDialog, Ui_dialogNutrientPumpCalibrate):
         self.db.execute_write(sql)
         self.feeder_unit.load_pots()
         self.load()
-
-    # def save_mix(self):
-    #     result = self.le_result_mix.text()
-    #     if not result.isnumeric():
-    #         return
-    #     result = int(result)
-    #     value = int(self.le_dur_mix.text())
-    #     value *= 1000 / result
-    #     self.db.set_config(CFT_FEEDER, "feed pump 1L", int(value))
 
 
 class DialogMixTankCalibrate(QDialog, Ui_DialogMixTankCalibrate):
@@ -3125,6 +3113,9 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.le_water_tank_level_2.setText(str(self.water_control.get_current_level(2)))
         self.main_window.coms_interface.send_data(COM_SERVOS_CLOSE, True, MODULE_FU)
 
+        self.rb_area_1.setEnabled(False)
+        self.rb_area_2.setEnabled(False)
+
     def window_change(self, win_name):
         if win_name == self.windowTitle():
             self.has_focus = True
@@ -3289,7 +3280,7 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.action = 1
         if string_to_float(self.le_tank_level.text()) < string_to_float(self.le_flush_litres.text()):
             fill_tank = 2
-            if string_to_float(self.le_water_tank_level_1.text()) < string_to_float(self.le_flush_litres.text()):
+            if string_to_float(self.le_water_tank_level_1.text()) > string_to_float(self.le_flush_litres.text()):
                 fill_tank = 1
             self.lbl_status.setText("Filling {}L from tank {} for flushing".format(
                 self.le_flush_litres.text(), fill_tank))
@@ -3444,13 +3435,12 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.cb_mix.setEnabled(False)
 
     def start_feed(self):
+        if string_to_float(self.le_feed.text()) > self.feeder_unit.max_man_litres:
+            self.le_feed.setText(str(self.feeder_unit.max_man_litres))
         level = string_to_float(self.le_tank_level.text()) - string_to_float(self.le_feed.text())
         if level < 0:
             level = 0
         if self.pb_feed.text() == "Next":   # Manual feed continue
-            if level > self.feeder_unit.max_man_litres:
-                level = self.feeder_unit.max_man_litres
-                self.le_feed.setText(str(level))
             self.dispense_level = level
             self.main_window.coms_interface.send_data(COM_MIX_DISPENSE, True, MODULE_FU, int(level * 1000))
             self.lbl_status.setText("Starting Dispense {}".format(self.pumped + 1))
@@ -3526,12 +3516,12 @@ class DialogFeederManualMix(QDialog, Ui_DialogFeederManualMix):
         self.cb_mix.blockSignals(False)
         self.lbl_recipie.setText(self.feed_controller.get_recipe_name(area))
         self.load_mix(1)
-        if self.mix_count > 1:
-            self.rb_area_0.setChecked(True)
-        if area == 1:
-            self.rb_area_1.setChecked(True)
-        else:
-            self.rb_area_2.setChecked(True)
+        # if self.mix_count > 1:
+        self.rb_area_0.setChecked(True)
+        # if area == 1:
+        #     self.rb_area_1.setChecked(True)
+        # else:
+        #     self.rb_area_2.setChecked(True)
         self.pb_load_1.setEnabled(False)
         self.pb_load_2.setEnabled(False)
         self.cb_mix.setEnabled(True)

@@ -3,6 +3,7 @@ import math
 
 from PyQt5.QtCore import QObject
 from defines import *
+from functions import string_to_float
 
 
 class FeederUnit(QObject):
@@ -31,12 +32,12 @@ class FeederUnit(QObject):
     def load_config(self):
         self.nutrient_stir_time = int(self.db.get_config(CFT_FEEDER, "nutrient stir time", 30)) * 1000
         self.soak_time = int(self.db.get_config(CFT_FEEDER, "soak time", 10))
-        self.flush_litres = int(self.db.get_config(CFT_FEEDER, "flush litres", 2))
-        self.spillage_litres = int(self.db.get_config(CFT_FEEDER, "spillage", 1))
-        self.max_mix_litres = int(self.db.get_config(CFT_FEEDER, "max mix litres", 6))
+        self.flush_litres = string_to_float(self.db.get_config(CFT_FEEDER, "flush litres", 2))
+        self.spillage_litres = string_to_float(self.db.get_config(CFT_FEEDER, "spillage", 1))
+        self.max_mix_litres = string_to_float(self.db.get_config(CFT_FEEDER, "max mix litres", 6))
         self.mix_stir_time = int(self.db.get_config(CFT_FEEDER, "mix stir time", 30)) * 1000
-        self.feed_litres = int(self.db.get_config(CFT_FEEDER, "feed L", 10))
-        self.max_man_litres = int(self.db.get_config(CFT_FEEDER, "max manual feed", 1))
+        self.feed_litres = string_to_float(self.db.get_config(CFT_FEEDER, "feed L", 10))
+        self.max_man_litres = string_to_float(self.db.get_config(CFT_FEEDER, "max manual feed", 1))
         self.correction_mix_fill = int(self.db.get_config(CFT_FEEDER, "correction_mix_fill", 50))
         self.correction_mix_empty = int(self.db.get_config(CFT_FEEDER, "correction_mix_empty", 50))
 

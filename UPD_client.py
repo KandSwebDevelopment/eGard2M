@@ -38,6 +38,7 @@ class UdpClient(QObject):
     @pyqtSlot()
     def run(self):
         alive = True
+        data = 0
         cmd, to = self.my_parent.get_next_udp_communication(self.id)
         while alive:
             try:

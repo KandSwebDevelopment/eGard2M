@@ -81,12 +81,12 @@ class CommunicationInterface(QObject):
         self.io_errors = 0
         self.de_errors = 0
         # The following master/slave values will be picked by the database
-        self.de_ip = self.main_window.db.get_config(CFT_DE_UNIT, "ip")
-        self.de_port = int(self.main_window.db.get_config(CFT_DE_UNIT, "port"))
-        self.io_ip = self.main_window.db.get_config(CFT_IO_UNIT, "ip")
-        self.io_port = int(self.main_window.db.get_config(CFT_IO_UNIT, "port"))
+        self.de_ip = self.main_window.db.get_config(CFT_DE_UNIT, "ip", "192.168.0.201")
+        self.de_port = int(self.main_window.db.get_config(CFT_DE_UNIT, "port", 5422))
+        self.io_ip = self.main_window.db.get_config(CFT_IO_UNIT, "ip", "192.168.0.200")
+        self.io_port = int(self.main_window.db.get_config(CFT_IO_UNIT, "port", 5420))
         self.fu_ip = self.main_window.db.get_config(CFT_FEEDER, "ip")
-        self.fu_port = int(self.main_window.db.get_config(CFT_FEEDER, "port"))
+        self.fu_port = int(self.main_window.db.get_config(CFT_FEEDER, "port", 5430))
         self.slave_ip = self.main_window.db.get_config(CFT_NETWORK, "pc ip")     # Other PC
         self.slave_port = int(self.main_window.db.get_config(CFT_NETWORK, "pc port"))
         self.ip_broadcast = self.main_window.db.get_config(CFT_NETWORK, "broadcast ip")

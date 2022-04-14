@@ -325,6 +325,8 @@ class FeedClass(QObject):
 
     def load_org_recipe(self, mix_num):
         """Load original recipe/mix into mix number"""
+        if mix_num > len(self.area_data['mixes']):
+            return
         self.area_data["mixes"][mix_num]['items'] = self.items
         self.area_data["mixes"][mix_num]["recipe"] = copy.deepcopy(self.recipe)
         self.area_data["mixes"][mix_num]["lpp"] = self.feed_litres

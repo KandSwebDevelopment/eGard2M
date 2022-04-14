@@ -79,7 +79,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         self.msg_sys = None
         self.stage_change_warning_days = int(self.db.get_config(CFT_PROCESS, "stage change days", 7))
         self.unit_price = self.db.execute_single("SELECT ppu FROM {} ORDER BY date_from DESC LIMIT 1".
-                                                 format(DB_ELECTRIC)) / 100
+                                                format(DB_ELECTRIC)) / 100
 
         self.slave_counter = 0
         self.coms_counter = 0
@@ -243,7 +243,7 @@ class MainPanel(QMdiSubWindow, Ui_MainPanel):
         if self.master_mode == MASTER:
             cm = datetime.now().minute
             if cm % 2 == 0:
-                self.main_window.logger.save_log(self.area_controller.get_sensor_log_values())
+                #self.main_window.logger.save_log(self.area_controller.get_sensor_log_values())
                 self.main_window.logger.save_output_log(self.area_controller.output_controller.get_output_log_values())
                 self.main_window.logger.save_fan_log(self.area_controller.fan_controller.get_log_values())
                 self.main_window.logger.save_power_log(self.le_pwr_current.text() + ", " + self.le_pwr_total_1.text())
